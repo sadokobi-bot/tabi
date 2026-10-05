@@ -40,8 +40,12 @@ export function getBackend(): Backend {
   return backend
 }
 
+const SIGNED_OUT: SessionUser = { uid: '', username: '' }
+
+/**
+ * The signed-in user, for screens behind the auth gate. During sign-out the store clears the
+ * user one render before the gate unmounts these screens, so return a blank user instead of throwing.
+ */
 export function useCurrentUser(): SessionUser {
-  const user = useSession((state) => state.user)
-  if (!user) throw new Error('useCurrentUser() used outside a signed-in screen')
-  return user
+  return useSession((state) => state.user) ?? SIGNED_OUT
 }

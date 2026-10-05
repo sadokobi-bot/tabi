@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import maplibregl, { type GeoJSONSource, type Map as LibreMap } from 'maplibre-gl'
+import { Map as LibreMap, Marker, setWorkerUrl, type GeoJSONSource } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+// MapLibre v6 is ESM-only; bundlers must hand it a self-contained worker (see MapLibre's Vite guide).
+import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import type { CategoryId, LatLng } from '@/data/types'
 import { useLatest } from '@/hooks/useLatest'
 import { circlePolygon } from '@/lib/geo'
@@ -12,6 +14,8 @@ import type { MapViewProps } from './types'
  * Free map engine: MapLibre GL + OpenFreeMap vector tiles (OpenStreetMap data, no API key).
  * Used until a Google Maps key is configured. Fully interactive: pan, zoom, rotate, tilt.
  */
+
+setWorkerUrl(workerUrl)
 
 const STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/liberty'
 const STYLE_DARK = 'https://tiles.openfreemap.org/styles/dark'
@@ -73,6 +77,7 @@ export default function LibreMapView(props: MapViewProps) {
   const { markers, user, camera, onMarkerClick } = props
   const containerRef = useRef<HTMLDivElement>(null)
   const [map, setMap] = useState<LibreMap | null>(null)
+  const [unsupported, setUnsupported] = useState(false)
   const latest = useLatest(props)
 
   useEffect(() => {
@@ -81,16 +86,24 @@ export default function LibreMapView(props: MapViewProps) {
     const { initialCenter, initialZoom } = latest.current
     const dark = window.matchMedia('(prefers-color-scheme: dark)').matches
 
-    const instance = new maplibregl.Map({
-      container,
-      style: dark ? STYLE_DARK : STYLE_LIGHT,
-      center: [initialCenter.lng, initialCenter.lat],
-      zoom: toLibreZoom(initialZoom),
-      attributionControl: { compact: true },
-      maxPitch: 70,
-      // Render Japanese glyphs with local fonts instead of downloading glyph tiles.
-      localIdeographFontFamily: "'Hiragino Sans', 'Yu Gothic', 'Meiryo', 'Noto Sans JP', sans-serif",
-    })
+    let instance: LibreMap
+    try {
+      instance = new LibreMap({
+        container,
+        style: dark ? STYLE_DARK : STYLE_LIGHT,
+        center: [initialCenter.lng, initialCenter.lat],
+        zoom: toLibreZoom(initialZoom),
+        attributionControl: { compact: true },
+        maxPitch: 70,
+        // Render Japanese glyphs with local fonts instead of downloading glyph tiles.
+        localIdeographFontFamily: "'Hiragino Sans', 'Yu Gothic', 'Meiryo', 'Noto Sans JP', sans-serif",
+      })
+    } catch (error) {
+      // MapLibre v6 requires WebGL2 and throws (GPUInitializationError) when it's unavailable.
+      console.error('[map] failed to start', error)
+      setUnsupported(true)
+      return
+    }
 
     const emitViewport = () => {
       const bounds = instance.getBounds()
@@ -201,6 +214,14 @@ export default function LibreMapView(props: MapViewProps) {
     })
   }, [map, camera])
 
+  if (unsupported) {
+    return (
+      <div className="grid h-full place-items-center px-8 text-center">
+        <p className="text-sm text-muted">המפה לא נתמכת בדפדפן הזה. נסו לעדכן את הדפדפן או לפתוח את האפליקציה ב-Chrome או ב-Safari.</p>
+      </div>
+    )
+  }
+
   return (
     <div className="relative h-full w-full">
       {/* Sized with h-full (not absolute): maplibre-gl.css forces `.maplibregl-map { position: relative }`. */}
@@ -244,7 +265,7 @@ interface LibreMarkerProps {
 /** A MapLibre DOM marker whose content is rendered by React through a portal. */
 function LibreMarker({ map, position, zIndex, title, onClick, children }: LibreMarkerProps) {
   const [element] = useState(() => document.createElement('div'))
-  const markerRef = useRef<maplibregl.Marker | null>(null)
+  const markerRef = useRef<Marker | null>(null)
   const latestClick = useLatest(onClick)
   const latestPosition = useLatest(position)
   const { lat, lng } = position
@@ -252,7 +273,7 @@ function LibreMarker({ map, position, zIndex, title, onClick, children }: LibreM
   // Created once per map; position changes are applied below without re-creating the marker.
   useEffect(() => {
     const start = latestPosition.current
-    const marker = new maplibregl.Marker({ element, anchor: 'center' }).setLngLat([start.lng, start.lat]).addTo(map)
+    const marker = new Marker({ element, anchor: 'center' }).setLngLat([start.lng, start.lat]).addTo(map)
     markerRef.current = marker
     const handleClick = (event: MouseEvent) => {
       event.stopPropagation()

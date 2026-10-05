@@ -8,7 +8,13 @@ import { dedupePois, type Poi, type PoiProvider, type Suggestion } from './poi'
  * - Photon (komoot) for type-ahead search
  */
 
-const OVERPASS_URL = 'https://overpass-api.de/api/interpreter'
+/** Public Overpass instances, tried in order: the main one is occasionally overloaded (HTTP 504). */
+const OVERPASS_ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
+]
+const OVERPASS_ATTEMPT_TIMEOUT_MS = 12_000
 const PHOTON_URL = 'https://photon.komoot.io/api/'
 const JAPAN_BBOX = '122.9,24.0,154.0,45.6'
 /** OSM is dense: keep area queries to roughly a neighbourhood. */
@@ -93,6 +99,29 @@ function notability(element: OverpassElement): number {
 
 const areaCache = new Map<string, { at: number; pois: Poi[] }>()
 
+/** Runs an Overpass query, falling back to the next instance on errors, timeouts or non-JSON replies. */
+async function fetchOverpass(query: string, signal: AbortSignal): Promise<{ elements?: OverpassElement[] }> {
+  let lastError: unknown = new Error('Overpass unavailable')
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    if (signal.aborted) break
+    const attempt = new AbortController()
+    const abortAttempt = () => attempt.abort()
+    signal.addEventListener('abort', abortAttempt)
+    const timer = setTimeout(abortAttempt, OVERPASS_ATTEMPT_TIMEOUT_MS)
+    try {
+      const response = await fetch(endpoint, { method: 'POST', body: new URLSearchParams({ data: query }), signal: attempt.signal })
+      if (!response.ok) throw new Error(`Overpass ${response.status}`)
+      return (await response.json()) as { elements?: OverpassElement[] }
+    } catch (error) {
+      lastError = error
+    } finally {
+      clearTimeout(timer)
+      signal.removeEventListener('abort', abortAttempt)
+    }
+  }
+  throw signal.aborted ? new DOMException('Aborted', 'AbortError') : lastError
+}
+
 const PHOTON_TYPE: Record<string, string> = { N: 'node', W: 'way', R: 'relation' }
 
 interface PhotonFeature {
@@ -125,13 +154,7 @@ export const osmProvider: PoiProvider = {
     const statements = categories.flatMap((category) => FILTERS[category] ?? []).map((filter) => `nwr${filter}(${bbox});`)
     const query = `[out:json][timeout:20];(${statements.join('')});out center 300;`
 
-    const response = await fetch(OVERPASS_URL, {
-      method: 'POST',
-      body: new URLSearchParams({ data: query }),
-      signal,
-    })
-    if (!response.ok) throw new Error(`Overpass ${response.status}`)
-    const json = (await response.json()) as { elements?: OverpassElement[] }
+    const json = await fetchOverpass(query, signal)
 
     const byCategory = new Map<CategoryId, Poi[]>()
     const sorted = [...(json.elements ?? [])].sort((a, b) => notability(b) - notability(a))
