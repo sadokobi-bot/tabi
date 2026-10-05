@@ -1,0 +1,89 @@
+rules_version = '2';
+
+// Security rules for the cloud (Firebase) mode. Paste into Firebase console → Firestore → Rules.
+//
+//   trips/{tripId}                  readable/writable by members only
+//   trips/{tripId}/places/{placeId} members only
+//   trips/{tripId}/meta/{docId}     members only (the itinerary lives in meta/plan)
+//   invites/{code}                  fetch by exact code only; never listable
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function tripPath(tripId) {
+      return /databases/$(database)/documents/trips/$(tripId);
+    }
+
+    // Reads check the stored trip; writes check the trip as it will be after the write
+    // (so a batch that creates a trip together with its first documents is allowed).
+    function isMember(tripId) {
+      return signedIn() && request.auth.uid in get(tripPath(tripId)).data.memberIds;
+    }
+
+    function isMemberAfter(tripId) {
+      return signedIn() && request.auth.uid in getAfter(tripPath(tripId)).data.memberIds;
+    }
+
+    function validTrip(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 60
+        && data.startDate is string && data.startDate.size() == 10
+        && data.days is int && data.days >= 1 && data.days <= 90
+        && data.memberIds is list && data.memberIds.size() <= 20
+        && data.flights is list && data.flights.size() <= 20;
+    }
+
+    match /trips/{tripId} {
+      allow read: if signedIn() && request.auth.uid in resource.data.memberIds;
+
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.memberIds == [request.auth.uid]
+        && validTrip(request.resource.data);
+
+      allow update: if signedIn() && validTrip(request.resource.data) && (
+        // Members edit trip details, but never ownership, the invite code or membership.
+        (request.auth.uid in resource.data.memberIds
+          && !request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny(['ownerId', 'inviteCode', 'createdAt', 'memberIds']))
+        ||
+        // Joining with an invite: a non-member may add exactly themselves (and their display name).
+        (!(request.auth.uid in resource.data.memberIds)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'members'])
+          && request.resource.data.memberIds.hasAll(resource.data.memberIds)
+          && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1
+          && request.auth.uid in request.resource.data.memberIds
+          && request.resource.data.members.diff(resource.data.members).affectedKeys().hasOnly([request.auth.uid]))
+      );
+
+      allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
+
+      match /places/{placeId} {
+        allow read: if isMember(tripId);
+        allow create, update: if isMemberAfter(tripId)
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 120
+          && request.resource.data.location.lat is number
+          && request.resource.data.location.lng is number;
+        allow delete: if isMember(tripId);
+      }
+
+      match /meta/{docId} {
+        allow read: if isMember(tripId);
+        allow write: if isMemberAfter(tripId);
+      }
+    }
+
+    match /invites/{code} {
+      // Knowing the exact code is the invitation. Codes are random (32^8) and cannot be listed.
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['tripId'])
+        && request.auth.uid in getAfter(tripPath(request.resource.data.tripId)).data.memberIds;
+      allow update, delete: if false;
+    }
+  }
+}
