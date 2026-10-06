@@ -1,8 +1,10 @@
 import { useRef, type ReactNode } from 'react'
 import clsx from 'clsx'
+import { RefreshCw } from 'lucide-react'
 import { motion, type TargetAndTransition } from 'motion/react'
 import { TabActiveContext } from '@/app/tabActive'
 import type { TabId } from '@/app/tabs'
+import { usePullToRefresh } from '@/hooks/usePullToRefresh'
 import { useTabReselect } from '@/hooks/useTabReselect'
 
 /** How far (px) a screen travels horizontally while entering / leaving. */
@@ -52,6 +54,9 @@ interface TabPanelProps {
 /** One keep-alive screen container. Animates between active and hidden poses. */
 export function TabPanel({ tabId, label, isActive, position, fullBleed = false, children }: TabPanelProps) {
   const scrollRef = useRef<HTMLElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
+  const indicatorRef = useRef<HTMLDivElement>(null)
+  usePullToRefresh(scrollRef, contentRef, indicatorRef, !fullBleed)
 
   // iOS convention: tapping the active tab scrolls its screen back to the top.
   useTabReselect(tabId, () => scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' }), !fullBleed)
@@ -72,7 +77,24 @@ export function TabPanel({ tabId, label, isActive, position, fullBleed = false, 
       )}
     >
       <TabActiveContext value={isActive}>
-        {fullBleed ? children : <div className="pb-tabbar min-h-full">{children}</div>}
+        {fullBleed ? (
+          children
+        ) : (
+          <>
+            <div
+              ref={indicatorRef}
+              aria-hidden
+              data-state="pull"
+              className="group glass pointer-events-none absolute inset-x-0 top-[calc(env(safe-area-inset-top)+0.5rem)] z-10 mx-auto grid size-10 place-items-center rounded-full text-muted opacity-0 data-[state=ready]:text-accent data-[state=refreshing]:text-accent"
+              style={{ transform: 'translateY(-44px)' }}
+            >
+              <RefreshCw className="size-[18px] group-data-[state=refreshing]:animate-spin" strokeWidth={2.25} />
+            </div>
+            <div ref={contentRef} className="pb-tabbar min-h-full">
+              {children}
+            </div>
+          </>
+        )}
       </TabActiveContext>
     </motion.section>
   )
