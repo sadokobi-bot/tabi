@@ -4,8 +4,8 @@ import { removePlaceEverywhere } from '@/data/planOps'
 import { useSession } from '@/store/session'
 import { recallActiveTrip, setPlaces, useTripStore } from '@/store/trip'
 
-/** Trips already checked for sample places in this session. */
-const sampleChecked = new Set<string>()
+/** Sample places whose deletion was already sent (snapshots can show them again until it lands). */
+const removing = new Set<string>()
 
 /**
  * Trips once could start with a sample itinerary. Those sample places were written together with
@@ -15,10 +15,13 @@ function removeSamplePlaces(backend: Backend, tripId: string) {
   const { trips, places, plan } = useTripStore.getState()
   const trip = trips.find((t) => t.id === tripId)
   if (!trip) return
-  const samples = places.filter((place) => place.createdBy === trip.ownerId && Math.abs(place.createdAt - trip.createdAt) < 5000)
+  const samples = places.filter(
+    (place) => !removing.has(place.id) && place.createdBy === trip.ownerId && Math.abs(place.createdAt - trip.createdAt) < 5000,
+  )
   if (samples.length === 0) return
 
   const sampleIds = new Set(samples.map((place) => place.id))
+  sampleIds.forEach((id) => removing.add(id))
   let current = plan
   const writes = samples.map((place) => {
     const changes = removePlaceEverywhere(current, place.id)
@@ -28,9 +31,10 @@ function removeSamplePlaces(backend: Backend, tripId: string) {
   setPlaces(places.filter((place) => !sampleIds.has(place.id)))
   useTripStore.setState({ plan: current })
 
-  void writes
-    .reduce((chain, { placeId, changes }) => chain.then(() => backend.deletePlace(tripId, placeId, changes)), Promise.resolve())
-    .catch((error: unknown) => console.error('[trip] sample places could not be removed', error))
+  // All queued at once, so the offline cache drops every sample right away (writes still land in order).
+  Promise.all(writes.map(({ placeId, changes }) => backend.deletePlace(tripId, placeId, changes))).catch((error: unknown) =>
+    console.error('[trip] sample places could not be removed', error),
+  )
 }
 
 /**
@@ -42,6 +46,7 @@ export function TripDataSync() {
   const uid = useSession((state) => state.user?.uid)
   const activeTripId = useTripStore((state) => state.activeTripId)
   const tripDataLoaded = useTripStore((state) => state.placesLoaded && state.planLoaded && state.tripsConfirmed)
+  const places = useTripStore((state) => state.places)
 
   useEffect(() => {
     if (!backend || !uid) return
@@ -73,11 +78,10 @@ export function TripDataSync() {
     }
   }, [backend, activeTripId])
 
+  // Re-checked on every places update: the first snapshot may come from an incomplete offline cache.
   useEffect(() => {
-    if (!backend || !activeTripId || !tripDataLoaded || sampleChecked.has(activeTripId)) return
-    sampleChecked.add(activeTripId)
-    removeSamplePlaces(backend, activeTripId)
-  }, [backend, activeTripId, tripDataLoaded])
+    if (backend && activeTripId && tripDataLoaded) removeSamplePlaces(backend, activeTripId)
+  }, [backend, activeTripId, tripDataLoaded, places])
 
   // The chat stays subscribed on every tab, so the tab bar can show unread messages.
   useEffect(() => {
