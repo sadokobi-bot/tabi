@@ -92,16 +92,35 @@ function getModels(kind: ModelKind) {
 
 type Prompt = string | (string | { inlineData: { data: string; mimeType: string } })[]
 
+/** Why a request failed, in terms the UI can explain. */
+export type AssistantFailure = 'disabled' | 'quota' | 'busy' | 'other'
+
+export function failureOf(error: unknown): AssistantFailure {
+  const text = `${(error as { code?: string } | null)?.code ?? ''} ${(error as Error | null)?.message ?? ''}`
+  if (text.includes('api-not-enabled')) return 'disabled'
+  if (/429|quota|RESOURCE_EXHAUSTED/i.test(text)) return 'quota'
+  if (/50[03]|high demand|overloaded|unavailable/i.test(text)) return 'busy'
+  return 'other'
+}
+
+/**
+ * Tries each model in turn. The free tier caps requests per minute and per day for each model,
+ * so when every model is limited or busy, wait a few seconds and go round once more.
+ */
 async function generate(kind: ModelKind, prompt: Prompt) {
   let lastError: unknown
-  for (const model of await getModels(kind)) {
-    try {
-      return await model.generateContent(prompt)
-    } catch (error) {
-      lastError = error
-      // Not enabled in the Firebase project: no other model will work either.
-      if (String((error as { code?: string } | null)?.code).includes('api-not-enabled')) break
+  for (let round = 0; round < 2; round++) {
+    if (round > 0) await new Promise((resolve) => setTimeout(resolve, 6000))
+    for (const model of await getModels(kind)) {
+      try {
+        return await model.generateContent(prompt)
+      } catch (error) {
+        lastError = error
+        // Not enabled in the Firebase project: no other model will work either.
+        if (failureOf(error) === 'disabled') throw error
+      }
     }
+    if (failureOf(lastError) === 'other') break
   }
   throw lastError
 }

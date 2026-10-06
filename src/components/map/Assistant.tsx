@@ -7,13 +7,30 @@ import { Button } from '@/components/ui/Button'
 import { CategoryIcon } from '@/components/ui/CategoryIcon'
 import { actions } from '@/data/actions'
 import type { LatLng } from '@/data/types'
-import { askAssistant, extractPlaces, resolveOnMap, type AssistantAnswer, type AssistantPlace, type PromptImage } from '@/lib/assistant'
+import {
+  askAssistant,
+  extractPlaces,
+  failureOf,
+  resolveOnMap,
+  type AssistantAnswer,
+  type AssistantFailure,
+  type AssistantPlace,
+  type PromptImage,
+} from '@/lib/assistant'
 import { haptic } from '@/lib/haptics'
 import type { Poi, PoiProvider } from '@/maps/poi'
 import { useTripStore } from '@/store/trip'
 import { ui } from '@/store/ui'
 
 const EXAMPLES = ['המקדש עם אלפי השערים הכתומים', 'ראמן טוב ליד שיבויה', 'תצפית יפה על הר פוג׳י']
+
+const FAILURE_TEXT: Record<AssistantFailure, string> = {
+  disabled: 'העוזר עוד לא הופעל. בעל הטיול צריך להפעיל את Firebase AI Logic.',
+  quota:
+    'העוזר הגיע למכסה החינמית של Gemini. נסו שוב בעוד דקה. אם זה חוזר, המכסה היומית נגמרה, והיא מתחדשת כל יום ב-10:00 בבוקר (שעון ישראל).',
+  busy: 'העוזר עמוס כרגע. נסו שוב בעוד דקה.',
+  other: 'העוזר לא זמין כרגע. נסו שוב בעוד רגע.',
+}
 
 /** Longer text than a search (a pasted post) switches to import. */
 const IMPORT_TEXT_LENGTH = 140
@@ -60,7 +77,8 @@ export function Assistant({ provider, near }: AssistantProps) {
   const [image, setImage] = useState<(PromptImage & { preview: string }) | null>(null)
   const [answer, setAnswer] = useState<AssistantAnswer | null>(null)
   const [items, setItems] = useState<ImportItem[] | null>(null)
-  const [status, setStatus] = useState<'idle' | 'thinking' | 'error' | 'disabled'>('idle')
+  const [status, setStatus] = useState<'idle' | 'thinking' | 'failed'>('idle')
+  const [failure, setFailure] = useState<AssistantFailure>('other')
   const [importing, setImporting] = useState(false)
   const [resolving, setResolving] = useState<number | null>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -79,8 +97,9 @@ export function Assistant({ provider, near }: AssistantProps) {
 
   const fail = (error: unknown, request: number) => {
     console.error('[assistant]', error)
-    const disabled = String((error as { code?: string } | null)?.code ?? '').includes('api-not-enabled')
-    if (request === requestRef.current) setStatus(disabled ? 'disabled' : 'error')
+    if (request !== requestRef.current) return
+    setFailure(failureOf(error))
+    setStatus('failed')
   }
 
   const ask = async (query: string) => {
@@ -305,11 +324,9 @@ export function Assistant({ provider, near }: AssistantProps) {
             <div className="mt-4 min-h-40" aria-live="polite">
               {status === 'thinking' && <Thinking label={importing ? 'קורא את הפוסט ומאתר את המקומות…' : 'מחפש את המקום…'} />}
 
-              {(status === 'error' || status === 'disabled') && (
-                <p role="alert" className="rounded-control bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
-                  {status === 'disabled'
-                    ? 'העוזר עוד לא הופעל. בעל הטיול צריך להפעיל את Firebase AI Logic.'
-                    : 'העוזר לא זמין כרגע. נסו שוב בעוד רגע.'}
+              {status === 'failed' && (
+                <p role="alert" className="rounded-control bg-red-500/10 px-4 py-3 text-sm leading-relaxed text-red-700 dark:text-red-300">
+                  {FAILURE_TEXT[failure]}
                 </p>
               )}
 
