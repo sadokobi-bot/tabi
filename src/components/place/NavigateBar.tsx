@@ -66,7 +66,7 @@ export function NavigateBar({ destination, placeId }: { destination: LatLng; pla
         target="_blank"
         rel="noopener noreferrer"
         onClick={() => haptic(12)}
-        className="flex h-12 flex-1 items-center justify-center gap-2 rounded-control bg-accent-fill text-base font-bold text-accent-fg shadow-[0_12px_28px_-10px_var(--app-accent)] transition active:scale-[0.97]"
+        className="flex h-12 flex-1 items-center justify-center gap-2 rounded-control bg-accent-fill text-base font-bold text-accent-fg shadow-accent transition active:scale-[0.97]"
       >
         <Navigation aria-hidden className="size-5 -scale-x-100" />
         קח אותי לשם

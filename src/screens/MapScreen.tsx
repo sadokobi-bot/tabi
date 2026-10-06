@@ -146,7 +146,7 @@ export default function MapScreen() {
     setCategories((current) => (current.includes(category) ? current.filter((c) => c !== category) : [...current, category]))
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-[#e8ece4] dark:bg-[#14181c]">
+    <div className="relative h-full w-full overflow-hidden bg-map">
       {/* Google's logo must stay visible, so its map ends above the tab bar; the free map runs edge to edge. */}
       <div className={hasGoogleMaps ? 'bottom-tabbar-zone absolute inset-x-0 top-0 overflow-hidden rounded-b-card' : 'absolute inset-0'}>
         <Suspense fallback={<MapLoading />}>

@@ -64,7 +64,7 @@ export function NextUpCard({ item, place, nowMinutes, eyebrow }: NextUpCardProps
         href={directionsUrl(place.location, { placeId: place.googlePlaceId })}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-4 flex h-12 items-center justify-center gap-2 rounded-control bg-accent-fill text-sm font-bold text-accent-fg shadow-[0_12px_24px_-14px_var(--app-accent)] transition active:scale-[0.97]"
+        className="mt-4 flex h-12 items-center justify-center gap-2 rounded-control bg-accent-fill text-sm font-bold text-accent-fg shadow-accent transition active:scale-[0.97]"
       >
         <Navigation aria-hidden className="size-4 -scale-x-100" />
         קח אותי לשם

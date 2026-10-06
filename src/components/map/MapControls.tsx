@@ -40,7 +40,7 @@ export function MapControls({ bearing, geoStatus, following, onLocate, onResetNo
         aria-label="המיקום שלי"
         whileTap={{ scale: 0.9 }}
         onClick={onLocate}
-        className={clsx('glass grid size-12 place-items-center rounded-full', following && 'text-[#2f7cf6]')}
+        className={clsx('glass grid size-12 place-items-center rounded-full', following && 'text-location')}
       >
         {geoStatus === 'denied' || geoStatus === 'unavailable' ? (
           <LocateOff aria-hidden className="size-5 text-muted" />
@@ -54,7 +54,7 @@ export function MapControls({ bearing, geoStatus, following, onLocate, onResetNo
         aria-label="הוספת מקום משלנו"
         whileTap={{ scale: 0.9 }}
         onClick={onAdd}
-        className="grid size-14 place-items-center rounded-full bg-accent-fill text-accent-fg shadow-[0_14px_30px_-10px_var(--app-accent)]"
+        className="grid size-14 place-items-center rounded-full bg-accent-fill text-accent-fg shadow-accent"
       >
         <Plus aria-hidden className="size-7" strokeWidth={2.4} />
       </motion.button>

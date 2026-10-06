@@ -19,6 +19,9 @@
   /* Filled surfaces with white text (buttons, badges, own chat bubbles). Same as the accent in light
      mode; in dark mode the accent is brighter for text on dark, so fills keep the deeper shade. */
   --app-accent-fill: #cc4329;
+  /* Live location (blue dot, "following" control) and the map canvas behind the tiles. */
+  --app-location: #2f7cf6;
+  --app-map-bg: #e8ece4;
 
   --surface-shadow: 0 1px 1px rgb(21 23 27 / 0.03), 0 2px 6px -2px rgb(21 23 27 / 0.05), 0 10px 24px -16px rgb(21 23 27 / 0.12);
   --surface-highlight: inset 0 0 0 0 transparent;
@@ -49,6 +52,7 @@
     --app-card: #15171c;
     --app-line: rgb(255 255 255 / 0.06);
     --app-accent: #ff6a4d;
+    --app-map-bg: #14181c;
 
     --surface-shadow: 0 1px 2px rgb(0 0 0 / 0.35), 0 10px 24px -16px rgb(0 0 0 / 0.6);
     --surface-highlight: inset 0 1px 0 rgb(255 255 255 / 0.035);
@@ -107,6 +111,11 @@
   --color-accent: var(--app-accent);
   --color-accent-fg: var(--app-accent-fg);
   --color-accent-fill: var(--app-accent-fill);
+  --color-location: var(--app-location);
+  --color-map: var(--app-map-bg);
+
+  /* One lift for every filled accent control, tinted by the fill (no bright halo in dark mode). */
+  --shadow-accent: 0 12px 26px -12px var(--app-accent-fill);
 }
 
 /* ── Custom utilities ───────────────────────────────────────────────────── */
@@ -304,7 +313,7 @@
   width: 18px;
   height: 18px;
   border-radius: 9999px;
-  background: #2f7cf6;
+  background: var(--app-location);
   border: 3px solid #fff;
   box-shadow: 0 0 0 1px rgb(0 0 0 / 0.08), 0 2px 8px rgb(47 124 246 / 0.55);
 }

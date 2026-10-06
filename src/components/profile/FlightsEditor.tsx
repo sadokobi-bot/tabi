@@ -118,7 +118,7 @@ export function FlightsEditor({ flights }: { flights: Flight[] }) {
     <div className="space-y-2">
       {sorted.map((flight) => (
         <div key={flight.id} className="surface flex items-center gap-3 rounded-control p-3">
-          <span className="grid size-10 place-items-center rounded-control bg-[#3e5c9a]/12 text-[#3e5c9a]">
+          <span className="grid size-10 place-items-center rounded-control bg-accent/12 text-accent">
             <Plane aria-hidden className="size-5 -scale-x-100" />
           </span>
           <div className="min-w-0 flex-1">
