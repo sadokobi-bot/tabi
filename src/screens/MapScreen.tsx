@@ -2,12 +2,13 @@ import { lazy, Suspense, useEffect, useMemo, useState, type ComponentType } from
 import { LoaderCircle } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useTabActive } from '@/app/tabActive'
+import { Assistant } from '@/components/map/Assistant'
 import { CategoryChips } from '@/components/map/CategoryChips'
 import { MapControls } from '@/components/map/MapControls'
 import { MapSearch } from '@/components/map/MapSearch'
 import { PickLocationOverlay } from '@/components/map/PickLocationOverlay'
 import type { MapMarker, MapPoiClick, MapViewProps, Viewport } from '@/components/map/types'
-import { hasGoogleMaps } from '@/config/env'
+import { hasFirebase, hasGoogleMaps } from '@/config/env'
 import { DEFAULT_CITY, getCity } from '@/data/cities'
 import type { CategoryId, LatLng } from '@/data/types'
 import { useGeolocation } from '@/hooks/useGeolocation'
@@ -191,6 +192,9 @@ export default function MapScreen() {
           onAdd={() => ui.setPicking(true)}
         />
       )}
+
+      {/* The AI helper runs on Gemini through Firebase, so it needs cloud mode. */}
+      {!picking && hasFirebase && <Assistant provider={provider} near={viewport?.center ?? null} />}
 
       {picking && (
         <PickLocationOverlay
