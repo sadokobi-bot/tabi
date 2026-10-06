@@ -160,6 +160,8 @@
   html {
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
+    /* An app, not a page: no pinch or double-tap zoom. The maps handle their own gestures. */
+    touch-action: pan-x pan-y;
   }
 
   body {

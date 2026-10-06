@@ -2,7 +2,7 @@ import { useId, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttri
 import clsx from 'clsx'
 
 const CONTROL =
-  'w-full min-w-0 rounded-control border border-line bg-card/70 px-4 text-[15px] text-fg placeholder:text-muted/70 outline-none transition ' +
+  'w-full min-w-0 rounded-control border border-line bg-card/70 px-4 text-base text-fg placeholder:text-muted/70 outline-none transition ' +
   'focus:border-accent/60 focus:ring-4 focus:ring-accent/12 aria-invalid:border-red-500/60'
 
 interface FieldShellProps {
