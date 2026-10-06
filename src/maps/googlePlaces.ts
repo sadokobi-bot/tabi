@@ -125,7 +125,7 @@ export function createGoogleProvider(places: google.maps.PlacesLibrary): PoiProv
           return {
             name: place.displayName ?? undefined,
             category: categoryFromGoogleTypes(place.primaryType, place.types),
-            photos: (place.photos ?? []).slice(0, 6).map((photo) => {
+            photos: (place.photos ?? []).slice(0, 3).map((photo) => {
               const author = photo.authorAttributions[0]
               return {
                 url: photo.getURI({ maxWidth: 960 }),

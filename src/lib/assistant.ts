@@ -135,6 +135,18 @@ export async function resolveOnMap(place: AssistantPlace, provider: PoiProvider 
   }
   if (!provider) return fallback
 
+  // Google's own ranking is reliable, and every resolve is a billed Place Details call: take its top hit.
+  if (provider.id === 'google') {
+    try {
+      const [top] = await provider.suggest(`${place.searchName} ${place.city}`, place.location, signal)
+      const poi = top ? await top.resolve() : null
+      if (poi && distanceMeters(poi.location, place.location) <= MAX_DISTANCE_M) return { ...poi, name: place.name }
+    } catch (error) {
+      if (signal.aborted) throw error
+    }
+    return fallback
+  }
+
   let best: { poi: Poi; score: number } | null = null
   try {
     for (const query of [`${place.searchName} ${place.city}`, place.searchName]) {
