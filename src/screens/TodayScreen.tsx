@@ -5,9 +5,11 @@ import { DayTimeline } from '@/components/today/DayTimeline'
 import { FlightCountdown } from '@/components/today/FlightCountdown'
 import { NextUpCard } from '@/components/today/NextUpCard'
 import { TodayHero } from '@/components/today/TodayHero'
+import { TonightRow } from '@/components/today/TonightRow'
 import { Avatar } from '@/components/ui/Avatar'
 import { DEFAULT_CITY, getCity } from '@/data/cities'
 import { sortedDay } from '@/data/planOps'
+import { stayFor } from '@/data/stays'
 import { useNow } from '@/hooks/useNow'
 import { formatDay, greetingFor, minutesInTz, parseHm, tripTimeline } from '@/lib/dates'
 import { useCurrentUser } from '@/store/session'
@@ -45,6 +47,9 @@ export default function TodayScreen() {
         ? items[0]
         : undefined
   const nextPlace = next ? placesById[next.placeId] : undefined
+
+  const stayId = stayFor(trip.stays, focusDate)
+  const stay = stayId ? placesById[stayId] : undefined
 
   const city = getCity(trip.dayCities[focusDate])
   const firstPlace = items[0] ? placesById[items[0].placeId] : undefined
@@ -85,6 +90,12 @@ export default function TodayScreen() {
         </motion.div>
       )}
 
+      {stay && (
+        <motion.div variants={RISE} className="mt-3">
+          <TonightRow place={stay} />
+        </motion.div>
+      )}
+
       <motion.div variants={RISE} className="mt-3 empty:hidden">
         <FlightCountdown flights={trip.flights} />
       </motion.div>
@@ -98,7 +109,7 @@ export default function TodayScreen() {
           <span className="text-lg font-bold tracking-tight">{phase === 'during' ? 'הלו״ז של היום' : `יום ${dayNumber}`}</span>
           <span className="text-sm text-muted">{formatDay(focusDate, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
         </h2>
-        <DayTimeline items={items} placesById={placesById} nowMinutes={nowMinutes} nextItemId={next?.id ?? null} />
+        <DayTimeline date={focusDate} items={items} placesById={placesById} nowMinutes={nowMinutes} nextItemId={next?.id ?? null} />
       </motion.section>
     </motion.div>
   )

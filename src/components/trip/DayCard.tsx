@@ -14,12 +14,14 @@ interface DayCardProps {
   /** City picker value (dates only). */
   cityId?: string
   onCityChange?: (cityId: string | null) => void
+  /** Extra controls under the header (the night's stay). */
+  extra?: ReactNode
   emptyLabel: string
   children: ReactNode
 }
 
 /** One droppable list (a trip day, or the "ideas" bucket) on the trip board. */
-export function DayCard({ id, title, subtitle, itemIds, isToday, cityId, onCityChange, emptyLabel, children }: DayCardProps) {
+export function DayCard({ id, title, subtitle, itemIds, isToday, cityId, onCityChange, extra, emptyLabel, children }: DayCardProps) {
   const { setNodeRef, isOver } = useDroppable({ id })
 
   return (
@@ -61,6 +63,8 @@ export function DayCard({ id, title, subtitle, itemIds, isToday, cityId, onCityC
           </span>
         )}
       </header>
+
+      {extra && <div className="-mt-0.5 mb-2 px-1">{extra}</div>}
 
       <SortableContext id={id} items={itemIds} strategy={verticalListSortingStrategy}>
         <ol ref={setNodeRef} className="min-h-12 space-y-2">

@@ -77,6 +77,8 @@ export interface Backend {
   joinTrip(user: SessionUser, inviteCode: string): Promise<string>
   updateTrip(tripId: string, patch: TripPatch): Promise<void>
   setDayCity(tripId: string, date: string, cityId: string | null): Promise<void>
+  /** placeId starts a stay that night, '' ends one, null removes the entry (the night inherits). */
+  setStay(tripId: string, date: string, placeId: string | null): Promise<void>
 
   watchPlaces(tripId: string, callback: (places: Place[]) => void, onError: (error: AppError) => void): Unsubscribe
   savePlace(tripId: string, place: Place): Promise<void>

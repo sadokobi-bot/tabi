@@ -102,6 +102,7 @@ export function createFirebaseBackend(): Backend {
     members: (data.members as Trip['members'] | undefined) ?? {},
     inviteCode: String(data.inviteCode ?? ''),
     dayCities: (data.dayCities as Trip['dayCities'] | undefined) ?? {},
+    stays: (data.stays as Trip['stays'] | undefined) ?? {},
     flights: (data.flights as Trip['flights'] | undefined) ?? [],
     createdAt: Number(data.createdAt ?? 0),
   })
@@ -166,6 +167,7 @@ export function createFirebaseBackend(): Backend {
         members: { [user.uid]: { name: user.username } },
         inviteCode,
         dayCities: {},
+        stays: {},
         flights: [],
         createdAt: Date.now(),
       }
@@ -207,6 +209,14 @@ export function createFirebaseBackend(): Backend {
     async setDayCity(tripId, date, cityId) {
       try {
         await updateDoc(tripRef(tripId), new FieldPath('dayCities', date), cityId ?? deleteField())
+      } catch (error) {
+        throw toAppError(error)
+      }
+    },
+
+    async setStay(tripId, date, placeId) {
+      try {
+        await updateDoc(tripRef(tripId), new FieldPath('stays', date), placeId ?? deleteField())
       } catch (error) {
         throw toAppError(error)
       }

@@ -17,7 +17,9 @@ import { getCity } from '@/data/cities'
 import type { DayPlan, ItineraryItem, Place, Trip } from '@/data/types'
 import { formatDay, tripDates } from '@/lib/dates'
 import { newId } from '@/lib/ids'
+import { stayFor } from '@/data/stays'
 import { DayCard } from './DayCard'
+import { StayPicker } from './StayPicker'
 import { RowContent, SortableRow } from './SortableRow'
 
 const IDEAS = 'ideas'
@@ -166,6 +168,7 @@ export function TripBoard({ trip, plan, places, placesById, today }: TripBoardPr
         {dates.map((date, index) => {
           const ids = containers[date] ?? []
           const city = getCity(trip.dayCities[date])
+          const inheritedId = index > 0 ? stayFor(trip.stays, dates[index - 1]!) : null
           return (
             <DayCard
               key={date}
@@ -176,6 +179,14 @@ export function TripBoard({ trip, plan, places, placesById, today }: TripBoardPr
               isToday={date === today}
               cityId={city?.id}
               onCityChange={(cityId) => actions.setDayCity(date, cityId)}
+              extra={
+                <StayPicker
+                  date={date}
+                  explicit={trip.stays[date]}
+                  inherited={inheritedId ? placesById[inheritedId] : undefined}
+                  places={places}
+                />
+              }
               emptyLabel="יום פנוי. גררו לכאן מקומות"
             >
               {ids.map((id) => {

@@ -79,6 +79,11 @@ export interface Trip {
   inviteCode: string
   /** City id per date (see data/cities.ts). */
   dayCities: Record<string, string>
+  /**
+   * Where the group sleeps, as check-ins: a date maps to the saved place (usually a hotel) from that
+   * night on, until the next entry; '' ends the stay (e.g. a night flight). See stayFor().
+   */
+  stays: Record<string, string>
   flights: Flight[]
   createdAt: number
 }

@@ -51,12 +51,13 @@ export interface PlaceFields extends PlaceDraft {
 }
 
 export const actions = {
-  createPlace(fields: PlaceFields): Place {
+  /** `success`: the toast once saved; null stays quiet (e.g. when saving a batch). */
+  createPlace(fields: PlaceFields, success: string | null = 'נשמר ברשימת המקומות'): Place {
     const now = Date.now()
     const uid = useSession.getState().user?.uid ?? 'unknown'
     const place: Place = { ...fields, id: newId(), createdBy: uid, createdAt: now, updatedAt: now }
     upsertPlaceLocally(place)
-    background(getBackend().savePlace(activeTripId(), place), 'נשמר ברשימת המקומות')
+    background(getBackend().savePlace(activeTripId(), place), success ?? undefined)
     return place
   },
 
@@ -93,6 +94,10 @@ export const actions = {
 
   setDayCity(date: string, cityId: string | null) {
     background(getBackend().setDayCity(activeTripId(), date, cityId))
+  },
+
+  setStay(date: string, placeId: string | null) {
+    background(getBackend().setStay(activeTripId(), date, placeId))
   },
 
   updateTrip(patch: TripPatch, success?: string) {

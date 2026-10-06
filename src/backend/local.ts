@@ -128,7 +128,13 @@ export function createLocalBackend(): Backend {
     },
 
     watchTrips(uid, callback) {
-      const notify = () => callback(Object.values(readTrips()).filter((trip) => trip.memberIds.includes(uid)), true)
+      const notify = () =>
+        callback(
+          Object.values(readTrips())
+            .filter((trip) => trip.memberIds.includes(uid))
+            .map((trip) => ({ ...trip, stays: trip.stays ?? {} })),
+          true,
+        )
       notify()
       return subscribe(tripsKey, notify)
     },
@@ -146,6 +152,7 @@ export function createLocalBackend(): Backend {
         members: { [user.uid]: { name: user.username } },
         inviteCode,
         dayCities: {},
+        stays: {},
         flights: [],
         createdAt: Date.now(),
       }
@@ -181,6 +188,15 @@ export function createLocalBackend(): Backend {
         if (cityId) dayCities[date] = cityId
         else delete dayCities[date]
         return { ...trip, dayCities }
+      })
+    },
+
+    async setStay(tripId, date, placeId) {
+      updateTripRecord(tripId, (trip) => {
+        const stays = { ...trip.stays }
+        if (placeId === null) delete stays[date]
+        else stays[date] = placeId
+        return { ...trip, stays }
       })
     },
 
