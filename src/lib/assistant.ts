@@ -19,8 +19,11 @@ export interface AssistantAnswer {
 
 const CATEGORY_IDS: CategoryId[] = ['attraction', 'food', 'cafe', 'shopping', 'nightlife', 'nature', 'hotel', 'transport', 'other']
 
-/** Free on the Firebase Spark plan (Gemini Developer API). */
-const MODEL = 'gemini-3.8-flash'
+/**
+ * Free on the Firebase Spark plan (Gemini Developer API), tried in order: the free tier sometimes
+ * answers "high demand", and older models retire (gemini-3.5-flash: May 2027).
+ */
+const MODELS = ['gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-3.5-flash-lite']
 
 const SYSTEM = `You are the travel assistant inside "Tabi", a Hebrew app for a group trip to Japan.
 The user writes (usually in Hebrew) a place in Japan they want to visit: a name, a description ("the shrine with thousands of orange gates"), or a wish ("good ramen near Shibuya").
@@ -31,10 +34,10 @@ Identify real, existing places in Japan only. Never invent places.
 For every place give: "name" in Hebrew as Israelis would write it; "searchName" = the official English (romaji) name exactly as on maps; "city" in English; approximate "lat"/"lng"; a category; and "why" = one short Hebrew sentence on what makes it worth visiting.
 "reply" is one short, friendly Hebrew sentence that introduces the results. Plain text, no markdown.`
 
-let modelPromise: Promise<import('firebase/ai').GenerativeModel> | null = null
+let modelsPromise: Promise<import('firebase/ai').GenerativeModel[]> | null = null
 
-function getModel() {
-  modelPromise ??= Promise.all([import('firebase/app'), import('firebase/ai')]).then(([{ getApp }, ai]) => {
+function getModels() {
+  modelsPromise ??= Promise.all([import('firebase/app'), import('firebase/ai')]).then(([{ getApp }, ai]) => {
     const { Schema } = ai
     const place = Schema.object({
       properties: {
@@ -47,23 +50,36 @@ function getModel() {
         why: Schema.string(),
       },
     })
-    return ai.getGenerativeModel(ai.getAI(getApp(), { backend: new ai.GoogleAIBackend() }), {
-      model: MODEL,
-      systemInstruction: SYSTEM,
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: Schema.object({ properties: { reply: Schema.string(), places: Schema.array({ items: place }) } }),
-        temperature: 0.4,
-      },
-    })
+    const instance = ai.getAI(getApp(), { backend: new ai.GoogleAIBackend() })
+    const responseSchema = Schema.object({ properties: { reply: Schema.string(), places: Schema.array({ items: place }) } })
+    return MODELS.map((model) =>
+      ai.getGenerativeModel(instance, {
+        model,
+        systemInstruction: SYSTEM,
+        generationConfig: { responseMimeType: 'application/json', responseSchema, temperature: 0.4 },
+      }),
+    )
   })
-  return modelPromise
+  return modelsPromise
+}
+
+async function generate(prompt: string) {
+  let lastError: unknown
+  for (const model of await getModels()) {
+    try {
+      return await model.generateContent(prompt)
+    } catch (error) {
+      lastError = error
+      // Not enabled in the Firebase project: no other model will work either.
+      if (String((error as { code?: string } | null)?.code).includes('api-not-enabled')) break
+    }
+  }
+  throw lastError
 }
 
 export async function askAssistant(text: string, near: LatLng | null): Promise<AssistantAnswer> {
-  const model = await getModel()
   const where = near ? `\n(The map is currently around lat ${near.lat.toFixed(4)}, lng ${near.lng.toFixed(4)}.)` : ''
-  const result = await model.generateContent(text + where)
+  const result = await generate(text + where)
   const json = JSON.parse(result.response.text()) as {
     reply?: string
     places?: { name: string; searchName: string; city: string; lat: number; lng: number; category: string; why: string }[]
