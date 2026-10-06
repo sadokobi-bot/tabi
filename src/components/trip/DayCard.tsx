@@ -26,16 +26,15 @@ export function DayCard({ id, title, subtitle, itemIds, isToday, cityId, onCityC
     <section
       id={`day-${id}`}
       className={clsx(
-        'scroll-mt-24 rounded-card border p-3 transition-colors',
-        isToday ? 'border-accent/35 bg-accent/[0.05]' : 'border-line bg-card/50',
-        isOver && 'border-accent/60 bg-accent/[0.08]',
+        '-mx-2 scroll-mt-24 rounded-card p-2 transition-colors',
+        isOver && 'bg-accent/[0.07] ring-1 ring-accent/40 ring-inset',
       )}
     >
       <header className="mb-2 flex items-center gap-3 px-1">
         <div className="min-w-0 flex-1">
-          <h3 className="flex items-center gap-2 font-bold">
+          <h3 className={clsx('flex items-center gap-2 font-bold', isToday && 'text-accent')}>
             {title}
-            {isToday && <span className="rounded-full bg-accent-fill px-2 py-0.5 text-[10px] font-bold text-accent-fg">היום</span>}
+            {isToday && <span className="rounded-full bg-accent-fill px-2 py-0.5 text-[11px] font-bold text-accent-fg">היום</span>}
           </h3>
           {subtitle && <p className="text-xs text-muted">{subtitle}</p>}
         </div>

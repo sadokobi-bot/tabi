@@ -27,15 +27,15 @@ export default function TripScreen() {
     <div className="pt-screen mx-auto w-full max-w-md px-4">
       <div className="px-1">
         <ScreenHeader
-          eyebrow={range}
           title={trip.name}
+          subtitle={range}
           trailing={
             <Button variant="secondary" icon={<Share2 aria-hidden className="size-4" />} onClick={() => ui.setProfileOpen(true)}>
               שיתוף
             </Button>
           }
         />
-        <p className="mt-2 text-sm text-muted">
+        <p className="mt-0.5 text-sm text-muted">
           {trip.days} ימים · {places.length} מקומות שמורים · {scheduledCount} פעילויות בלו״ז
         </p>
         {phase === 'during' && (

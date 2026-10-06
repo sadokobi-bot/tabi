@@ -190,6 +190,17 @@
     touch-action: manipulation;
   }
 
+  /* Browser-drawn details in the app's palette: caret, checkboxes, scrollbars, link underlines. */
+  :root {
+    caret-color: var(--app-accent);
+    accent-color: var(--app-accent);
+    scrollbar-color: color-mix(in oklab, var(--app-fg) 22%, transparent) transparent;
+  }
+
+  a {
+    text-underline-offset: 0.2em;
+  }
+
   body {
     background-color: var(--app-bg);
     color: var(--app-fg);

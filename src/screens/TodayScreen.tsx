@@ -55,10 +55,10 @@ export default function TodayScreen() {
     <motion.div variants={STAGGER} initial="hidden" animate="shown" className="pt-screen mx-auto w-full max-w-md px-5">
       <motion.header variants={RISE} className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-sm font-medium text-muted">{formatDay(timeline.today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-          <h1 className="mt-0.5 truncate text-[1.85rem] leading-tight font-bold tracking-tight">
+          <h1 className="truncate text-[1.85rem] leading-tight font-bold tracking-tight">
             {greetingFor(now)}, {user.username}
           </h1>
+          <p className="mt-1 text-sm text-muted">{formatDay(timeline.today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
         </div>
         <button
           type="button"

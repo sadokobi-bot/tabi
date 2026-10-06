@@ -149,13 +149,13 @@ export function TripBoard({ trip, plan, places, placesById, today }: TripBoardPr
       onDragEnd={onDragEnd}
       onDragCancel={() => setDragging(null)}
     >
-      <div className="space-y-3">
+      <div className="space-y-6">
         <DayCard
           id={IDEAS}
           title="רעיונות שעוד לא שובצו"
           subtitle="גררו מקום ליום כדי לשבץ אותו"
           itemIds={containers[IDEAS] ?? []}
-          emptyLabel={places.length ? 'כל המקומות משובצים 🎉' : 'שמרו מקומות מהמפה והם יופיעו כאן'}
+          emptyLabel={places.length ? 'כל המקומות משובצים' : 'שמרו מקומות מהמפה והם יופיעו כאן'}
         >
           {(containers[IDEAS] ?? []).map((id) => {
             const place = placeFor(id)
