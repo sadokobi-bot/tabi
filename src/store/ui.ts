@@ -38,6 +38,8 @@ interface UiState {
   pickingLocation: boolean
   profileOpen: boolean
   toast: Toast | null
+  /** The chat input is focused: the tab bar steps aside so the keyboard sits right under the input. */
+  composing: boolean
 }
 
 export const useUi = create<UiState>(() => ({
@@ -46,6 +48,7 @@ export const useUi = create<UiState>(() => ({
   pickingLocation: false,
   profileOpen: false,
   toast: null,
+  composing: false,
 }))
 
 let nonce = 0
@@ -58,5 +61,6 @@ export const ui = {
   moveCamera: (command: Omit<CameraCommand, 'nonce'>) => useUi.setState({ camera: { ...command, nonce: ++nonce } }),
   setPicking: (pickingLocation: boolean) => useUi.setState({ pickingLocation, ...(pickingLocation ? { selection: null } : {}) }),
   setProfileOpen: (profileOpen: boolean) => useUi.setState({ profileOpen }),
+  setComposing: (composing: boolean) => useUi.setState({ composing }),
   toast: (message: string, tone: Toast['tone'] = 'info') => useUi.setState({ toast: { id: ++nonce, message, tone } }),
 }

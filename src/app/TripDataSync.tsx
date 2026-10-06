@@ -5,7 +5,7 @@ import { recallActiveTrip, setPlaces, useTripStore } from '@/store/trip'
 
 /**
  * Keeps the trip store in sync with the backend:
- * the signed-in user's trips, and the places + plan of the active trip (real-time in cloud mode).
+ * the signed-in user's trips, and the places, plan and chat of the active trip (real-time in cloud mode).
  */
 export function TripDataSync() {
   const backend = useSession((state) => state.backend)
@@ -14,16 +14,16 @@ export function TripDataSync() {
 
   useEffect(() => {
     if (!backend || !uid) return
-    useTripStore.setState({ trips: [], tripsLoaded: false, activeTripId: null, syncError: null })
+    useTripStore.setState({ trips: [], tripsLoaded: false, tripsConfirmed: false, activeTripId: null, syncError: null })
 
     return backend.watchTrips(
       uid,
-      (trips) => {
+      (trips, confirmed) => {
         const { activeTripId: current } = useTripStore.getState()
         const remembered = recallActiveTrip(uid)
         const pick =
           [current, remembered].find((id) => id && trips.some((trip) => trip.id === id)) ?? trips[0]?.id ?? null
-        useTripStore.setState({ trips, tripsLoaded: true, activeTripId: pick, syncError: null })
+        useTripStore.setState({ trips, tripsLoaded: true, tripsConfirmed: confirmed, activeTripId: pick, syncError: null })
       },
       (error) => useTripStore.setState({ tripsLoaded: true, syncError: errorMessage(error) }),
     )
@@ -40,6 +40,17 @@ export function TripDataSync() {
       stopPlaces()
       stopPlan()
     }
+  }, [backend, activeTripId])
+
+  // The chat stays subscribed on every tab, so the tab bar can show unread messages.
+  useEffect(() => {
+    if (!backend || !activeTripId) return
+    useTripStore.setState({ messages: [], messagesLoaded: false, chatError: null })
+    return backend.watchMessages(
+      activeTripId,
+      (messages) => useTripStore.setState({ messages, messagesLoaded: true, chatError: null }),
+      (error) => useTripStore.setState({ messagesLoaded: true, chatError: errorMessage(error) }),
+    )
   }, [backend, activeTripId])
 
   return null

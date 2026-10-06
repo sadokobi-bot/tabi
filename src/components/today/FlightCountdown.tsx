@@ -1,33 +1,17 @@
-import { Plane, Plus } from 'lucide-react'
+import { Plane } from 'lucide-react'
 import type { Flight } from '@/data/types'
 import { useNow } from '@/hooks/useNow'
-import { ui } from '@/store/ui'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
-/** Live countdown to the next upcoming flight; prompts to add one if none is set. */
+/** Live countdown to the next upcoming flight (flights are added in the trip settings); nothing without one. */
 export function FlightCountdown({ flights }: { flights: Flight[] }) {
   const now = useNow(1000)
   const next = [...flights]
     .filter((flight) => new Date(flight.departAt).getTime() > now.getTime())
     .sort((a, b) => a.departAt.localeCompare(b.departAt))[0]
 
-  if (!next) {
-    return (
-      <button
-        type="button"
-        onClick={() => ui.setProfileOpen(true)}
-        className="surface flex min-h-32 flex-col justify-between rounded-3xl p-4 text-start transition active:scale-[0.98]"
-      >
-        <p className="text-xs font-medium text-muted">הטיסה הבאה</p>
-        <span className="flex items-center gap-2 text-sm font-semibold text-accent">
-          <Plus aria-hidden className="size-4" />
-          {flights.length ? 'הוספת טיסה' : 'הוסיפו את הטיסות'}
-        </span>
-        <Plane aria-hidden className="size-5 self-end text-muted" />
-      </button>
-    )
-  }
+  if (!next) return null
 
   const totalSeconds = Math.max(0, Math.floor((new Date(next.departAt).getTime() - now.getTime()) / 1000))
   const days = Math.floor(totalSeconds / 86_400)

@@ -5,6 +5,7 @@ rules_version = '2';
 //   trips/{tripId}                  readable/writable by members only
 //   trips/{tripId}/places/{placeId} members only
 //   trips/{tripId}/meta/{docId}     members only (the itinerary lives in meta/plan)
+//   trips/{tripId}/messages/{id}    members only; post as yourself, no edits or deletes
 //   invites/{code}                  fetch by exact code only; never listable
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -73,6 +74,20 @@ service cloud.firestore {
       match /meta/{docId} {
         allow read: if isMember(tripId);
         allow write: if isMemberAfter(tripId);
+      }
+
+      // Group chat: members read everything and post as themselves; messages are never edited or deleted.
+      match /messages/{messageId} {
+        allow read: if isMember(tripId);
+        allow create: if isMember(tripId)
+          && request.resource.data.keys().hasOnly(['authorId', 'authorName', 'text', 'createdAt'])
+          && request.resource.data.authorId == request.auth.uid
+          && request.resource.data.authorName is string
+          && request.resource.data.authorName.size() > 0 && request.resource.data.authorName.size() <= 40
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 2000
+          && request.resource.data.createdAt is int;
+        allow update, delete: if false;
       }
     }
 

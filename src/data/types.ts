@@ -81,3 +81,15 @@ export interface Trip {
   flights: Flight[]
   createdAt: number
 }
+
+/** One message in the trip's group chat. */
+export interface ChatMessage {
+  id: string
+  authorId: string
+  authorName: string
+  text: string
+  /** Sender's clock (ms): keeps the order stable even for messages written offline. */
+  createdAt: number
+  /** Written on this device but not yet delivered to the server (no connection). */
+  pending?: boolean
+}

@@ -14,11 +14,13 @@ import TodayScreen from '@/screens/TodayScreen'
 // Map (map engine) and Trip (drag & drop) are code-split and pre-warmed once the browser is idle.
 const loadMapScreen = () => import('@/screens/MapScreen')
 const loadTripScreen = () => import('@/screens/TripScreen')
+const loadChatScreen = () => import('@/screens/ChatScreen')
 
 const SCREENS: Record<TabId, ComponentType> = {
   today: TodayScreen,
   map: lazy(loadMapScreen),
   trip: lazy(loadTripScreen),
+  chat: lazy(loadChatScreen),
 }
 
 /**
@@ -48,6 +50,7 @@ export function AppLayout() {
     const warmUp = () => {
       void loadMapScreen()
       void loadTripScreen()
+      void loadChatScreen()
     }
     if ('requestIdleCallback' in window) {
       const handle = window.requestIdleCallback(warmUp, { timeout: 4000 })

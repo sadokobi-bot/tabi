@@ -1,4 +1,4 @@
-import type { DayPlan, Place, Trip } from '@/data/types'
+import type { ChatMessage, DayPlan, Place, Trip } from '@/data/types'
 import { newId, newInviteCode, normalizeInviteCode } from '@/lib/ids'
 import { AppError, type Backend, type SessionUser } from './types'
 import { checkUsername } from './username'
@@ -69,6 +69,9 @@ const tripsKey = 'trips'
 const invitesKey = 'invites'
 const placesKey = (tripId: string) => `places:${tripId}`
 const planKey = (tripId: string) => `plan:${tripId}`
+const messagesKey = (tripId: string) => `messages:${tripId}`
+/** Keeps localStorage small: only the latest messages are stored. */
+const MESSAGE_LIMIT = 300
 
 function readTrips() {
   return read<Record<string, Trip>>(tripsKey, {})
@@ -125,7 +128,7 @@ export function createLocalBackend(): Backend {
     },
 
     watchTrips(uid, callback) {
-      const notify = () => callback(Object.values(readTrips()).filter((trip) => trip.memberIds.includes(uid)))
+      const notify = () => callback(Object.values(readTrips()).filter((trip) => trip.memberIds.includes(uid)), true)
       notify()
       return subscribe(tripsKey, notify)
     },
@@ -206,6 +209,17 @@ export function createLocalBackend(): Backend {
 
     async updatePlan(tripId, changes) {
       write(planKey(tripId), { ...read<DayPlan>(planKey(tripId), {}), ...changes })
+    },
+
+    watchMessages(tripId, callback) {
+      const notify = () => callback(read<ChatMessage[]>(messagesKey(tripId), []))
+      notify()
+      return subscribe(messagesKey(tripId), notify)
+    },
+
+    async sendMessage(tripId, message) {
+      const messages = [...read<ChatMessage[]>(messagesKey(tripId), []), message].sort((a, b) => a.createdAt - b.createdAt)
+      write(messagesKey(tripId), messages.slice(-MESSAGE_LIMIT))
     },
   }
 }

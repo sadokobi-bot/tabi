@@ -1,6 +1,6 @@
-import { CalendarRange, Map as MapIcon, Sun, type LucideIcon } from 'lucide-react'
+import { CalendarRange, Map as MapIcon, MessageCircle, Sun, type LucideIcon } from 'lucide-react'
 
-export type TabId = 'today' | 'map' | 'trip'
+export type TabId = 'today' | 'map' | 'trip' | 'chat'
 
 export interface TabConfig {
   id: TabId
@@ -8,7 +8,7 @@ export interface TabConfig {
   path: string
   label: string
   icon: LucideIcon
-  /** Edge-to-edge screens (the map) render without a scroll container or bottom padding. */
+  /** Edge-to-edge screens (the map, the chat) manage their own scrolling and bottom padding. */
   fullBleed?: boolean
 }
 
@@ -17,6 +17,7 @@ export const TABS: readonly TabConfig[] = [
   { id: 'today', path: '/', label: 'היום', icon: Sun },
   { id: 'map', path: '/map', label: 'מפה', icon: MapIcon, fullBleed: true },
   { id: 'trip', path: '/trip', label: 'הטיול', icon: CalendarRange },
+  { id: 'chat', path: '/chat', label: 'צ׳אט', icon: MessageCircle, fullBleed: true },
 ]
 
 /** Index of the tab that owns `pathname`, or -1 for unknown routes. */

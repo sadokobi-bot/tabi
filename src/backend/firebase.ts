@@ -16,7 +16,9 @@ import {
   doc,
   getDoc,
   initializeFirestore,
+  limitToLast,
   onSnapshot,
+  orderBy,
   persistentLocalCache,
   persistentMultipleTabManager,
   query,
@@ -26,7 +28,7 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { firebaseConfig } from '@/config/env'
-import type { DayPlan, Place, Trip } from '@/data/types'
+import type { ChatMessage, DayPlan, Place, Trip } from '@/data/types'
 import { newInviteCode, normalizeInviteCode } from '@/lib/ids'
 import { AppError, type Backend, type ErrorCode, type SessionUser } from './types'
 import { checkUsername, emailToUsername, usernameToEmail } from './username'
@@ -38,8 +40,12 @@ import { checkUsername, emailToUsername, usernameToEmail } from './username'
  *   trips/{tripId}                  Trip (members only)
  *   trips/{tripId}/places/{placeId} Place
  *   trips/{tripId}/meta/plan        { days: DayPlan }
+ *   trips/{tripId}/messages/{id}    ChatMessage (members only; create-only)
  *   invites/{code}                  { tripId }  (get by code only, never listable)
  */
+
+/** How many recent chat messages are kept in sync. */
+const MESSAGE_LIMIT = 300
 
 function toAppError(error: unknown): AppError {
   if (error instanceof AppError) return error
@@ -143,7 +149,7 @@ export function createFirebaseBackend(): Backend {
       const q = query(collection(db, 'trips'), where('memberIds', 'array-contains', uid))
       return onSnapshot(
         q,
-        (snapshot) => callback(snapshot.docs.map((d) => normalizeTrip(d.id, d.data()))),
+        (snapshot) => callback(snapshot.docs.map((d) => normalizeTrip(d.id, d.data())), !snapshot.metadata.fromCache),
         (error) => onError(toAppError(error)),
       )
     },
@@ -247,6 +253,32 @@ export function createFirebaseBackend(): Backend {
       try {
         // merge: replaces only the listed dates' arrays, leaving every other day untouched.
         await setDoc(planRef(tripId), { days: changes }, { merge: true })
+      } catch (error) {
+        throw toAppError(error)
+      }
+    },
+
+    watchMessages(tripId, callback, onError) {
+      const q = query(collection(db, 'trips', tripId, 'messages'), orderBy('createdAt'), limitToLast(MESSAGE_LIMIT))
+      // Metadata changes too: a message sent offline flips from "pending" to delivered without other edits.
+      return onSnapshot(
+        q,
+        { includeMetadataChanges: true },
+        (snapshot) =>
+          callback(
+            snapshot.docs.map((d) => ({
+              ...(d.data() as Omit<ChatMessage, 'id' | 'pending'>),
+              id: d.id,
+              pending: d.metadata.hasPendingWrites,
+            })),
+          ),
+        (error) => onError(toAppError(error)),
+      )
+    },
+
+    async sendMessage(tripId, { id, ...message }) {
+      try {
+        await setDoc(doc(db, 'trips', tripId, 'messages', id), message)
       } catch (error) {
         throw toAppError(error)
       }

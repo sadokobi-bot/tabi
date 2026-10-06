@@ -6,6 +6,13 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 5173
+    },
+    {
+      "name": "web-local-mode",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "5174", "--strictPort"],
+      "env": { "VITE_FIREBASE_API_KEY": "", "VITE_FIREBASE_APP_ID": "" },
+      "port": 5174
     }
   ]
 }

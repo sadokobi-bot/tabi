@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { motion } from 'motion/react'
+import { CurrencyCard } from '@/components/today/CurrencyCard'
 import { FlightCountdown } from '@/components/today/FlightCountdown'
 import { DayTimeline } from '@/components/today/DayTimeline'
 import { NextUpCard } from '@/components/today/NextUpCard'
@@ -15,7 +16,8 @@ import { ui } from '@/store/ui'
 
 /**
  * "Today" dashboard — only what matters right now:
- * greeting + weather + flight countdown, the next activity, and today's timeline.
+ * greeting, weather + yen/shekel converter (+ flight countdown once a flight is set), the next activity,
+ * and today's timeline.
  * Before the trip it previews day 1; after it, the last day.
  */
 export default function TodayScreen() {
@@ -84,7 +86,10 @@ export default function TodayScreen() {
         className="mt-5 grid grid-cols-2 gap-3"
       >
         <WeatherCard location={weatherLocation} placeName={weatherName} />
-        <FlightCountdown flights={trip.flights} />
+        <CurrencyCard />
+        <div className="col-span-2 empty:hidden">
+          <FlightCountdown flights={trip.flights} />
+        </div>
       </motion.div>
 
       {next && nextPlace && (

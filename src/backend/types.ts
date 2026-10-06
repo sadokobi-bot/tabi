@@ -1,4 +1,4 @@
-import type { DayPlan, Place, Trip } from '@/data/types'
+import type { ChatMessage, DayPlan, Place, Trip } from '@/data/types'
 
 export type Unsubscribe = () => void
 
@@ -75,7 +75,11 @@ export interface Backend {
   signUp(username: string, password: string): Promise<void>
   signOut(): Promise<void>
 
-  watchTrips(uid: string, callback: (trips: Trip[]) => void, onError: (error: AppError) => void): Unsubscribe
+  /**
+   * `confirmed` is false while the list only comes from the offline cache (a new device may not have
+   * the user's trips cached yet), true once it reflects the server (always true in local mode).
+   */
+  watchTrips(uid: string, callback: (trips: Trip[], confirmed: boolean) => void, onError: (error: AppError) => void): Unsubscribe
   createTrip(user: SessionUser, input: NewTripInput, seed?: TripSeed): Promise<string>
   joinTrip(user: SessionUser, inviteCode: string): Promise<string>
   updateTrip(tripId: string, patch: TripPatch): Promise<void>
@@ -89,4 +93,12 @@ export interface Backend {
   watchPlan(tripId: string, callback: (plan: DayPlan) => void, onError: (error: AppError) => void): Unsubscribe
   /** Replaces the item lists of the given dates; other dates are untouched. */
   updatePlan(tripId: string, changes: DayPlan): Promise<void>
+
+  /** The trip's latest chat messages, oldest first. */
+  watchMessages(tripId: string, callback: (messages: ChatMessage[]) => void, onError: (error: AppError) => void): Unsubscribe
+  /**
+   * Shows the message right away (also offline). In cloud mode the promise settles only once the
+   * server has it, so callers shouldn't wait on it; it rejects if the server refuses the message.
+   */
+  sendMessage(tripId: string, message: Omit<ChatMessage, 'pending'>): Promise<void>
 }

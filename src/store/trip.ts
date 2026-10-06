@@ -1,9 +1,11 @@
 import { create } from 'zustand'
-import type { DayPlan, ItineraryItem, Place, Trip } from '@/data/types'
+import type { ChatMessage, DayPlan, ItineraryItem, Place, Trip } from '@/data/types'
 
 interface TripState {
   trips: Trip[]
   tripsLoaded: boolean
+  /** The trip list reflects the server, not just the offline cache (see Backend.watchTrips). */
+  tripsConfirmed: boolean
   activeTripId: string | null
   /** When true the onboarding screen is shown even though trips exist ("add another trip"). */
   creatingTrip: boolean
@@ -13,11 +15,16 @@ interface TripState {
   plan: DayPlan
   planLoaded: boolean
   syncError: string | null
+  /** Group chat of the active trip, oldest first. */
+  messages: ChatMessage[]
+  messagesLoaded: boolean
+  chatError: string | null
 }
 
 export const useTripStore = create<TripState>(() => ({
   trips: [],
   tripsLoaded: false,
+  tripsConfirmed: false,
   activeTripId: null,
   creatingTrip: false,
   places: [],
@@ -26,6 +33,9 @@ export const useTripStore = create<TripState>(() => ({
   plan: {},
   planLoaded: false,
   syncError: null,
+  messages: [],
+  messagesLoaded: false,
+  chatError: null,
 }))
 
 const activeTripStorageKey = (uid: string) => `tabi:activeTrip:${uid}`
