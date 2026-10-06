@@ -27,9 +27,10 @@ export function BottomTabBar({ activeId }: BottomTabBarProps) {
   return (
     <motion.div
       initial={false}
-      animate={hidden ? { y: '160%', opacity: 0 } : { y: 0, opacity: 1 }}
+      // Hidden with visibility, not `inert`: changing inert while the chat input has focus risks iOS dropping the keyboard.
+      animate={hidden ? { y: '160%', opacity: 0, transitionEnd: { visibility: 'hidden' } } : { y: 0, opacity: 1, visibility: 'visible' }}
       transition={PILL_SPRING}
-      inert={hidden}
+      aria-hidden={hidden || undefined}
       className="pointer-events-none fixed inset-x-0 bottom-(--tabbar-bottom) z-40 flex justify-center px-4"
     >
       <nav
