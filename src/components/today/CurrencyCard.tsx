@@ -104,7 +104,7 @@ export function CurrencyCard() {
         />
       </label>
 
-      <p className="mt-2 truncate text-[1.6rem] leading-none font-bold tabular-nums tracking-tight" dir="ltr" aria-live="polite">
+      <p className="mt-2 truncate font-display text-[1.7rem] leading-none font-bold tabular-nums" dir="ltr" aria-live="polite">
         {converted == null ? (
           failed ? (
             <span className="text-sm font-medium text-muted">אין שער כרגע</span>

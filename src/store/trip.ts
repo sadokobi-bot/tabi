@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { ChatMessage, DayPlan, ItineraryItem, Place, Trip } from '@/data/types'
+import type { ChatMessage, ChecklistItem, DayPlan, ItineraryItem, Place, Trip } from '@/data/types'
 
 interface TripState {
   trips: Trip[]
@@ -19,6 +19,8 @@ interface TripState {
   messages: ChatMessage[]
   messagesLoaded: boolean
   chatError: string | null
+  /** Shared to-do / packing list of the active trip. */
+  checklist: ChecklistItem[]
 }
 
 export const useTripStore = create<TripState>(() => ({
@@ -36,6 +38,7 @@ export const useTripStore = create<TripState>(() => ({
   messages: [],
   messagesLoaded: false,
   chatError: null,
+  checklist: [],
 }))
 
 const activeTripStorageKey = (uid: string) => `tabi:activeTrip:${uid}`

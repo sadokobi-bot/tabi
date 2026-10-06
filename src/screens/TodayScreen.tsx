@@ -1,23 +1,26 @@
 import { useMemo } from 'react'
-import { motion } from 'motion/react'
+import { motion, type Variants } from 'motion/react'
+import { ClockStrip } from '@/components/today/ClockStrip'
 import { CurrencyCard } from '@/components/today/CurrencyCard'
+import { DayHero } from '@/components/today/DayHero'
 import { FlightCountdown } from '@/components/today/FlightCountdown'
 import { DayTimeline } from '@/components/today/DayTimeline'
 import { NextUpCard } from '@/components/today/NextUpCard'
+import { Toolkit } from '@/components/today/Toolkit'
 import { WeatherCard } from '@/components/today/WeatherCard'
 import { Avatar } from '@/components/ui/Avatar'
 import { DEFAULT_CITY, getCity } from '@/data/cities'
 import { sortedDay } from '@/data/planOps'
 import { useNow } from '@/hooks/useNow'
-import { formatDay, greetingFor, minutesInTz, parseHm, tripTimeline } from '@/lib/dates'
+import { formatDay, greetingFor, minutesInTz, parseHm, tripTimeline, weekdayKanji } from '@/lib/dates'
 import { useCurrentUser } from '@/store/session'
 import { useTrip, useTripStore } from '@/store/trip'
 import { ui } from '@/store/ui'
 
 /**
- * "Today" dashboard — only what matters right now:
- * greeting, weather + yen/shekel converter (+ flight countdown once a flight is set), the next activity,
- * and today's timeline.
+ * "Today" dashboard, the first page of the travel notebook: the day stamp, what's next,
+ * weather + yen/shekel converter, the flight pass (once a flight is set), Japan/home clocks,
+ * the pocket tools and today's timeline.
  * Before the trip it previews day 1; after it, the last day.
  */
 export default function TodayScreen() {
@@ -28,7 +31,7 @@ export default function TodayScreen() {
   const placesById = useTripStore((state) => state.placesById)
 
   const timeline = tripTimeline(trip, now)
-  const { phase, focusDate, dayNumber, daysUntil } = timeline
+  const { phase, focusDate, dayNumber } = timeline
   const items = useMemo(
     () => sortedDay(plan[focusDate]).filter((item) => placesById[item.placeId]),
     [plan, focusDate, placesById],
@@ -51,21 +54,19 @@ export default function TodayScreen() {
   const weatherLocation = city?.location ?? firstPlace?.location ?? DEFAULT_CITY.location
   const weatherName = city?.name ?? (firstPlace ? 'היעד של היום' : DEFAULT_CITY.name)
 
-  const status =
-    phase === 'before'
-      ? daysUntil === 1
-        ? 'מחר טסים! ✈️'
-        : `עוד ${daysUntil} ימים לטיול`
-      : phase === 'during'
-        ? `יום ${dayNumber} מתוך ${trip.days}${city ? ` · ${city.name}` : ''}`
-        : 'הטיול הסתיים. איזה כיף היה!'
+  const today = timeline.today
 
   return (
-    <div className="pt-screen mx-auto w-full max-w-md px-5">
-      <header className="flex items-start justify-between gap-4">
+    <motion.div variants={STAGGER} initial="hidden" animate="shown" className="pt-screen mx-auto w-full max-w-md px-5">
+      <motion.header variants={RISE} className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-sm font-medium text-muted">{status}</p>
-          <h1 className="mt-1 text-[2rem] leading-tight font-bold tracking-tight">
+          <p className="flex items-center gap-2 text-sm font-medium text-muted">
+            {formatDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}
+            <span lang="ja" className="font-jp text-xs font-semibold tracking-wider">
+              {weekdayKanji(today)}
+            </span>
+          </p>
+          <h1 className="mt-1 text-[2.15rem] leading-[1.1] font-bold">
             {greetingFor(now)}, {user.username}
           </h1>
         </div>
@@ -73,43 +74,59 @@ export default function TodayScreen() {
           type="button"
           onClick={() => ui.setProfileOpen(true)}
           aria-label="פרופיל והגדרות הטיול"
-          className="mt-1 rounded-full ring-2 ring-white/70 transition active:scale-90 dark:ring-white/10"
+          className="mt-1 rounded-full ring-2 ring-card transition active:scale-90"
         >
           <Avatar name={user.username} className="size-11 text-lg" />
         </button>
-      </header>
+      </motion.header>
 
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
-        className="mt-5 grid grid-cols-2 gap-3"
-      >
-        <WeatherCard location={weatherLocation} placeName={weatherName} />
-        <CurrencyCard />
-        <div className="col-span-2 empty:hidden">
-          <FlightCountdown flights={trip.flights} />
-        </div>
+      <motion.div variants={RISE} className="mt-5">
+        <DayHero trip={trip} timeline={timeline} city={city} />
       </motion.div>
 
       {next && nextPlace && (
-        <div className="mt-5">
+        <motion.div variants={RISE} className="mt-4">
           <NextUpCard
             item={next}
             place={nextPlace}
             nowMinutes={nowMinutes}
             eyebrow={phase === 'during' ? 'הדבר הבא' : 'הפעילות הראשונה בטיול'}
           />
-        </div>
+        </motion.div>
       )}
 
-      <section className="mt-7">
+      <motion.div variants={RISE} className="mt-4 grid grid-cols-2 gap-3">
+        <WeatherCard location={weatherLocation} placeName={weatherName} />
+        <CurrencyCard />
+      </motion.div>
+
+      <motion.div variants={RISE} className="mt-3 empty:hidden">
+        <FlightCountdown flights={trip.flights} />
+      </motion.div>
+
+      <motion.div variants={RISE} className="mt-3">
+        <ClockStrip />
+      </motion.div>
+
+      <motion.section variants={RISE} className="mt-7" aria-label="כלים לדרך">
+        <h2 className="mb-3 text-sm font-bold text-muted">כלים לדרך</h2>
+        <Toolkit />
+      </motion.section>
+
+      <motion.section variants={RISE} className="mt-8">
         <h2 className="mb-4 flex items-baseline justify-between">
-          <span className="text-lg font-bold">{phase === 'during' ? 'הלו״ז של היום' : `יום ${dayNumber}`}</span>
+          <span className="font-display text-xl font-bold">{phase === 'during' ? 'הלו״ז של היום' : `יום ${dayNumber}`}</span>
           <span className="text-sm text-muted">{formatDay(focusDate, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
         </h2>
         <DayTimeline items={items} placesById={placesById} nowMinutes={nowMinutes} nextItemId={next?.id ?? null} />
-      </section>
-    </div>
+      </motion.section>
+    </motion.div>
   )
+}
+
+/** Cards rise in one after another on first open. */
+const STAGGER: Variants = { hidden: {}, shown: { transition: { staggerChildren: 0.05 } } }
+const RISE: Variants = {
+  hidden: { opacity: 0, y: 12 },
+  shown: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 260, damping: 30 } },
 }

@@ -36,9 +36,16 @@ export function TripDataSync() {
     const onError = (error: unknown) => useTripStore.setState({ syncError: errorMessage(error) })
     const stopPlaces = backend.watchPlaces(activeTripId, setPlaces, onError)
     const stopPlan = backend.watchPlan(activeTripId, (plan) => useTripStore.setState({ plan, planLoaded: true }), onError)
+    useTripStore.setState({ checklist: [] })
+    const stopChecklist = backend.watchChecklist(
+      activeTripId,
+      (checklist) => useTripStore.setState({ checklist }),
+      (error) => console.error('[checklist] sync failed', error),
+    )
     return () => {
       stopPlaces()
       stopPlan()
+      stopChecklist()
     }
   }, [backend, activeTripId])
 

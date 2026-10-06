@@ -46,7 +46,7 @@ export function WeatherCard({ location, placeName }: WeatherCardProps) {
     <div className="surface flex min-h-32 flex-col justify-between rounded-3xl p-4">
       <p className="truncate text-xs font-medium text-muted">מזג האוויר · {placeName}</p>
       <div className="mt-2 flex items-center justify-between gap-2">
-        <span className="text-[2.1rem] leading-none font-bold tabular-nums tracking-tight" dir="ltr">
+        <span className="font-display text-[2.2rem] leading-none font-bold tabular-nums" dir="ltr">
           {Math.round(weather.temperature)}°
         </span>
         <Icon aria-hidden className="size-9 text-amber-500" strokeWidth={1.8} />

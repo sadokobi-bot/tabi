@@ -8,8 +8,8 @@
 
     <!-- Browser chrome / status bar colors follow the app theme -->
     <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#f6f4f1" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0b0c0f" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f3eee4" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#14120f" media="(prefers-color-scheme: dark)" />
 
     <!-- Standalone (home-screen) mode on iOS: content draws under the status bar; safe areas handled in CSS -->
     <meta name="mobile-web-app-capable" content="yes" />
@@ -21,12 +21,18 @@
     <link rel="icon" href="/icon.svg" sizes="any" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png" />
 
-    <!-- Fonts: Inter renders Latin text, Heebo renders Hebrew (see --font-sans in src/index.css) -->
+    <!-- Fonts (see --font-* in src/index.css):
+         Inter + Heebo for UI text, Frank Ruhl Libre for display headings,
+         Shippori Mincho for the decorative kanji only (subset with `text=` so it stays a few KB). -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Heebo:wght@300..800&family=Inter:wght@300..800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Heebo:wght@300..800&family=Inter:wght@300..800&family=Frank+Ruhl+Libre:wght@500..900&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;800&display=swap&text=0123456789%E6%97%A5%E6%9C%88%E7%81%AB%E6%B0%B4%E6%9C%A8%E9%87%91%E5%9C%9F%E6%9B%9C%E7%9B%AE%E3%81%82%E3%81%A8%E6%97%85%E6%9D%B1%E4%BA%AC%E9%83%BD%E5%A4%A7%E9%98%AA%E5%A5%88%E8%89%AF%E7%AE%B1%E6%A0%B9%E6%B2%B3%E5%8F%A3%E6%B9%96%E9%8E%8C%E5%80%89%E5%85%89%E5%BA%83%E5%B3%B6%E5%AE%AE%E7%A5%9E%E6%88%B8%E6%B2%A2%E9%AB%98%E5%B1%B1%E6%9D%BE%E6%9C%AC%E5%90%8D%E5%8F%A4%E5%B1%8B%E7%A6%8F%E5%B2%A1%E6%9C%AD%E5%B9%8C%E6%B2%96%E7%B8%84%E7%AC%AC%E4%BB%8A%E5%87%BA%E7%99%BA%E6%99%82%E8%A8%88%E5%86%86%E7%B7%8A%E6%80%A5%E5%B8%B3%E8%A8%80%E8%91%89%E5%93%81%E7%89%A9%E6%8C%81"
     />
   </head>
   <body>

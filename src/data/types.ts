@@ -82,6 +82,16 @@ export interface Trip {
   createdAt: number
 }
 
+/** A line on the trip's shared to-do / packing list. */
+export interface ChecklistItem {
+  id: string
+  text: string
+  done: boolean
+  /** Name of whoever ticked it, shown next to done items. */
+  doneBy: string | null
+  createdAt: number
+}
+
 /** One message in the trip's group chat. */
 export interface ChatMessage {
   id: string

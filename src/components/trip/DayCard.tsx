@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import clsx from 'clsx'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { CITIES } from '@/data/cities'
+import { CITIES, getCity } from '@/data/cities'
 
 interface DayCardProps {
   id: string
@@ -20,23 +20,33 @@ interface DayCardProps {
 /** One droppable list (a trip day, or the "ideas" bucket) on the trip board. */
 export function DayCard({ id, title, subtitle, itemIds, isToday, cityId, onCityChange, emptyLabel, children }: DayCardProps) {
   const { setNodeRef, isOver } = useDroppable({ id })
+  const city = getCity(cityId)
 
   return (
     <section
       id={`day-${id}`}
       className={clsx(
         'scroll-mt-24 rounded-3xl border p-3 transition-colors',
-        isToday ? 'border-accent/50 bg-accent/[0.06]' : 'border-line bg-card/50',
+        isToday ? 'border-accent/45 bg-accent/[0.05]' : 'border-line bg-card/60',
         isOver && 'border-accent/60 bg-accent/[0.08]',
       )}
     >
       <header className="mb-2 flex items-center gap-3 px-1">
         <div className="min-w-0 flex-1">
-          <h3 className="flex items-center gap-2 font-bold">
+          <h3 className="flex items-center gap-2 font-display text-lg leading-tight font-bold">
             {title}
-            {isToday && <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-accent-fg">היום</span>}
+            {isToday && <span className="rounded-full bg-accent px-2 py-0.5 font-sans text-[10px] font-bold text-accent-fg">היום</span>}
           </h3>
-          {subtitle && <p className="text-xs text-muted">{subtitle}</p>}
+          {subtitle && (
+            <p className="flex items-center gap-1.5 text-xs text-muted">
+              {subtitle}
+              {city && (
+                <span lang="ja" className="font-jp text-[0.7rem] font-semibold tracking-wider">
+                  {city.kanji}
+                </span>
+              )}
+            </p>
+          )}
         </div>
         {onCityChange && (
           <select

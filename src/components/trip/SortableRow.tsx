@@ -51,7 +51,7 @@ export function RowContent({ place, date, item, handle, lifted = false }: RowCon
               onChange={(event) => actions.setItemTime(date, item.id, event.target.value || undefined)}
               dir="ltr"
               className={clsx(
-                'h-8 w-[5.25rem] rounded-xl px-2 text-center text-sm tabular-nums outline-none focus:ring-2 focus:ring-accent/40',
+                'h-8 w-[6.25rem] shrink-0 rounded-xl px-1.5 text-center text-sm tabular-nums outline-none focus:ring-2 focus:ring-accent/40',
                 item.time ? 'bg-fg/6 font-semibold' : 'bg-transparent text-muted',
               )}
             />

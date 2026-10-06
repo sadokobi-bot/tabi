@@ -1,4 +1,4 @@
-import type { ChatMessage, DayPlan, Place, Trip } from '@/data/types'
+import type { ChatMessage, ChecklistItem, DayPlan, Place, Trip } from '@/data/types'
 
 export type Unsubscribe = () => void
 
@@ -101,4 +101,10 @@ export interface Backend {
    * server has it, so callers shouldn't wait on it; it rejects if the server refuses the message.
    */
   sendMessage(tripId: string, message: Omit<ChatMessage, 'pending'>): Promise<void>
+
+  /** Shared to-do / packing list, oldest first. */
+  watchChecklist(tripId: string, callback: (items: ChecklistItem[]) => void, onError: (error: AppError) => void): Unsubscribe
+  /** Adds or replaces items (one write, so toggles from two phones never overwrite each other's items). */
+  saveChecklistItems(tripId: string, items: ChecklistItem[]): Promise<void>
+  deleteChecklistItem(tripId: string, itemId: string): Promise<void>
 }
