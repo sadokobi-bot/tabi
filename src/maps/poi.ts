@@ -11,6 +11,9 @@ export interface Poi {
   address?: string
   googlePlaceId?: string
   osmId?: string
+  /** Google rating, when the source returned it (text search results). */
+  rating?: number
+  ratingCount?: number
   /** Extra facts OpenStreetMap carries (Google details are fetched separately). */
   extras?: {
     website?: string
@@ -69,6 +72,8 @@ export interface PoiProvider {
   peekDetails?(googlePlaceId: string): PoiDetails | null | undefined
   /** Finds the Google place matching a hand-added / sample place, so it can show photos and ratings. */
   matchGoogle?(name: string, location: LatLng): Promise<string | null>
+  /** Real places for a free-text search ("wagyu restaurant in Shinjuku"), best first, biased toward `near`. */
+  searchText(query: string, near: LatLng | null, signal: AbortSignal): Promise<Poi[]>
 }
 
 export function dedupePois(pois: Poi[]): Poi[] {

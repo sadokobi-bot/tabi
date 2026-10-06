@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowUp, Check, ChevronLeft, ImagePlus, LoaderCircle, MapPin, Sparkles, X } from 'lucide-react'
+import { ArrowUp, Check, ChevronLeft, ImagePlus, LoaderCircle, MapPin, Sparkles, Star, X } from 'lucide-react'
 import { motion } from 'motion/react'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { Button } from '@/components/ui/Button'
@@ -77,6 +77,8 @@ export function Assistant({ provider, near }: AssistantProps) {
   const [image, setImage] = useState<(PromptImage & { preview: string }) | null>(null)
   const [answer, setAnswer] = useState<AssistantAnswer | null>(null)
   const [items, setItems] = useState<ImportItem[] | null>(null)
+  /** Real places from the map search for the question (Google Maps listings when Google is on). */
+  const [results, setResults] = useState<Poi[] | null>(null)
   const [status, setStatus] = useState<'idle' | 'thinking' | 'failed'>('idle')
   const [failure, setFailure] = useState<AssistantFailure>('other')
   const [importing, setImporting] = useState(false)
@@ -111,10 +113,18 @@ export function Assistant({ provider, near }: AssistantProps) {
     setImporting(false)
     setAnswer(null)
     setItems(null)
+    setResults(null)
     inputRef.current?.blur()
     try {
       const result = await askAssistant(trimmed, near)
       if (request !== requestRef.current) return
+      // Gemini understands the wish; the map search supplies the actual places.
+      let found: Poi[] = []
+      if (result.googleQuery && provider) {
+        found = await provider.searchText(result.googleQuery, result.area ?? near, new AbortController().signal).catch(() => [])
+        if (request !== requestRef.current) return
+      }
+      setResults(found.length > 0 ? found.slice(0, 5) : null)
       setAnswer(result)
       setStatus('idle')
     } catch (error) {
@@ -129,6 +139,7 @@ export function Assistant({ provider, near }: AssistantProps) {
     setImporting(true)
     setAnswer(null)
     setItems(null)
+    setResults(null)
     inputRef.current?.blur()
     try {
       const result = await extractPlaces(text, image)
@@ -182,6 +193,17 @@ export function Assistant({ provider, near }: AssistantProps) {
     setImage(null)
     setAnswer(null)
     setItems(null)
+  }
+
+  const openResult = (poi: Poi) => {
+    haptic()
+    setOpen(false)
+    ui.moveCamera({ center: poi.location, zoom: 16 })
+    const saved = useTripStore
+      .getState()
+      .places.find((p) => (poi.googlePlaceId && p.googlePlaceId === poi.googlePlaceId) || (poi.osmId && p.osmId === poi.osmId))
+    if (saved) ui.openPlace(saved.id)
+    else ui.openPoi(poi)
   }
 
   const show = async (place: AssistantPlace, index: number) => {
@@ -404,7 +426,51 @@ export function Assistant({ provider, near }: AssistantProps) {
                 </div>
               )}
 
-              {status === 'idle' && answer && !items && (
+              {status === 'idle' && answer && !items && results && (
+                <div className="space-y-3">
+                  {answer.reply && <p className="text-[15px] leading-relaxed">{answer.reply}</p>}
+                  <ul className="space-y-2">
+                    {results.map((poi, index) => (
+                      <motion.li
+                        key={poi.key}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => openResult(poi)}
+                          className="surface flex w-full items-center gap-3 rounded-control p-3 text-start transition active:scale-[0.98]"
+                        >
+                          <CategoryIcon category={poi.category} />
+                          <span className="min-w-0 flex-1">
+                            <span dir="auto" className="block truncate font-semibold">
+                              {poi.name}
+                            </span>
+                            {poi.rating != null && (
+                              <span className="mt-0.5 flex items-center gap-1 text-xs text-muted">
+                                <Star aria-hidden className="size-3.5 fill-amber-400 text-amber-400" />
+                                <span className="font-semibold text-fg tabular-nums">{poi.rating.toFixed(1)}</span>
+                                {poi.ratingCount != null && (
+                                  <span className="tabular-nums">({poi.ratingCount.toLocaleString('he-IL')})</span>
+                                )}
+                              </span>
+                            )}
+                            {poi.address && (
+                              <span dir="auto" className="block truncate text-xs text-muted">
+                                {poi.address}
+                              </span>
+                            )}
+                          </span>
+                          <ChevronLeft aria-hidden className="size-4 shrink-0 text-muted" />
+                        </button>
+                      </motion.li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {status === 'idle' && answer && !items && !results && (
                 <div className="space-y-3">
                   {answer.reply && <p className="text-[15px] leading-relaxed">{answer.reply}</p>}
                   {answer.places.length > 0 && (

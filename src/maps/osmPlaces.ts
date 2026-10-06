@@ -225,4 +225,10 @@ export const osmProvider: PoiProvider = {
   async details() {
     return null
   },
+
+  async searchText(query, near, signal) {
+    const suggestions = await osmProvider.suggest(query, near, signal)
+    const pois = await Promise.all(suggestions.slice(0, 5).map((suggestion) => suggestion.resolve()))
+    return pois.filter((poi): poi is Poi => poi !== null)
+  },
 }

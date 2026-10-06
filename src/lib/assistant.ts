@@ -17,6 +17,10 @@ export interface AssistantPlace {
 export interface AssistantAnswer {
   reply: string
   places: AssistantPlace[]
+  /** English Google Maps query for what the user asked ("wagyu restaurant Shinjuku Tokyo"). */
+  googleQuery?: string
+  /** Center of the area the user named, if any. */
+  area?: LatLng
 }
 
 const CATEGORY_IDS: CategoryId[] = ['attraction', 'amusement', 'food', 'cafe', 'shopping', 'nightlife', 'nature', 'hotel', 'transport', 'other']
@@ -43,7 +47,8 @@ Identify real, existing places in Japan only. Never invent places.
 - A wish or category: return up to 3 well-known, well-reviewed options, best first. Prefer places near the map position when the user says "near here" or gives no area.
 - Not in Japan, or too unclear: return no places and ask one short clarifying question.
 For every place give: "name" in Hebrew as Israelis would write it; "searchName" = the official English (romaji) name exactly as on maps; "city" in English; approximate "lat"/"lng"; a category; and "why" = one short Hebrew sentence on what makes it worth visiting.
-"reply" is one short, friendly Hebrew sentence that introduces the results. Plain text, no markdown.`
+"reply" is one short, friendly Hebrew sentence that introduces the results. Plain text, no markdown.
+Also give "googleQuery": the English phrase to type into Google Maps to find what the user wants, e.g. "wagyu restaurant", "ramen Shibuya Tokyo", "Fushimi Inari Taisha Kyoto". Include the area only when the user named one. And "areaLat"/"areaLng": the center of the area the user named, or 0/0 when they named none.`
 
 const IMPORT_SYSTEM = `You read a social-media post (a screenshot or pasted text, often Hebrew) that recommends places in Japan, for "Tabi", a Hebrew trip app.
 Extract every place the post recommends, in the post's order. Ignore app interface text, usernames, likes and comments. Never add places the post does not mention. At most 15.
@@ -70,7 +75,13 @@ function getModels(kind: ModelKind) {
         properties: kind === 'ask' ? { ...common, why: Schema.string() } : { ...common, address: Schema.string(), note: Schema.string() },
       })
       const instance = ai.getAI(getApp(), { backend: new ai.GoogleAIBackend() })
-      const responseSchema = Schema.object({ properties: { reply: Schema.string(), places: Schema.array({ items: place }) } })
+      const responseSchema = Schema.object({
+        properties: {
+          reply: Schema.string(),
+          places: Schema.array({ items: place }),
+          ...(kind === 'ask' ? { googleQuery: Schema.string(), areaLat: Schema.number(), areaLng: Schema.number() } : {}),
+        },
+      })
       const list = kind === 'ask' ? MODELS.map((model) => ({ model, fast: false })) : IMPORT_MODELS
       return list.map(({ model, fast }) =>
         ai.getGenerativeModel(instance, {
@@ -131,9 +142,14 @@ export async function askAssistant(text: string, near: LatLng | null): Promise<A
   const json = JSON.parse(result.response.text()) as {
     reply?: string
     places?: { name: string; searchName: string; city: string; lat: number; lng: number; category: string; why: string }[]
+    googleQuery?: string
+    areaLat?: number
+    areaLng?: number
   }
   return {
     reply: json.reply ?? '',
+    ...(json.googleQuery?.trim() ? { googleQuery: json.googleQuery.trim() } : {}),
+    ...(json.areaLat && json.areaLng ? { area: { lat: json.areaLat, lng: json.areaLng } } : {}),
     places: (json.places ?? []).slice(0, 3).map((p) => ({
       name: p.name,
       searchName: p.searchName,

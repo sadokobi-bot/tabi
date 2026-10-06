@@ -167,6 +167,22 @@ export function createGoogleProvider(places: google.maps.PlacesLibrary): PoiProv
       return detailsSettled.get(googlePlaceId)
     },
 
+    async searchText(query, near, signal) {
+      const { places: found } = await Place.searchByText({
+        textQuery: query,
+        fields: [...BASIC_FIELDS, 'rating', 'userRatingCount'],
+        ...(near ? { locationBias: { center: near, radius: 15_000 } } : {}),
+        maxResultCount: 6,
+        language: 'he',
+        region: 'jp',
+      })
+      if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
+      return found.flatMap((place) => {
+        const poi = toPoi(place)
+        return poi ? [{ ...poi, rating: place.rating ?? undefined, ratingCount: place.userRatingCount ?? undefined }] : []
+      })
+    },
+
     async matchGoogle(name, location) {
       const { places: found } = await Place.searchByText({
         textQuery: name,
