@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import clsx from 'clsx'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { ChevronDown } from 'lucide-react'
 import { CITIES } from '@/data/cities'
 
 interface DayCardProps {
@@ -39,22 +40,26 @@ export function DayCard({ id, title, subtitle, itemIds, isToday, cityId, onCityC
           {subtitle && <p className="text-xs text-muted">{subtitle}</p>}
         </div>
         {onCityChange && (
-          <select
-            value={cityId ?? ''}
-            onChange={(event) => onCityChange(event.target.value || null)}
-            aria-label="עיר"
-            className={clsx(
-              'h-8 max-w-[8.5rem] rounded-full border-0 px-3 text-xs font-semibold outline-none focus:ring-2 focus:ring-accent/40',
-              cityId ? 'bg-fg/8 text-fg' : 'bg-transparent text-muted',
-            )}
-          >
-            <option value="">+ עיר</option>
-            {CITIES.map((city) => (
-              <option key={city.id} value={city.id}>
-                {city.name}
-              </option>
-            ))}
-          </select>
+          <span className="relative shrink-0">
+            <select
+              value={cityId ?? ''}
+              onChange={(event) => onCityChange(event.target.value || null)}
+              aria-label="עיר"
+              className={clsx(
+                // appearance-none: Safari otherwise draws its own grey box and arrow.
+                'h-8 max-w-[8.5rem] appearance-none rounded-full border-0 ps-3 pe-7 text-xs font-semibold outline-none focus:ring-2 focus:ring-accent/40',
+                cityId ? 'bg-fg/8 text-fg' : 'bg-transparent text-muted',
+              )}
+            >
+              <option value="">+ עיר</option>
+              {CITIES.map((city) => (
+                <option key={city.id} value={city.id}>
+                  {city.name}
+                </option>
+              ))}
+            </select>
+            <ChevronDown aria-hidden className="pointer-events-none absolute end-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted" />
+          </span>
         )}
       </header>
 

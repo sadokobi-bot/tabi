@@ -22,7 +22,7 @@ function FieldShell({ id, label, hint, error, trailing, children }: FieldShellPr
       </label>
       <div className="relative">
         {children}
-        {trailing && <div className="absolute inset-y-0 end-2 flex items-center">{trailing}</div>}
+        {trailing && <div className="absolute inset-y-0 left-2 flex items-center">{trailing}</div>}
       </div>
       {error ? (
         <p role="alert" className="mt-1.5 text-xs font-medium text-red-600 dark:text-red-400">
@@ -50,7 +50,7 @@ export function TextField({ label, hint, error, trailing, className, id, ...rest
       <input
         id={inputId}
         aria-invalid={error ? true : undefined}
-        className={clsx(CONTROL, 'h-12', trailing && 'pe-12', className)}
+        className={clsx(CONTROL, 'h-12', trailing && 'pl-12', className)}
         {...rest}
       />
     </FieldShell>
