@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { AnimatePresence, motion, useDragControls } from 'motion/react'
+import { useLatest } from '@/hooks/useLatest'
 
 interface BottomSheetProps {
   open: boolean
@@ -17,15 +18,19 @@ export function BottomSheet({ open, onClose, label, children }: BottomSheetProps
   const dragControls = useDragControls()
   const sheetRef = useRef<HTMLElement>(null)
 
+  const onCloseRef = useLatest(onClose)
+
+  // Only on opening: re-running on every render (e.g. a new inline onClose) would pull focus out of
+  // a text field inside the sheet after each keystroke and close the phone keyboard.
   useEffect(() => {
     if (!open) return
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') onCloseRef.current()
     }
     window.addEventListener('keydown', onKeyDown)
     sheetRef.current?.focus({ preventScroll: true })
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [open, onClose])
+  }, [open, onCloseRef])
 
   return (
     <AnimatePresence>
