@@ -12,6 +12,7 @@ export interface Bounds {
 
 export type CategoryId =
   | 'attraction'
+  | 'amusement'
   | 'food'
   | 'cafe'
   | 'shopping'

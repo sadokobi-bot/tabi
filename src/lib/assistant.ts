@@ -17,7 +17,7 @@ export interface AssistantAnswer {
   places: AssistantPlace[]
 }
 
-const CATEGORY_IDS: CategoryId[] = ['attraction', 'food', 'cafe', 'shopping', 'nightlife', 'nature', 'hotel', 'transport', 'other']
+const CATEGORY_IDS: CategoryId[] = ['attraction', 'amusement', 'food', 'cafe', 'shopping', 'nightlife', 'nature', 'hotel', 'transport', 'other']
 
 /**
  * Free on the Firebase Spark plan (Gemini Developer API), tried in order: the free tier sometimes

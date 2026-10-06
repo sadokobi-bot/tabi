@@ -1,6 +1,7 @@
 import {
   BedDouble,
   Coffee,
+  FerrisWheel,
   Landmark,
   MapPin,
   ShoppingBag,
@@ -38,11 +39,18 @@ export const CATEGORIES: Record<CategoryId, CategoryConfig> = {
       'castle',
       'observation_deck',
       'art_gallery',
-      'amusement_park',
       'aquarium',
       'zoo',
       'monument',
     ],
+  },
+  amusement: {
+    id: 'amusement',
+    label: 'פארק שעשועים',
+    plural: 'פארקי שעשועים',
+    color: '#0ea5e9',
+    icon: FerrisWheel,
+    googleTypes: ['amusement_park', 'water_park', 'amusement_center'],
   },
   food: {
     id: 'food',
@@ -113,7 +121,7 @@ export const CATEGORIES: Record<CategoryId, CategoryConfig> = {
 export const CATEGORY_LIST = Object.values(CATEGORIES)
 
 /** Categories offered as "recommendations" chips on the map, in display order. */
-export const RECOMMENDABLE: CategoryId[] = ['attraction', 'food', 'cafe', 'shopping', 'nightlife', 'nature']
+export const RECOMMENDABLE: CategoryId[] = ['attraction', 'amusement', 'food', 'cafe', 'shopping', 'nightlife', 'nature']
 
 const GOOGLE_TYPE_TO_CATEGORY = new Map<string, CategoryId>()
 for (const category of CATEGORY_LIST) {

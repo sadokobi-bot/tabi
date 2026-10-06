@@ -26,10 +26,11 @@ type Tags = Record<string, string | undefined>
 
 const FILTERS: Partial<Record<CategoryId, string[]>> = {
   attraction: [
-    '["tourism"~"^(attraction|museum|viewpoint|gallery|theme_park|zoo|aquarium)$"]["name"]',
+    '["tourism"~"^(attraction|museum|viewpoint|gallery|zoo|aquarium)$"]["name"]',
     '["amenity"="place_of_worship"]["name"]["wikidata"]',
     '["historic"]["name"]["wikidata"]',
   ],
+  amusement: ['["tourism"="theme_park"]["name"]', '["leisure"="water_park"]["name"]'],
   food: ['["amenity"~"^(restaurant|fast_food|food_court)$"]["name"]'],
   cafe: ['["amenity"="cafe"]["name"]'],
   shopping: ['["shop"~"^(mall|department_store)$"]["name"]', '["amenity"="marketplace"]["name"]'],
@@ -42,7 +43,8 @@ const FILTERS: Partial<Record<CategoryId, string[]>> = {
 export function categoryFromOsmTags(tags: Tags): CategoryId {
   const { tourism, amenity, historic, shop, leisure, natural, railway } = tags
   if (railway === 'station') return 'transport'
-  if (tourism && /^(attraction|museum|viewpoint|gallery|theme_park|zoo|aquarium)$/.test(tourism)) return 'attraction'
+  if (tourism === 'theme_park' || leisure === 'water_park') return 'amusement'
+  if (tourism && /^(attraction|museum|viewpoint|gallery|zoo|aquarium)$/.test(tourism)) return 'attraction'
   if (amenity === 'place_of_worship' || historic) return 'attraction'
   if (amenity && /^(restaurant|fast_food|food_court)$/.test(amenity)) return 'food'
   if (amenity === 'cafe') return 'cafe'

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { X } from 'lucide-react'
 import { CATEGORIES } from '@/data/categories'
 import type { CategoryId } from '@/data/types'
@@ -14,20 +15,25 @@ interface PlaceHeroProps {
 export function PlaceHero({ category, photos, loading, onClose }: PlaceHeroProps) {
   const config = CATEGORIES[category]
   const Icon = config.icon
+  // A photo that can't load (e.g. the day's photo quota is used up) is dropped instead of showing as broken.
+  const [failed, setFailed] = useState<ReadonlySet<string>>(new Set())
+  const visible = photos.filter((photo) => !failed.has(photo.url))
 
   return (
     <div className="relative mx-3 overflow-hidden rounded-card">
       {loading ? (
         <div className="h-48 animate-pulse bg-fg/8" />
-      ) : photos.length > 0 ? (
+      ) : visible.length > 0 ? (
         <div className="no-scrollbar flex h-52 snap-x snap-mandatory overflow-x-auto">
-          {photos.map((photo, index) => (
+          {visible.map((photo, index) => (
             <figure key={photo.url} className="relative h-full w-full shrink-0 snap-center">
               <img
                 src={photo.url}
                 alt=""
                 loading={index === 0 ? 'eager' : 'lazy'}
-                referrerPolicy="no-referrer"
+                // The Maps key is locked to this site, so photo requests must say where they come from.
+                referrerPolicy="strict-origin"
+                onError={() => setFailed((current) => new Set(current).add(photo.url))}
                 className="h-full w-full object-cover"
               />
               {photo.attribution && (
