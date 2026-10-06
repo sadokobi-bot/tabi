@@ -124,7 +124,7 @@ export function AuthScreen() {
                   type="button"
                   aria-label={showPassword ? 'הסתרת הסיסמה' : 'הצגת הסיסמה'}
                   onClick={() => setShowPassword((value) => !value)}
-                  className="grid size-9 place-items-center rounded-inner text-muted hover:bg-fg/6"
+                  className="tap-target relative grid size-9 place-items-center rounded-inner text-muted hover:bg-fg/6"
                 >
                   {showPassword ? <EyeOff aria-hidden className="size-4.5" /> : <Eye aria-hidden className="size-4.5" />}
                 </button>

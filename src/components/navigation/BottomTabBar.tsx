@@ -90,7 +90,7 @@ export function BottomTabBar({ activeId }: BottomTabBarProps) {
                   {badge > 0 && (
                     <span
                       aria-hidden
-                      className="absolute -top-1.5 -end-2.5 grid h-4 min-w-4 place-items-center rounded-full bg-accent px-1 text-[10px] leading-none font-bold text-accent-fg tabular-nums"
+                      className="absolute -top-1.5 -end-2.5 grid h-4 min-w-4 place-items-center rounded-full bg-accent-fill px-1 text-[10px] leading-none font-bold text-accent-fg tabular-nums"
                     >
                       {badge > 9 ? '9+' : badge}
                     </span>

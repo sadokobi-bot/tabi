@@ -52,7 +52,7 @@ function Chip({ pressed, color, icon: Icon, onClick, children }: ChipProps) {
         onClick()
       }}
       className={clsx(
-        'flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-semibold whitespace-nowrap transition-colors',
+        'tap-target relative flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-semibold whitespace-nowrap transition-colors',
         pressed ? 'text-white shadow-lg' : 'glass text-fg',
       )}
       style={pressed ? { background: color } : undefined}

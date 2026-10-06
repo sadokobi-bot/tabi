@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X } from 'lucide-react'
+import { Camera, X } from 'lucide-react'
 import { CATEGORIES } from '@/data/categories'
 import type { CategoryId } from '@/data/types'
 import type { PoiPhoto } from '@/maps/poi'
@@ -40,10 +40,14 @@ export function PlaceHero({ category, photos, loading, onClose }: PlaceHeroProps
                 <figcaption className="absolute start-2 bottom-2 max-w-[70%] truncate rounded-full bg-black/45 px-2 py-0.5 text-[10px] text-white backdrop-blur">
                   {photo.attribution.uri ? (
                     <a href={photo.attribution.uri} target="_blank" rel="noopener noreferrer">
-                      📷 {photo.attribution.name}
+                      <Camera aria-hidden className="me-1 inline size-3 align-[-2px]" />
+                      {photo.attribution.name}
                     </a>
                   ) : (
-                    <>📷 {photo.attribution.name}</>
+                    <>
+                      <Camera aria-hidden className="me-1 inline size-3 align-[-2px]" />
+                      {photo.attribution.name}
+                    </>
                   )}
                 </figcaption>
               )}
@@ -65,7 +69,7 @@ export function PlaceHero({ category, photos, loading, onClose }: PlaceHeroProps
         type="button"
         onClick={onClose}
         aria-label="סגירה"
-        className="absolute end-3 top-3 grid size-9 place-items-center rounded-full bg-black/35 text-white backdrop-blur transition active:scale-90"
+        className="tap-target absolute end-3 top-3 grid size-9 place-items-center rounded-full bg-black/35 text-white backdrop-blur transition active:scale-90"
       >
         <X aria-hidden className="size-5" />
       </button>

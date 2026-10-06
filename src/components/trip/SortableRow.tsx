@@ -51,7 +51,7 @@ export function RowContent({ place, date, item, handle, lifted = false }: RowCon
               onChange={(event) => actions.setItemTime(date, item.id, event.target.value || undefined)}
               dir="ltr"
               className={clsx(
-                'h-8 w-[4.5rem] shrink-0 rounded-inner px-1 text-center [&::-webkit-calendar-picker-indicator]:hidden text-sm tabular-nums outline-none focus:ring-2 focus:ring-accent/40',
+                'h-9 w-[4.5rem] shrink-0 rounded-inner px-1 text-center [&::-webkit-calendar-picker-indicator]:hidden text-sm tabular-nums outline-none focus:ring-2 focus:ring-accent/40',
                 item.time ? 'bg-fg/6 font-semibold' : 'bg-transparent text-muted',
               )}
             />
@@ -60,7 +60,7 @@ export function RowContent({ place, date, item, handle, lifted = false }: RowCon
             type="button"
             aria-label="הסרה מהיום"
             onClick={() => actions.removeFromDay(date, item.id)}
-            className="grid size-8 shrink-0 place-items-center rounded-full text-muted hover:bg-fg/8 hover:text-fg"
+            className="tap-target relative grid size-8 shrink-0 place-items-center rounded-full text-muted hover:bg-fg/8 hover:text-fg"
           >
             <X aria-hidden className="size-4" />
           </button>

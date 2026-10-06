@@ -109,7 +109,7 @@ function ProfileBody({ onClose }: { onClose: () => void }) {
             <button type="button" aria-label="העתקת הקוד" onClick={copyCode} className="grid size-12 place-items-center rounded-control bg-fg/6 transition active:scale-90">
               {copied ? <Check aria-hidden className="size-5 text-green-600" /> : <Copy aria-hidden className="size-5" />}
             </button>
-            <button type="button" aria-label="שיתוף" onClick={share} className="grid size-12 place-items-center rounded-control bg-accent text-accent-fg transition active:scale-90">
+            <button type="button" aria-label="שיתוף" onClick={share} className="grid size-12 place-items-center rounded-control bg-accent-fill text-accent-fg transition active:scale-90">
               <Share2 aria-hidden className="size-5" />
             </button>
           </div>

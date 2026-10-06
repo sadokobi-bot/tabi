@@ -194,7 +194,7 @@ export function PlaceView({ subject, onEdit, onSchedule }: PlaceViewProps) {
                     type="button"
                     aria-label="הסרה מהיום"
                     onClick={() => actions.removeFromDay(date, item.id)}
-                    className="grid size-6 place-items-center rounded-full text-muted hover:bg-fg/8 hover:text-fg"
+                    className="tap-target relative grid size-6 place-items-center rounded-full text-muted hover:bg-fg/8 hover:text-fg"
                   >
                     <X aria-hidden className="size-3.5" />
                   </button>

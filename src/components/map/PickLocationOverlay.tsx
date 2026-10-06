@@ -10,7 +10,7 @@ export function PickLocationOverlay({ onConfirm, onCancel }: { onConfirm: () => 
         <motion.div initial={{ y: -24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="-translate-y-5">
           <MapPin className="size-11 fill-accent text-white drop-shadow-lg" strokeWidth={1.6} />
         </motion.div>
-        <span className="absolute size-2 rounded-full bg-accent shadow" />
+        <span className="absolute size-2 rounded-full bg-accent-fill shadow" />
       </div>
 
       <motion.div

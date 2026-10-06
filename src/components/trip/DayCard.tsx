@@ -35,7 +35,7 @@ export function DayCard({ id, title, subtitle, itemIds, isToday, cityId, onCityC
         <div className="min-w-0 flex-1">
           <h3 className="flex items-center gap-2 font-bold">
             {title}
-            {isToday && <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-accent-fg">היום</span>}
+            {isToday && <span className="rounded-full bg-accent-fill px-2 py-0.5 text-[10px] font-bold text-accent-fg">היום</span>}
           </h3>
           {subtitle && <p className="text-xs text-muted">{subtitle}</p>}
         </div>
@@ -47,7 +47,7 @@ export function DayCard({ id, title, subtitle, itemIds, isToday, cityId, onCityC
               aria-label="עיר"
               className={clsx(
                 // appearance-none: Safari otherwise draws its own grey box and arrow.
-                'h-8 max-w-[8.5rem] appearance-none rounded-full border-0 ps-3 pe-7 text-xs font-semibold outline-none focus:ring-2 focus:ring-accent/40',
+                'h-9 max-w-[8.5rem] appearance-none rounded-full border-0 ps-3 pe-7 text-xs font-semibold outline-none focus:ring-2 focus:ring-accent/40',
                 cityId ? 'bg-fg/8 text-fg' : 'bg-transparent text-muted',
               )}
             >

@@ -115,7 +115,7 @@ export function OnboardingScreen() {
               }}
               className={clsx(
                 'flex items-center justify-center gap-2 rounded-control py-3 text-sm font-semibold transition',
-                tab === value ? 'bg-accent text-accent-fg shadow-lg' : 'glass text-fg',
+                tab === value ? 'bg-accent-fill text-accent-fg shadow-lg' : 'glass text-fg',
               )}
             >
               <Icon aria-hidden className="size-4" />

@@ -35,8 +35,8 @@ export function NextUpCard({ item, place, nowMinutes, eyebrow }: NextUpCardProps
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-2 text-xs font-semibold text-accent">
           <span className="relative flex size-2">
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent opacity-60 motion-reduce:animate-none" />
-            <span className="relative inline-flex size-2 rounded-full bg-accent" />
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent-fill opacity-60 motion-reduce:animate-none" />
+            <span className="relative inline-flex size-2 rounded-full bg-accent-fill" />
           </span>
           {eyebrow}
         </p>
@@ -64,7 +64,7 @@ export function NextUpCard({ item, place, nowMinutes, eyebrow }: NextUpCardProps
         href={directionsUrl(place.location, { placeId: place.googlePlaceId })}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-4 flex h-12 items-center justify-center gap-2 rounded-control bg-accent text-sm font-bold text-accent-fg shadow-[0_12px_24px_-14px_var(--app-accent)] transition active:scale-[0.97]"
+        className="mt-4 flex h-12 items-center justify-center gap-2 rounded-control bg-accent-fill text-sm font-bold text-accent-fg shadow-[0_12px_24px_-14px_var(--app-accent)] transition active:scale-[0.97]"
       >
         <Navigation aria-hidden className="size-4 -scale-x-100" />
         קח אותי לשם

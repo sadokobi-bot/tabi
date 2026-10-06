@@ -76,7 +76,7 @@ export function DayTimeline({ items, placesById, nowMinutes, nextItemId }: DayTi
                       aria-hidden
                       className={clsx(
                         'relative z-[1] size-3 shrink-0 rounded-full border-2 border-bg',
-                        isNext ? 'bg-accent ring-4 ring-accent/20' : past ? 'bg-fg/25' : 'bg-fg/45',
+                        isNext ? 'bg-accent-fill ring-4 ring-accent/20' : past ? 'bg-fg/25' : 'bg-fg/45',
                       )}
                     />
                     <button
@@ -116,7 +116,7 @@ function NowLine({ minutes }: { minutes: number }) {
       <span className="w-11 shrink-0 text-end text-xs font-bold text-accent tabular-nums" dir="ltr">
         {label}
       </span>
-      <span aria-hidden className="relative z-[1] size-3 shrink-0 rounded-full bg-accent ring-4 ring-accent/20" />
+      <span aria-hidden className="relative z-[1] size-3 shrink-0 rounded-full bg-accent-fill ring-4 ring-accent/20" />
       <span aria-hidden className="h-0.5 flex-1 rounded-full bg-linear-to-l from-accent to-accent/0" />
     </li>
   )

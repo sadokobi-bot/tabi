@@ -182,7 +182,7 @@ export default function ChatScreen() {
                   <div
                     className={clsx(
                       'max-w-[78%] rounded-card px-3.5 py-2 shadow-sm',
-                      mine ? 'rounded-ee-sm bg-accent text-accent-fg' : 'surface rounded-es-sm',
+                      mine ? 'rounded-ee-sm bg-accent-fill text-accent-fg' : 'surface rounded-es-sm',
                     )}
                   >
                     {!mine && !sameAuthor && <p className="mb-0.5 text-xs font-semibold text-accent">{message.authorName}</p>}
@@ -237,7 +237,7 @@ export default function ChatScreen() {
             aria-label="שליחה"
             // Keep focus in the input so the keyboard stays open between messages.
             onPointerDown={(event) => event.preventDefault()}
-            className="grid size-10 shrink-0 place-items-center rounded-control bg-accent text-accent-fg transition active:scale-90 disabled:opacity-40"
+            className="grid size-10 shrink-0 place-items-center rounded-control bg-accent-fill text-accent-fg transition active:scale-90 disabled:opacity-40"
           >
             <SendHorizontal aria-hidden className="size-[18px] -scale-x-100" />
           </button>

@@ -16,11 +16,11 @@ type Sky = 'dawn' | 'day' | 'dusk' | 'night' | 'rain'
 
 /** Sky gradients: the card looks like the sky over Japan right now. */
 const SKIES: Record<Sky, { background: string; glow: string }> = {
-  dawn: { background: 'linear-gradient(160deg, #ffb38a 0%, #f47c7c 45%, #7a6fd0 100%)', glow: 'rgb(255 236 200 / 0.55)' },
-  day: { background: 'linear-gradient(160deg, #5fb2ff 0%, #3b82f6 50%, #2f5fd8 100%)', glow: 'rgb(255 255 255 / 0.4)' },
-  dusk: { background: 'linear-gradient(160deg, #ffa064 0%, #e8577a 48%, #6b3fb8 100%)', glow: 'rgb(255 214 170 / 0.5)' },
+  dawn: { background: 'linear-gradient(160deg, #f0876a 0%, #d6587c 48%, #5d4bb8 100%)', glow: 'rgb(255 228 196 / 0.45)' },
+  day: { background: 'linear-gradient(160deg, #3d8ef0 0%, #2a6be0 50%, #2347b8 100%)', glow: 'rgb(255 255 255 / 0.32)' },
+  dusk: { background: 'linear-gradient(160deg, #ee7a55 0%, #cd4675 48%, #5a37a3 100%)', glow: 'rgb(255 208 164 / 0.42)' },
   night: { background: 'linear-gradient(160deg, #26346e 0%, #172054 55%, #0d1233 100%)', glow: 'rgb(170 190 255 / 0.25)' },
-  rain: { background: 'linear-gradient(160deg, #7d8ea8 0%, #586a86 55%, #3d4b63 100%)', glow: 'rgb(255 255 255 / 0.2)' },
+  rain: { background: 'linear-gradient(160deg, #6f819c 0%, #526480 55%, #384660 100%)', glow: 'rgb(255 255 255 / 0.18)' },
 }
 
 function skyFor(japanMinutes: number, weather: Weather | null): Sky {
@@ -60,9 +60,11 @@ export function TodayHero({ trip, timeline, now, placeName, location }: TodayHer
   return (
     <section
       aria-label="היום בטיול"
-      className="relative isolate overflow-hidden rounded-card p-5 text-white shadow-[0_16px_36px_-22px_rgb(30_50_120/0.6)] ring-1 ring-white/10 ring-inset transition-[background] duration-700"
+      className="relative isolate overflow-hidden rounded-card p-5 text-white shadow-[0_16px_36px_-22px_rgb(30_50_120/0.6)] ring-1 ring-white/10 ring-inset transition-[background] duration-700 text-shadow-xs text-shadow-black/25"
       style={{ background: sky.background }}
     >
+      {/* Keeps small white text readable on the lighter skies (dawn, day, dusk). */}
+      <span aria-hidden className="pointer-events-none absolute inset-0 bg-linear-to-b from-black/12 via-black/0 to-black/18" />
       {/* sun / moon glow */}
       <span
         aria-hidden
@@ -72,8 +74,8 @@ export function TodayHero({ trip, timeline, now, placeName, location }: TodayHer
 
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="inline-flex items-center rounded-full bg-white/18 px-2.5 py-1 text-xs font-semibold backdrop-blur-sm">{status}</p>
-          <p className="mt-2 truncate text-sm font-medium text-white/85">{placeName}</p>
+          <p className="inline-flex items-center rounded-full bg-black/18 px-2.5 py-1 text-xs font-semibold backdrop-blur-sm">{status}</p>
+          <p className="mt-2 truncate text-sm font-semibold">{placeName}</p>
         </div>
         {WeatherIcon && <WeatherIcon aria-hidden className="size-11 shrink-0 drop-shadow" strokeWidth={1.6} />}
       </div>
@@ -85,7 +87,7 @@ export function TodayHero({ trip, timeline, now, placeName, location }: TodayHer
         {weather && conditions && (
           <div className="mb-1.5 text-end text-sm">
             <p className="font-semibold">{conditions.label}</p>
-            <p className="text-white/80">
+            <p className="text-white/90">
               <span dir="ltr">
                 {Math.round(weather.max)}° / {Math.round(weather.min)}°
               </span>
@@ -104,7 +106,7 @@ export function TodayHero({ trip, timeline, now, placeName, location }: TodayHer
         <div className="h-full rounded-full bg-white" style={{ width: `${Math.max(progress * 100, phase === 'before' ? 0 : 3)}%` }} />
       </div>
 
-      <p className="relative mt-3 flex items-center justify-between text-xs text-white/85 tabular-nums">
+      <p className="relative mt-3 flex items-center justify-between text-xs text-white/90 tabular-nums">
         <span>
           ביפן <span className="font-semibold text-white">{japanClock.format(now)}</span>
         </span>

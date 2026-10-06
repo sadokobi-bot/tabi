@@ -54,7 +54,7 @@ export function MapControls({ bearing, geoStatus, following, onLocate, onResetNo
         aria-label="הוספת מקום משלנו"
         whileTap={{ scale: 0.9 }}
         onClick={onAdd}
-        className="grid size-14 place-items-center rounded-full bg-accent text-accent-fg shadow-[0_14px_30px_-10px_var(--app-accent)]"
+        className="grid size-14 place-items-center rounded-full bg-accent-fill text-accent-fg shadow-[0_14px_30px_-10px_var(--app-accent)]"
       >
         <Plus aria-hidden className="size-7" strokeWidth={2.4} />
       </motion.button>

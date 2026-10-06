@@ -105,7 +105,7 @@ export function MapSearch({ provider, near }: MapSearchProps) {
             aria-label="ניקוי החיפוש"
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => setQuery('')}
-            className="grid size-8 place-items-center rounded-full text-muted hover:bg-fg/8"
+            className="tap-target relative grid size-8 place-items-center rounded-full text-muted hover:bg-fg/8"
           >
             <X aria-hidden className="size-4" />
           </button>

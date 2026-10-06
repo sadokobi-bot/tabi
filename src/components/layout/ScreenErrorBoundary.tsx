@@ -35,7 +35,7 @@ export class ScreenErrorBoundary extends Component<Props, State> {
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="mt-4 rounded-full bg-accent px-5 py-2 text-sm font-semibold text-accent-fg active:scale-95"
+            className="mt-4 rounded-full bg-accent-fill px-5 py-2 text-sm font-semibold text-accent-fg active:scale-95"
           >
             טעינה מחדש
           </button>

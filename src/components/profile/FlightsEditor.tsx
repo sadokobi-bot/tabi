@@ -94,7 +94,7 @@ export function FlightsEditor({ flights }: { flights: Flight[] }) {
               onClick={() => set({ tz: zone.id })}
               className={
                 'flex-1 rounded-inner py-2 text-sm font-medium transition ' +
-                (draft.tz === zone.id ? 'bg-accent text-accent-fg' : 'bg-fg/6 text-fg')
+                (draft.tz === zone.id ? 'bg-accent-fill text-accent-fg' : 'bg-fg/6 text-fg')
               }
             >
               {zone.label}
@@ -137,10 +137,10 @@ export function FlightsEditor({ flights }: { flights: Flight[] }) {
               }).format(new Date(flight.departAt))}
             </p>
           </div>
-          <button type="button" aria-label="עריכת טיסה" onClick={() => setDraft(toDraft(flight))} className="grid size-9 place-items-center rounded-full text-muted hover:bg-fg/8">
+          <button type="button" aria-label="עריכת טיסה" onClick={() => setDraft(toDraft(flight))} className="tap-target relative grid size-9 place-items-center rounded-full text-muted hover:bg-fg/8">
             <Pencil aria-hidden className="size-4" />
           </button>
-          <button type="button" aria-label="מחיקת טיסה" onClick={() => remove(flight.id)} className="grid size-9 place-items-center rounded-full text-muted hover:bg-red-500/10 hover:text-red-600">
+          <button type="button" aria-label="מחיקת טיסה" onClick={() => remove(flight.id)} className="tap-target relative grid size-9 place-items-center rounded-full text-muted hover:bg-red-500/10 hover:text-red-600">
             <Trash2 aria-hidden className="size-4" />
           </button>
         </div>
