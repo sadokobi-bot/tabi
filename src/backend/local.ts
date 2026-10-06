@@ -133,7 +133,7 @@ export function createLocalBackend(): Backend {
       return subscribe(tripsKey, notify)
     },
 
-    async createTrip(user, input, seed) {
+    async createTrip(user, input) {
       const id = newId()
       const inviteCode = newInviteCode()
       const trip: Trip = {
@@ -145,12 +145,12 @@ export function createLocalBackend(): Backend {
         memberIds: [user.uid],
         members: { [user.uid]: { name: user.username } },
         inviteCode,
-        dayCities: seed?.dayCities ?? {},
+        dayCities: {},
         flights: [],
         createdAt: Date.now(),
       }
-      write(placesKey(id), Object.fromEntries((seed?.places ?? []).map((place) => [place.id, place])))
-      write(planKey(id), seed?.plan ?? {})
+      write(placesKey(id), {})
+      write(planKey(id), {})
       write(invitesKey, { ...read<Record<string, string>>(invitesKey, {}), [inviteCode]: id })
       write(tripsKey, { ...readTrips(), [id]: trip })
       return id

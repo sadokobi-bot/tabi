@@ -154,7 +154,7 @@ export function createFirebaseBackend(): Backend {
       )
     },
 
-    async createTrip(user, input, seed) {
+    async createTrip(user, input) {
       const ref = doc(collection(db, 'trips'))
       const inviteCode = newInviteCode()
       const trip: Omit<Trip, 'id'> = {
@@ -165,7 +165,7 @@ export function createFirebaseBackend(): Backend {
         memberIds: [user.uid],
         members: { [user.uid]: { name: user.username } },
         inviteCode,
-        dayCities: seed?.dayCities ?? {},
+        dayCities: {},
         flights: [],
         createdAt: Date.now(),
       }
@@ -173,10 +173,8 @@ export function createFirebaseBackend(): Backend {
         const batch = writeBatch(db)
         batch.set(ref, trip)
         batch.set(doc(db, 'invites', inviteCode), { tripId: ref.id })
-        batch.set(planRef(ref.id), { days: seed?.plan ?? {} })
+        batch.set(planRef(ref.id), { days: {} })
         await batch.commit()
-        // Places are written one by one: each write is checked against the (now existing) trip membership.
-        await Promise.all((seed?.places ?? []).map((place) => setDoc(placeRef(ref.id, place.id), place)))
         return ref.id
       } catch (error) {
         throw toAppError(error)

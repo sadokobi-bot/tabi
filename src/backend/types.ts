@@ -53,13 +53,6 @@ export interface NewTripInput {
   days: number
 }
 
-/** Optional starter content written together with a new trip. */
-export interface TripSeed {
-  places: Place[]
-  plan: DayPlan
-  dayCities: Record<string, string>
-}
-
 export type TripPatch = Partial<Pick<Trip, 'name' | 'startDate' | 'days' | 'flights'>>
 
 /**
@@ -80,7 +73,7 @@ export interface Backend {
    * the user's trips cached yet), true once it reflects the server (always true in local mode).
    */
   watchTrips(uid: string, callback: (trips: Trip[], confirmed: boolean) => void, onError: (error: AppError) => void): Unsubscribe
-  createTrip(user: SessionUser, input: NewTripInput, seed?: TripSeed): Promise<string>
+  createTrip(user: SessionUser, input: NewTripInput): Promise<string>
   joinTrip(user: SessionUser, inviteCode: string): Promise<string>
   updateTrip(tripId: string, patch: TripPatch): Promise<void>
   setDayCity(tripId: string, date: string, cityId: string | null): Promise<void>

@@ -7,7 +7,6 @@ import { BrandMark } from '@/components/brand/BrandMark'
 import { AmbientBackground } from '@/components/layout/AmbientBackground'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
-import { buildSampleSeed } from '@/data/samplePlan'
 import { isoDateInTz } from '@/lib/dates'
 import { normalizeInviteCode } from '@/lib/ids'
 import { getBackend, useCurrentUser } from '@/store/session'
@@ -22,7 +21,6 @@ export function OnboardingScreen() {
   const [name, setName] = useState(`יפן ${new Date().getFullYear()}`)
   const [startDate, setStartDate] = useState(() => isoDateInTz(new Date()))
   const [days, setDays] = useState('30')
-  const [withSample, setWithSample] = useState(true)
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -42,8 +40,7 @@ export function OnboardingScreen() {
     setBusy(true)
     setError(null)
     try {
-      const seed = withSample ? buildSampleSeed(startDate, dayCount, user.uid) : undefined
-      activate(await getBackend().createTrip(user, { name: name.trim(), startDate, days: dayCount }, seed))
+      activate(await getBackend().createTrip(user, { name: name.trim(), startDate, days: dayCount }))
     } catch (caught) {
       setError(errorMessage(caught))
     } finally {
@@ -150,18 +147,6 @@ export function OnboardingScreen() {
                   dir="ltr"
                 />
               </div>
-              <label className="flex cursor-pointer items-start gap-3 rounded-control bg-fg/5 p-3">
-                <input
-                  type="checkbox"
-                  checked={withSample}
-                  onChange={(event) => setWithSample(event.target.checked)}
-                  className="mt-0.5 size-5 accent-[var(--app-accent)]"
-                />
-                <span className="text-sm">
-                  <span className="font-semibold">להתחיל עם מסלול לדוגמה</span>
-                  <span className="block text-muted">טוקיו, הקונה, קיוטו, נארה, אוסקה והירושימה. אפשר לערוך ולמחוק הכל.</span>
-                </span>
-              </label>
               {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
               <Button type="submit" size="lg" className="w-full" loading={busy}>
                 יצירת הטיול

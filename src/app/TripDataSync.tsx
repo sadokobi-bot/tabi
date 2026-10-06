@@ -1,7 +1,37 @@
 import { useEffect } from 'react'
-import { errorMessage } from '@/backend'
+import { errorMessage, type Backend } from '@/backend'
+import { removePlaceEverywhere } from '@/data/planOps'
 import { useSession } from '@/store/session'
 import { recallActiveTrip, setPlaces, useTripStore } from '@/store/trip'
+
+/** Trips already checked for sample places in this session. */
+const sampleChecked = new Set<string>()
+
+/**
+ * Trips once could start with a sample itinerary. Those sample places were written together with
+ * the trip (same moment, by its owner), which no hand-added place can match; remove them for good.
+ */
+function removeSamplePlaces(backend: Backend, tripId: string) {
+  const { trips, places, plan } = useTripStore.getState()
+  const trip = trips.find((t) => t.id === tripId)
+  if (!trip) return
+  const samples = places.filter((place) => place.createdBy === trip.ownerId && Math.abs(place.createdAt - trip.createdAt) < 5000)
+  if (samples.length === 0) return
+
+  const sampleIds = new Set(samples.map((place) => place.id))
+  let current = plan
+  const writes = samples.map((place) => {
+    const changes = removePlaceEverywhere(current, place.id)
+    current = { ...current, ...changes }
+    return { placeId: place.id, changes }
+  })
+  setPlaces(places.filter((place) => !sampleIds.has(place.id)))
+  useTripStore.setState({ plan: current })
+
+  void writes
+    .reduce((chain, { placeId, changes }) => chain.then(() => backend.deletePlace(tripId, placeId, changes)), Promise.resolve())
+    .catch((error: unknown) => console.error('[trip] sample places could not be removed', error))
+}
 
 /**
  * Keeps the trip store in sync with the backend:
@@ -11,6 +41,7 @@ export function TripDataSync() {
   const backend = useSession((state) => state.backend)
   const uid = useSession((state) => state.user?.uid)
   const activeTripId = useTripStore((state) => state.activeTripId)
+  const tripDataLoaded = useTripStore((state) => state.placesLoaded && state.planLoaded && state.tripsConfirmed)
 
   useEffect(() => {
     if (!backend || !uid) return
@@ -41,6 +72,12 @@ export function TripDataSync() {
       stopPlan()
     }
   }, [backend, activeTripId])
+
+  useEffect(() => {
+    if (!backend || !activeTripId || !tripDataLoaded || sampleChecked.has(activeTripId)) return
+    sampleChecked.add(activeTripId)
+    removeSamplePlaces(backend, activeTripId)
+  }, [backend, activeTripId, tripDataLoaded])
 
   // The chat stays subscribed on every tab, so the tab bar can show unread messages.
   useEffect(() => {
