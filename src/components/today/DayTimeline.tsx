@@ -70,7 +70,7 @@ export function DayTimeline({ items, placesById, nowMinutes, nextItemId }: DayTi
                   {item.id === nowBeforeId && nowLine}
                   <li className={clsx('relative flex items-center gap-3', past && 'opacity-55')}>
                     <span className="w-11 shrink-0 text-end text-sm font-semibold tabular-nums" dir="ltr">
-                      {item.time ?? '–'}
+                      {item.time ?? '-'}
                     </span>
                     <span
                       aria-hidden

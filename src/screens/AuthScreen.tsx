@@ -104,7 +104,7 @@ export function AuthScreen() {
               value={username}
               onChange={(event) => setUsername(event.target.value)}
               error={fieldErrors.username}
-              hint={mode === 'signUp' ? 'עברית או אנגלית, 2–16 תווים' : undefined}
+              hint={mode === 'signUp' ? 'עברית או אנגלית, 2-16 תווים' : undefined}
               autoComplete="username"
               autoCapitalize="none"
               autoCorrect="off"

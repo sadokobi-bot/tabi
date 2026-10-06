@@ -18,16 +18,17 @@ export function FlightCountdown({ flights }: { flights: Flight[] }) {
   const hours = Math.floor((totalSeconds % 86_400) / 3600)
   const minutes = Math.floor((totalSeconds % 3600) / 60)
   const seconds = totalSeconds % 60
-  const departure = new Intl.DateTimeFormat('he-IL', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(
-    new Date(next.departAt),
-  )
+  const departure = new Intl.DateTimeFormat('he-IL', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(next.departAt))
 
   return (
     <div className="surface flex items-center gap-3 rounded-card p-3 pe-4">
-      <span
-        className="grid size-11 shrink-0 place-items-center rounded-control text-white"
-        style={{ background: 'linear-gradient(135deg, #4f7cf0, #3b5bd6)' }}
-      >
+      <span className="grid size-11 shrink-0 place-items-center rounded-control bg-accent/12 text-accent">
         <Plane aria-hidden className="size-5 -scale-x-100" />
       </span>
       <div className="min-w-0 flex-1">

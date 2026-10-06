@@ -17,7 +17,7 @@ export default function TripScreen() {
   const { phase, today } = tripTimeline(trip, now)
 
   const scheduledCount = Object.values(plan).reduce((sum, items) => sum + items.length, 0)
-  const range = `${formatDay(trip.startDate, { day: 'numeric', month: 'short' })} – ${formatDay(addDays(trip.startDate, trip.days - 1), { day: 'numeric', month: 'short', year: 'numeric' })}`
+  const range = `${formatDay(trip.startDate, { day: 'numeric', month: 'short' })} - ${formatDay(addDays(trip.startDate, trip.days - 1), { day: 'numeric', month: 'short', year: 'numeric' })}`
 
   const jumpToToday = () => {
     document.getElementById(`day-${today}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -36,7 +36,7 @@ export default function TripScreen() {
           }
         />
         <p className="mt-0.5 text-sm text-muted">
-          {trip.days} ימים · {places.length} מקומות שמורים · {scheduledCount} פעילויות בלו״ז
+          {trip.days} ימים, {places.length} מקומות שמורים ו-{scheduledCount} פעילויות בלו״ז
         </p>
         {phase === 'during' && (
           <Button variant="ghost" className="mt-2 -ms-2 text-accent" icon={<CalendarCheck aria-hidden className="size-4" />} onClick={jumpToToday}>

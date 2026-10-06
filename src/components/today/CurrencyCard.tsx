@@ -107,7 +107,7 @@ export function CurrencyCard() {
           <span className="text-base font-semibold text-muted">{to}</span>
           {converted == null ? (
             failed ? (
-              <span className="text-sm font-medium text-muted">—</span>
+              <span className="text-sm font-medium text-muted">-</span>
             ) : (
               <span aria-hidden className="inline-block h-5 w-16 animate-pulse rounded-lg bg-fg/8" />
             )

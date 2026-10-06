@@ -14,8 +14,6 @@ import { ui } from '@/store/ui'
 
 const EXAMPLES = ['המקדש עם אלפי השערים הכתומים', 'ראמן טוב ליד שיבויה', 'תצפית יפה על הר פוג׳י']
 
-const GRADIENT = 'linear-gradient(135deg, #8b5cf6 0%, #e2553a 100%)'
-
 interface AssistantProps {
   provider: PoiProvider | null
   near: LatLng | null
@@ -87,14 +85,8 @@ export function Assistant({ provider, near }: AssistantProps) {
           haptic()
           setOpen(true)
         }}
-        className="bottom-above-tabbar absolute start-4 z-10 grid size-14 place-items-center rounded-full text-white shadow-[0_14px_30px_-10px_rgb(139_92_246/0.8)]"
-        style={{ background: GRADIENT }}
+        className="glass bottom-above-tabbar absolute start-4 z-10 grid size-14 place-items-center rounded-full text-accent"
       >
-        <span
-          aria-hidden
-          className="absolute inset-0 animate-ping rounded-full opacity-20 motion-reduce:animate-none [animation-duration:2.6s]"
-          style={{ background: GRADIENT }}
-        />
         <Sparkles aria-hidden className="relative size-6" strokeWidth={2.2} />
       </motion.button>
 
@@ -103,7 +95,7 @@ export function Assistant({ provider, near }: AssistantProps) {
         <BottomSheet open={open} onClose={() => setOpen(false)} label="עוזר AI">
           <div className="px-5 pb-4">
             <header className="flex items-center gap-3">
-              <span className="grid size-11 shrink-0 place-items-center rounded-control text-white" style={{ background: GRADIENT }}>
+              <span className="grid size-11 shrink-0 place-items-center rounded-control bg-accent/12 text-accent">
                 <Sparkles aria-hidden className="size-5" />
               </span>
               <div className="min-w-0">
@@ -130,8 +122,7 @@ export function Assistant({ provider, near }: AssistantProps) {
                 type="submit"
                 aria-label="חיפוש"
                 disabled={!text.trim() || status === 'thinking'}
-                className="grid size-10 shrink-0 place-items-center rounded-inner text-white transition active:scale-90 disabled:opacity-40"
-                style={{ background: GRADIENT }}
+                className="grid size-10 shrink-0 place-items-center rounded-inner bg-accent-fill text-accent-fg transition active:scale-90 disabled:opacity-40"
               >
                 {status === 'thinking' ? (
                   <LoaderCircle aria-hidden className="size-5 animate-spin" />

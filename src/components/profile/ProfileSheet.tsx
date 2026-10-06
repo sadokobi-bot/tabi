@@ -71,7 +71,7 @@ function ProfileBody({ onClose }: { onClose: () => void }) {
     event.preventDefault()
     const dayCount = Number(days)
     if (!name.trim() || !startDate || !Number.isInteger(dayCount) || dayCount < 1 || dayCount > 90) {
-      ui.toast('בדקו את שם הטיול, התאריך ומספר הימים (1–90)', 'error')
+      ui.toast('בדקו את שם הטיול, התאריך ומספר הימים (1-90)', 'error')
       return
     }
     actions.updateTrip({ name: name.trim(), startDate, days: dayCount }, 'פרטי הטיול עודכנו')

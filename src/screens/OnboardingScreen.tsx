@@ -34,7 +34,7 @@ export function OnboardingScreen() {
     event.preventDefault()
     const dayCount = Number(days)
     if (!name.trim() || !startDate || !Number.isInteger(dayCount) || dayCount < 1 || dayCount > 90) {
-      setError('מלאו שם, תאריך התחלה ומספר ימים (1–90)')
+      setError('מלאו שם, תאריך התחלה ומספר ימים (1-90)')
       return
     }
     setBusy(true)
