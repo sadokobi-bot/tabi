@@ -160,8 +160,15 @@
   html {
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
-    /* An app, not a page: no pinch or double-tap zoom. The maps handle their own gestures. */
-    touch-action: pan-x pan-y;
+  }
+
+  /* No double-tap zoom on controls. Kept off the page and its text fields: a global touch-action
+     breaks the iOS keyboard in home-screen apps. Pinch zoom is blocked in main.tsx. */
+  button,
+  a,
+  label,
+  [role='button'] {
+    touch-action: manipulation;
   }
 
   body {
