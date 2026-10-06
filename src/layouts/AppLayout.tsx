@@ -63,7 +63,7 @@ export function AppLayout() {
   if (!activeTab) return <Navigate to="/" replace />
 
   return (
-    <div className="fixed inset-0 overflow-hidden">
+    <div className="app-shell">
       <AmbientBackground />
 
       <main className="absolute inset-0">

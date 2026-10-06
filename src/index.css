@@ -122,6 +122,22 @@
   box-shadow: var(--surface-shadow), var(--surface-highlight);
 }
 
+/* The app's full-screen frame. Also the containing block of every fixed layer inside it
+   (tab bar, sheets, toasts), so they anchor to the frame's bottom instead of the viewport's.
+   iOS 26 home-screen apps (WebKit bug 301108) report a viewport that is short by the status bar
+   height, leaving an empty band at the bottom; 100lvh is the one unit that still spans the screen. */
+@utility app-shell {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  contain: layout;
+
+  @media (display-mode: standalone) {
+    bottom: auto;
+    height: 100lvh;
+  }
+}
+
 /* Top padding that clears the notch / status bar. */
 @utility pt-screen {
   padding-top: calc(env(safe-area-inset-top) + 1.25rem);
