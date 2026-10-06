@@ -123,6 +123,10 @@ async function fetchOverpass(query: string, signal: AbortSignal): Promise<{ elem
 }
 
 const PHOTON_TYPE: Record<string, string> = { N: 'node', W: 'way', R: 'relation' }
+/** Not places anyone visits (evacuation points, information boards). */
+const NOISE_KEYS = new Set(['emergency', 'information'])
+/** Whole areas, streets and stops: kept, but ranked after actual places. */
+const AREA_KEYS = new Set(['landuse', 'place', 'boundary', 'highway'])
 
 interface PhotonFeature {
   geometry: { coordinates: [number, number] }
@@ -184,7 +188,19 @@ export const osmProvider: PoiProvider = {
     if (!response.ok) throw new Error(`Photon ${response.status}`)
     const json = (await response.json()) as { features?: PhotonFeature[] }
 
-    return (json.features ?? []).flatMap((feature): Suggestion[] => {
+    // Photon ranks by text match only, so a whole area (Fushimi Inari's mountain, centred 650 m from the
+    // shrine) can beat the place itself. Real places go first; areas, streets and stops after them.
+    const seen = new Set<string>()
+    const features = (json.features ?? [])
+      .filter((feature) => {
+        const p = feature.properties
+        if (p.osm_key && NOISE_KEYS.has(p.osm_key)) return false
+        const id = `${p.osm_type}${p.osm_id}`
+        return seen.has(id) ? false : (seen.add(id), true)
+      })
+      .sort((a, b) => Number(AREA_KEYS.has(a.properties.osm_key ?? '')) - Number(AREA_KEYS.has(b.properties.osm_key ?? '')))
+
+    return features.flatMap((feature): Suggestion[] => {
       const p = feature.properties
       const title = p.name ?? [p.street, p.housenumber].filter(Boolean).join(' ')
       if (!title) return []

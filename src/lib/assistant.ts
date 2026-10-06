@@ -97,9 +97,32 @@ export async function askAssistant(text: string, near: LatLng | null): Promise<A
   }
 }
 
+const words = (text: string) =>
+  new Set(
+    text
+      .normalize('NFKD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase()
+      .split(/[^\p{L}\p{N}]+/u)
+      .filter(Boolean),
+  )
+
+/** Share of words the two names have in common (0–1). */
+function nameMatch(a: string, b: string): number {
+  const x = words(a)
+  const y = words(b)
+  const shared = [...x].filter((w) => y.has(w)).length
+  return shared / (new Set([...x, ...y]).size || 1)
+}
+
+/** Gemini's coordinates are approximate; a map entry this far away is a different place. */
+const MAX_DISTANCE_M = 5000
+
 /**
- * Pins the assistant's place to a real map entry (exact position, address, opening hours) by searching
- * the map provider near the approximate coordinates; falls back to those coordinates.
+ * Pins the assistant's place to a real map entry (exact position, address, opening hours).
+ * Candidates near the approximate coordinates are scored by name, kind and distance, so "Meiji Jingu"
+ * finds the shrine rather than the nearby Meiji Jingu Stadium. Without a good match it falls back to
+ * Gemini's coordinates, marked as approximate.
  */
 export async function resolveOnMap(place: AssistantPlace, provider: PoiProvider | null, signal: AbortSignal): Promise<Poi> {
   const fallback: Poi = {
@@ -108,21 +131,28 @@ export async function resolveOnMap(place: AssistantPlace, provider: PoiProvider 
     name: place.name,
     category: place.category,
     location: place.location,
-    address: place.city,
+    address: `${place.city} · מיקום משוער`,
   }
   if (!provider) return fallback
+
+  let best: { poi: Poi; score: number } | null = null
   try {
     for (const query of [`${place.searchName} ${place.city}`, place.searchName]) {
       const suggestions = await provider.suggest(query, place.location, signal)
-      for (const suggestion of suggestions.slice(0, 4)) {
+      for (const suggestion of suggestions.slice(0, 6)) {
         const poi = await suggestion.resolve()
-        if (poi && distanceMeters(poi.location, place.location) < 6000) {
-          return { ...poi, name: place.name, category: poi.category === 'other' ? place.category : poi.category }
-        }
+        if (!poi) continue
+        const distance = distanceMeters(poi.location, place.location)
+        const match = nameMatch(place.searchName, poi.name)
+        if (distance > MAX_DISTANCE_M || match < 0.34) continue
+        const score = match + (poi.category === place.category ? 0.5 : 0) - (distance / 1000) * 0.15
+        if (!best || score > best.score) best = { poi, score }
       }
     }
   } catch (error) {
     if (signal.aborted) throw error
   }
-  return fallback
+  if (!best) return fallback
+  const { poi } = best
+  return { ...poi, name: place.name, category: poi.category === 'other' ? place.category : poi.category }
 }

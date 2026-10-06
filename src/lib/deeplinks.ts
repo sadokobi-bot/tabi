@@ -19,12 +19,18 @@ export function directionsUrl(destination: LatLng, options: { placeId?: string; 
 
 /** Opens the place itself in Google Maps (reviews, photos, hours — everything Google has). */
 export function placeUrl(place: { name: string; location: LatLng; googlePlaceId?: string }): string {
+  const { lat, lng } = place.location
+  if (!place.googlePlaceId && /[A-Za-z]/.test(place.name)) {
+    // A map-data place (e.g. "Sushi Tetsu Pontocho"): search Google by name around our position, so
+    // Google shows its own listing (exact pin, reviews) instead of a bare pin on our coordinates.
+    return `https://www.google.com/maps/search/${encodeURIComponent(place.name)}/@${lat},${lng},17z`
+  }
   const params = new URLSearchParams({ api: '1' })
   if (place.googlePlaceId) {
     params.set('query', place.name)
     params.set('query_place_id', place.googlePlaceId)
   } else {
-    params.set('query', `${place.location.lat},${place.location.lng}`)
+    params.set('query', `${lat},${lng}`)
   }
   return `https://www.google.com/maps/search/?${params.toString()}`
 }
