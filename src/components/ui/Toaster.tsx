@@ -27,7 +27,7 @@ export function Toaster() {
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 500, damping: 36 }}
             className={clsx(
-              'glass max-w-sm rounded-2xl px-4 py-3 text-sm font-medium',
+              'glass max-w-sm rounded-control px-4 py-3 text-sm font-medium',
               toast.tone === 'error' && 'text-red-600 dark:text-red-400',
             )}
           >

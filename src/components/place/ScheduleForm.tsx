@@ -32,7 +32,7 @@ export function ScheduleForm({ placeId, onDone }: { placeId: string; onDone: () 
       </div>
 
       <p className="mt-5 mb-2 text-sm font-medium">באיזה יום?</p>
-      <div role="radiogroup" aria-label="יום בטיול" className="max-h-[38dvh] space-y-1.5 overflow-y-auto rounded-2xl">
+      <div role="radiogroup" aria-label="יום בטיול" className="max-h-[38dvh] space-y-1.5 overflow-y-auto rounded-control">
         {dates.map((iso, index) => {
           const active = iso === date
           const city = getCity(trip.dayCities[iso])
@@ -45,7 +45,7 @@ export function ScheduleForm({ placeId, onDone }: { placeId: string; onDone: () 
               aria-checked={active}
               onClick={() => setDate(iso)}
               className={clsx(
-                'flex w-full items-center gap-3 rounded-2xl border px-4 py-2.5 text-start transition',
+                'flex w-full items-center gap-3 rounded-control border px-4 py-2.5 text-start transition',
                 active ? 'border-accent bg-accent/10' : 'border-line bg-card/60 hover:bg-fg/5',
               )}
             >

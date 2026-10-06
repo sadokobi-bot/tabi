@@ -147,7 +147,7 @@ export default function MapScreen() {
   return (
     <div className="relative h-full w-full overflow-hidden bg-[#e8ece4] dark:bg-[#14181c]">
       {/* Google's logo must stay visible, so its map ends above the tab bar; the free map runs edge to edge. */}
-      <div className={hasGoogleMaps ? 'bottom-tabbar-zone absolute inset-x-0 top-0 overflow-hidden rounded-b-[1.75rem]' : 'absolute inset-0'}>
+      <div className={hasGoogleMaps ? 'bottom-tabbar-zone absolute inset-x-0 top-0 overflow-hidden rounded-b-card' : 'absolute inset-0'}>
         <Suspense fallback={<MapLoading />}>
           <MapEngine
             markers={markers}

@@ -167,7 +167,7 @@ export function PlaceView({ subject, onEdit, onSchedule }: PlaceViewProps) {
         </div>
 
         {saved?.notes && (
-          <p className="mt-4 rounded-2xl bg-amber-400/12 px-4 py-3 text-sm leading-relaxed whitespace-pre-line">
+          <p className="mt-4 rounded-control bg-amber-400/12 px-4 py-3 text-sm leading-relaxed whitespace-pre-line">
             {saved.notes}
           </p>
         )}
@@ -241,7 +241,7 @@ export function PlaceView({ subject, onEdit, onSchedule }: PlaceViewProps) {
               <button
                 type="button"
                 onClick={() => setConfirmDelete(true)}
-                className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-500/10 dark:text-red-400"
+                className="inline-flex items-center gap-1.5 rounded-inner px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-500/10 dark:text-red-400"
               >
                 <Trash2 aria-hidden className="size-4" /> מחיקת המקום
               </button>
@@ -278,7 +278,7 @@ interface ActionButtonProps {
 
 function ActionButton({ icon: Icon, label, onClick, href, accent }: ActionButtonProps) {
   const className =
-    'flex flex-col items-center justify-center gap-1.5 rounded-2xl py-3 text-xs font-semibold transition active:scale-95 ' +
+    'flex flex-col items-center justify-center gap-1.5 rounded-control py-3 text-xs font-semibold transition active:scale-95 ' +
     (accent ? 'bg-accent/12 text-accent' : 'bg-fg/5 text-fg hover:bg-fg/8')
   const content = (
     <>

@@ -34,7 +34,7 @@ export function Button({
       type={type}
       disabled={disabled || loading}
       className={clsx(
-        'inline-flex items-center justify-center gap-2 rounded-2xl font-semibold whitespace-nowrap transition',
+        'inline-flex items-center justify-center gap-2 rounded-control font-semibold whitespace-nowrap transition',
         'outline-none focus-visible:ring-2 focus-visible:ring-accent/60 active:scale-[0.97]',
         'disabled:pointer-events-none disabled:opacity-50',
         size === 'lg' ? 'h-13 px-5 text-base' : 'h-11 px-4 text-sm',

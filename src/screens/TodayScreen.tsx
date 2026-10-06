@@ -75,7 +75,7 @@ export default function TodayScreen() {
       </motion.div>
 
       {next && nextPlace && (
-        <motion.div variants={RISE} className="mt-4">
+        <motion.div variants={RISE} className="mt-3">
           <NextUpCard
             item={next}
             place={nextPlace}
@@ -85,7 +85,7 @@ export default function TodayScreen() {
         </motion.div>
       )}
 
-      <motion.div variants={RISE} className="mt-4 empty:hidden">
+      <motion.div variants={RISE} className="mt-3 empty:hidden">
         <FlightCountdown flights={trip.flights} />
       </motion.div>
 
@@ -93,9 +93,9 @@ export default function TodayScreen() {
         <CurrencyCard />
       </motion.div>
 
-      <motion.section variants={RISE} className="mt-8">
+      <motion.section variants={RISE} className="mt-7">
         <h2 className="mb-4 flex items-baseline justify-between">
-          <span className="text-xl font-bold tracking-tight">{phase === 'during' ? 'הלו״ז של היום' : `יום ${dayNumber}`}</span>
+          <span className="text-lg font-bold tracking-tight">{phase === 'during' ? 'הלו״ז של היום' : `יום ${dayNumber}`}</span>
           <span className="text-sm text-muted">{formatDay(focusDate, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
         </h2>
         <DayTimeline items={items} placesById={placesById} nowMinutes={nowMinutes} nextItemId={next?.id ?? null} />

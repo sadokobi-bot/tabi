@@ -24,7 +24,7 @@ export function RowContent({ place, date, item, handle, lifted = false }: RowCon
   return (
     <div
       className={clsx(
-        'surface flex items-center gap-2 rounded-2xl py-1.5 pe-2',
+        'surface flex items-center gap-2 rounded-control py-1.5 pe-2',
         handle || lifted ? 'ps-0' : 'ps-2',
         lifted && 'shadow-[0_18px_40px_-12px_rgb(0_0_0/0.35)] ring-2 ring-accent/40',
       )}
@@ -51,7 +51,7 @@ export function RowContent({ place, date, item, handle, lifted = false }: RowCon
               onChange={(event) => actions.setItemTime(date, item.id, event.target.value || undefined)}
               dir="ltr"
               className={clsx(
-                'h-8 w-[6.25rem] shrink-0 rounded-xl px-1.5 text-center text-sm tabular-nums outline-none focus:ring-2 focus:ring-accent/40',
+                'h-8 w-[4.5rem] shrink-0 rounded-inner px-1 text-center [&::-webkit-calendar-picker-indicator]:hidden text-sm tabular-nums outline-none focus:ring-2 focus:ring-accent/40',
                 item.time ? 'bg-fg/6 font-semibold' : 'bg-transparent text-muted',
               )}
             />

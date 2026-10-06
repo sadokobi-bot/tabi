@@ -100,16 +100,16 @@ function ProfileBody({ onClose }: { onClose: () => void }) {
       </div>
 
       <Section title="שותפים לטיול">
-        <div className="surface rounded-3xl p-4">
+        <div className="surface rounded-card p-4">
           <p className="text-sm text-muted">שתפו את קוד ההזמנה כדי שבן/בת הזוג יצטרפו ויערכו יחד:</p>
           <div className="mt-3 flex items-center gap-2">
-            <code dir="ltr" className="flex-1 rounded-2xl bg-fg/6 py-3 text-center font-mono text-xl font-bold tracking-[0.3em] select-all">
+            <code dir="ltr" className="flex-1 rounded-control bg-fg/6 py-3 text-center font-mono text-xl font-bold tracking-[0.3em] select-all">
               {trip.inviteCode}
             </code>
-            <button type="button" aria-label="העתקת הקוד" onClick={copyCode} className="grid size-12 place-items-center rounded-2xl bg-fg/6 transition active:scale-90">
+            <button type="button" aria-label="העתקת הקוד" onClick={copyCode} className="grid size-12 place-items-center rounded-control bg-fg/6 transition active:scale-90">
               {copied ? <Check aria-hidden className="size-5 text-green-600" /> : <Copy aria-hidden className="size-5" />}
             </button>
-            <button type="button" aria-label="שיתוף" onClick={share} className="grid size-12 place-items-center rounded-2xl bg-accent text-accent-fg transition active:scale-90">
+            <button type="button" aria-label="שיתוף" onClick={share} className="grid size-12 place-items-center rounded-control bg-accent text-accent-fg transition active:scale-90">
               <Share2 aria-hidden className="size-5" />
             </button>
           </div>
@@ -155,7 +155,7 @@ function ProfileBody({ onClose }: { onClose: () => void }) {
               type="button"
               onClick={() => switchTrip(other.id)}
               className={clsx(
-                'flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-start text-sm transition',
+                'flex w-full items-center justify-between rounded-control border px-4 py-3 text-start text-sm transition',
                 other.id === trip.id ? 'border-accent/50 bg-accent/8 font-semibold' : 'border-line hover:bg-fg/5',
               )}
             >
@@ -178,7 +178,7 @@ function ProfileBody({ onClose }: { onClose: () => void }) {
       </Section>
 
       <Section title="חיבורים">
-        <ul className="surface divide-y divide-line rounded-3xl text-sm">
+        <ul className="surface divide-y divide-line rounded-card text-sm">
           <li className="flex items-center gap-3 px-4 py-3">
             <MapIcon aria-hidden className="size-4.5 text-muted" />
             <span className="flex-1">מפה וחיפוש</span>

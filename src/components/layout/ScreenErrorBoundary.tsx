@@ -29,7 +29,7 @@ export class ScreenErrorBoundary extends Component<Props, State> {
 
     return (
       <div role="alert" className="grid h-full min-h-80 place-items-center p-8">
-        <div className="surface max-w-xs rounded-3xl p-6 text-center">
+        <div className="surface max-w-xs rounded-card p-6 text-center">
           <p className="font-semibold">משהו השתבש במסך הזה</p>
           <p className="mt-1 text-sm text-muted">ייתכן שהחיבור לאינטרנט נקטע. נסו לטעון מחדש.</p>
           <button

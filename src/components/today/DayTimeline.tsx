@@ -29,7 +29,7 @@ export function DayTimeline({ items, placesById, nowMinutes, nextItemId }: DayTi
 
   if (items.length === 0) {
     return (
-      <div className="surface rounded-3xl p-6 text-center">
+      <div className="surface rounded-card p-6 text-center">
         <p className="font-semibold">עוד אין תוכנית ליום הזה</p>
         <p className="mt-1 text-sm text-muted">מוסיפים מקומות מהמפה ומשבצים אותם בימים</p>
         <Button className="mt-4" icon={<MapPinPlus aria-hidden className="size-4.5" />} onClick={() => navigate('/map')}>
@@ -83,7 +83,7 @@ export function DayTimeline({ items, placesById, nowMinutes, nextItemId }: DayTi
                       type="button"
                       onClick={() => ui.openPlace(place.id)}
                       className={clsx(
-                        'surface flex min-w-0 flex-1 items-center gap-3 rounded-2xl p-3 text-start transition active:scale-[0.98]',
+                        'surface flex min-w-0 flex-1 items-center gap-3 rounded-control p-3 text-start transition active:scale-[0.98]',
                         isNext && 'ring-2 ring-accent/50',
                       )}
                     >

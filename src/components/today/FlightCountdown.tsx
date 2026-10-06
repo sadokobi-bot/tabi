@@ -23,9 +23,9 @@ export function FlightCountdown({ flights }: { flights: Flight[] }) {
   )
 
   return (
-    <div className="surface flex items-center gap-3 rounded-3xl p-3 pe-4">
+    <div className="surface flex items-center gap-3 rounded-card p-3 pe-4">
       <span
-        className="grid size-11 shrink-0 place-items-center rounded-2xl text-white"
+        className="grid size-11 shrink-0 place-items-center rounded-control text-white"
         style={{ background: 'linear-gradient(135deg, #4f7cf0, #3b5bd6)' }}
       >
         <Plane aria-hidden className="size-5 -scale-x-100" />

@@ -16,7 +16,7 @@ export function PickLocationOverlay({ onConfirm, onCancel }: { onConfirm: () => 
       <motion.div
         initial={{ y: 40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="glass bottom-above-tabbar absolute inset-x-4 z-20 rounded-3xl p-4"
+        className="glass bottom-above-tabbar absolute inset-x-4 z-20 rounded-card p-4"
       >
         <p className="font-semibold">הזיזו את המפה כך שהסיכה תהיה על המקום</p>
         <p className="mt-0.5 text-sm text-muted">טיפ: אפשר גם ללחוץ לחיצה ארוכה על המפה.</p>

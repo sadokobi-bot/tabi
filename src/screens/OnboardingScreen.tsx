@@ -117,7 +117,7 @@ export function OnboardingScreen() {
                 setError(null)
               }}
               className={clsx(
-                'flex items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold transition',
+                'flex items-center justify-center gap-2 rounded-control py-3 text-sm font-semibold transition',
                 tab === value ? 'bg-accent text-accent-fg shadow-lg' : 'glass text-fg',
               )}
             >
@@ -127,7 +127,7 @@ export function OnboardingScreen() {
           ))}
         </div>
 
-        <motion.div key={tab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass mt-4 rounded-[1.75rem] p-5">
+        <motion.div key={tab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass mt-4 rounded-card p-5">
           {tab === 'create' ? (
             <form onSubmit={create} className="space-y-4" noValidate>
               <TextField label="שם הטיול" value={name} onChange={(event) => setName(event.target.value)} maxLength={40} />
@@ -150,7 +150,7 @@ export function OnboardingScreen() {
                   dir="ltr"
                 />
               </div>
-              <label className="flex cursor-pointer items-start gap-3 rounded-2xl bg-fg/5 p-3">
+              <label className="flex cursor-pointer items-start gap-3 rounded-control bg-fg/5 p-3">
                 <input
                   type="checkbox"
                   checked={withSample}

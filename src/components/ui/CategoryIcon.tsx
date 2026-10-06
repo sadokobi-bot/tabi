@@ -10,7 +10,7 @@ export function CategoryIcon({ category, className }: { category: CategoryId; cl
   return (
     <span
       aria-hidden
-      className={clsx('inline-grid shrink-0 place-items-center rounded-xl', className ?? 'size-10')}
+      className={clsx('inline-grid shrink-0 place-items-center rounded-control', className ?? 'size-10')}
       style={{ background: `color-mix(in oklab, ${config.color} 14%, transparent)`, color: config.color } as CSSProperties}
     >
       <Icon className="size-[52%]" strokeWidth={2.2} />

@@ -31,7 +31,7 @@ export function NextUpCard({ item, place, nowMinutes, eyebrow }: NextUpCardProps
   const relative = relativeLabel(item.time, nowMinutes)
 
   return (
-    <motion.article layout className="surface rounded-[1.75rem] p-4">
+    <motion.article layout className="surface rounded-card p-4">
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-2 text-xs font-semibold text-accent">
           <span className="relative flex size-2">
@@ -64,7 +64,7 @@ export function NextUpCard({ item, place, nowMinutes, eyebrow }: NextUpCardProps
         href={directionsUrl(place.location, { placeId: place.googlePlaceId })}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-4 flex h-12 items-center justify-center gap-2 rounded-2xl bg-accent text-sm font-bold text-accent-fg shadow-[0_12px_24px_-14px_var(--app-accent)] transition active:scale-[0.97]"
+        className="mt-4 flex h-12 items-center justify-center gap-2 rounded-control bg-accent text-sm font-bold text-accent-fg shadow-[0_12px_24px_-14px_var(--app-accent)] transition active:scale-[0.97]"
       >
         <Navigation aria-hidden className="size-4 -scale-x-100" />
         קח אותי לשם

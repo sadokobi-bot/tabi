@@ -34,7 +34,7 @@ export function BottomTabBar({ activeId }: BottomTabBarProps) {
     >
       <nav
         aria-label="ניווט ראשי"
-        className="glass pointer-events-auto flex h-(--tabbar-height) w-full max-w-sm gap-1 rounded-[1.75rem] p-1.5 select-none"
+        className="glass pointer-events-auto flex h-(--tabbar-height) w-full max-w-sm gap-1 rounded-card p-1.5 select-none"
       >
         {TABS.map((tab) => {
           const isActive = tab.id === activeId
@@ -56,7 +56,7 @@ export function BottomTabBar({ activeId }: BottomTabBarProps) {
                 }
               }}
               className={clsx(
-                'relative flex-1 rounded-[1.375rem] outline-none',
+                'relative flex-1 rounded-control outline-none',
                 'focus-visible:ring-2 focus-visible:ring-accent/60',
                 isActive ? 'text-fg' : 'text-muted transition-colors hover:text-fg',
               )}
@@ -66,7 +66,7 @@ export function BottomTabBar({ activeId }: BottomTabBarProps) {
                   layoutId="tabbar-active-pill"
                   aria-hidden
                   transition={PILL_SPRING}
-                  className="absolute inset-0 rounded-[1.375rem] bg-accent/12"
+                  className="absolute inset-0 rounded-control bg-accent/12"
                 />
               )}
 

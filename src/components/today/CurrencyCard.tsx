@@ -76,9 +76,9 @@ export function CurrencyCard() {
 
   // One slim row: amount on one side, the converted amount on the other, swap in the middle.
   return (
-    <div className="surface rounded-3xl p-2.5">
+    <div className="surface rounded-card p-2.5">
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2" dir="ltr">
-        <label className="flex h-12 min-w-0 items-center gap-1.5 rounded-2xl bg-fg/5 px-3.5 focus-within:ring-2 focus-within:ring-accent/40">
+        <label className="flex h-12 min-w-0 items-center gap-1.5 rounded-inner bg-fg/5 px-3.5 focus-within:ring-2 focus-within:ring-accent/40">
           <span aria-hidden className="text-base font-semibold text-muted">
             {from}
           </span>

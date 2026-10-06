@@ -78,9 +78,9 @@ export function AuthScreen() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.06 }}
-          className="glass rounded-[1.75rem] p-5"
+          className="glass rounded-card p-5"
         >
-          <div role="tablist" aria-label="סוג כניסה" className="relative mb-5 grid grid-cols-2 rounded-2xl bg-fg/6 p-1">
+          <div role="tablist" aria-label="סוג כניסה" className="relative mb-5 grid grid-cols-2 rounded-control bg-fg/6 p-1">
             {(['signIn', 'signUp'] as const).map((value) => (
               <button
                 key={value}
@@ -88,10 +88,10 @@ export function AuthScreen() {
                 role="tab"
                 aria-selected={mode === value}
                 onClick={() => switchMode(value)}
-                className={clsx('relative h-10 rounded-xl text-sm font-semibold transition-colors', mode === value ? 'text-fg' : 'text-muted')}
+                className={clsx('relative h-10 rounded-inner text-sm font-semibold transition-colors', mode === value ? 'text-fg' : 'text-muted')}
               >
                 {mode === value && (
-                  <motion.span layoutId="auth-tab" className="absolute inset-0 rounded-xl bg-card shadow-sm" transition={{ type: 'spring', stiffness: 500, damping: 40 }} />
+                  <motion.span layoutId="auth-tab" className="absolute inset-0 rounded-inner bg-card shadow-sm" transition={{ type: 'spring', stiffness: 500, damping: 40 }} />
                 )}
                 <span className="relative">{value === 'signIn' ? 'התחברות' : 'הרשמה'}</span>
               </button>
@@ -124,7 +124,7 @@ export function AuthScreen() {
                   type="button"
                   aria-label={showPassword ? 'הסתרת הסיסמה' : 'הצגת הסיסמה'}
                   onClick={() => setShowPassword((value) => !value)}
-                  className="grid size-9 place-items-center rounded-xl text-muted hover:bg-fg/6"
+                  className="grid size-9 place-items-center rounded-inner text-muted hover:bg-fg/6"
                 >
                   {showPassword ? <EyeOff aria-hidden className="size-4.5" /> : <Eye aria-hidden className="size-4.5" />}
                 </button>
@@ -143,7 +143,7 @@ export function AuthScreen() {
             )}
 
             {formError && (
-              <div role="alert" className="rounded-2xl bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+              <div role="alert" className="rounded-control bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
                 {formError}
                 {suggestSignUp && (
                   <button type="button" onClick={() => switchMode('signUp')} className="ms-1 font-semibold underline">

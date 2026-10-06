@@ -76,7 +76,7 @@ export function PlaceForm({ initial, existing, onCancel, onSaved }: PlaceFormPro
                 aria-pressed={active}
                 onClick={() => setCategory(option.id)}
                 className={clsx(
-                  'flex items-center gap-2 rounded-2xl border px-3 py-2.5 text-sm font-medium transition active:scale-95',
+                  'flex items-center gap-2 rounded-control border px-3 py-2.5 text-sm font-medium transition active:scale-95',
                   active ? 'border-transparent text-white' : 'border-line bg-card/60 hover:bg-fg/5',
                 )}
                 style={active ? { background: option.color } : undefined}

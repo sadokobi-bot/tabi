@@ -25,8 +25,8 @@ export function DayCard({ id, title, subtitle, itemIds, isToday, cityId, onCityC
     <section
       id={`day-${id}`}
       className={clsx(
-        'scroll-mt-24 rounded-3xl border p-3 transition-colors',
-        isToday ? 'border-accent/50 bg-accent/[0.06]' : 'border-line bg-card/50',
+        'scroll-mt-24 rounded-card border p-3 transition-colors',
+        isToday ? 'border-accent/35 bg-accent/[0.05]' : 'border-line bg-card/50',
         isOver && 'border-accent/60 bg-accent/[0.08]',
       )}
     >
@@ -62,7 +62,7 @@ export function DayCard({ id, title, subtitle, itemIds, isToday, cityId, onCityC
         <ol ref={setNodeRef} className="min-h-12 space-y-2">
           {children}
           {itemIds.length === 0 && (
-            <li className="grid h-12 place-items-center rounded-2xl border border-dashed border-line text-xs text-muted">
+            <li className="grid h-12 place-items-center rounded-control border border-dashed border-line text-xs text-muted">
               {emptyLabel}
             </li>
           )}

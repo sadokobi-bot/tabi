@@ -77,7 +77,7 @@ export function MapSearch({ provider, near }: MapSearchProps) {
 
   return (
     <div className="relative">
-      <div className="glass flex h-12 items-center gap-2 rounded-2xl ps-3.5 pe-2">
+      <div className="glass flex h-12 items-center gap-2 rounded-card ps-3.5 pe-2">
         {status === 'loading' ? (
           <LoaderCircle aria-hidden className="size-5 shrink-0 animate-spin text-muted" />
         ) : (
@@ -113,7 +113,7 @@ export function MapSearch({ provider, near }: MapSearchProps) {
       </div>
 
       {open && (
-        <div className="glass absolute inset-x-0 top-14 z-20 max-h-[50dvh] overflow-y-auto rounded-2xl p-1.5" role="listbox">
+        <div className="glass absolute inset-x-0 top-14 z-20 max-h-[50dvh] overflow-y-auto rounded-card p-1.5" role="listbox">
           {results.map((suggestion) => (
             <button
               key={suggestion.key}
@@ -122,7 +122,7 @@ export function MapSearch({ provider, near }: MapSearchProps) {
               aria-selected={false}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => void choose(suggestion)}
-              className="flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-start hover:bg-fg/6"
+              className="flex w-full items-start gap-3 rounded-control px-3 py-2.5 text-start hover:bg-fg/6"
             >
               <MapPin aria-hidden className="mt-0.5 size-4 shrink-0 text-accent" />
               <span className="min-w-0">

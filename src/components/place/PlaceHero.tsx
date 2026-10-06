@@ -16,7 +16,7 @@ export function PlaceHero({ category, photos, loading, onClose }: PlaceHeroProps
   const Icon = config.icon
 
   return (
-    <div className="relative mx-3 overflow-hidden rounded-3xl">
+    <div className="relative mx-3 overflow-hidden rounded-card">
       {loading ? (
         <div className="h-48 animate-pulse bg-fg/8" />
       ) : photos.length > 0 ? (

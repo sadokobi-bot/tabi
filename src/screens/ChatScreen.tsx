@@ -124,13 +124,13 @@ export default function ChatScreen() {
           {others.length ? [user.username, ...others].join(' · ') : 'עדיין אין שותפים לטיול'}
         </p>
         {mode === 'cloud' && !online && (
-          <p role="status" className="mt-3 flex items-start gap-2 rounded-2xl bg-amber-500/12 px-3 py-2 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
+          <p role="status" className="mt-3 flex items-start gap-2 rounded-control bg-amber-500/12 px-3 py-2 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
             <WifiOff aria-hidden className="mt-0.5 size-3.5 shrink-0" />
             אין חיבור כרגע. אפשר לכתוב כרגיל: ההודעות יישלחו לבד כשהחיבור יחזור.
           </p>
         )}
         {chatError && (
-          <p role="alert" className="mt-3 rounded-2xl bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300">
+          <p role="alert" className="mt-3 rounded-control bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300">
             {chatError}
           </p>
         )}
@@ -181,8 +181,8 @@ export default function ChatScreen() {
                   )}
                   <div
                     className={clsx(
-                      'max-w-[78%] rounded-3xl px-3.5 py-2 shadow-sm',
-                      mine ? 'rounded-ee-lg bg-accent text-accent-fg' : 'surface rounded-es-lg',
+                      'max-w-[78%] rounded-card px-3.5 py-2 shadow-sm',
+                      mine ? 'rounded-ee-sm bg-accent text-accent-fg' : 'surface rounded-es-sm',
                     )}
                   >
                     {!mine && !sameAuthor && <p className="mb-0.5 text-xs font-semibold text-accent">{message.authorName}</p>}
@@ -215,7 +215,7 @@ export default function ChatScreen() {
             : 'calc(var(--tabbar-height) + var(--tabbar-bottom) + 0.75rem)',
         }}
       >
-        <div className="glass flex items-end gap-2 rounded-[1.6rem] p-1.5 ps-4">
+        <div className="glass flex items-end gap-2 rounded-card p-1.5 ps-4">
           <textarea
             ref={inputRef}
             value={text}
@@ -237,7 +237,7 @@ export default function ChatScreen() {
             aria-label="שליחה"
             // Keep focus in the input so the keyboard stays open between messages.
             onPointerDown={(event) => event.preventDefault()}
-            className="grid size-10 shrink-0 place-items-center rounded-full bg-accent text-accent-fg transition active:scale-90 disabled:opacity-40"
+            className="grid size-10 shrink-0 place-items-center rounded-control bg-accent text-accent-fg transition active:scale-90 disabled:opacity-40"
           >
             <SendHorizontal aria-hidden className="size-[18px] -scale-x-100" />
           </button>

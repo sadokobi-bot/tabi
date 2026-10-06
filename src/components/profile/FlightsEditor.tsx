@@ -93,7 +93,7 @@ export function FlightsEditor({ flights }: { flights: Flight[] }) {
               aria-checked={draft.tz === zone.id}
               onClick={() => set({ tz: zone.id })}
               className={
-                'flex-1 rounded-xl py-2 text-sm font-medium transition ' +
+                'flex-1 rounded-inner py-2 text-sm font-medium transition ' +
                 (draft.tz === zone.id ? 'bg-accent text-accent-fg' : 'bg-fg/6 text-fg')
               }
             >
@@ -117,8 +117,8 @@ export function FlightsEditor({ flights }: { flights: Flight[] }) {
   return (
     <div className="space-y-2">
       {sorted.map((flight) => (
-        <div key={flight.id} className="surface flex items-center gap-3 rounded-2xl p-3">
-          <span className="grid size-10 place-items-center rounded-xl bg-[#3e5c9a]/12 text-[#3e5c9a]">
+        <div key={flight.id} className="surface flex items-center gap-3 rounded-control p-3">
+          <span className="grid size-10 place-items-center rounded-control bg-[#3e5c9a]/12 text-[#3e5c9a]">
             <Plane aria-hidden className="size-5 -scale-x-100" />
           </span>
           <div className="min-w-0 flex-1">

@@ -60,7 +60,7 @@ export function TodayHero({ trip, timeline, now, placeName, location }: TodayHer
   return (
     <section
       aria-label="היום בטיול"
-      className="relative overflow-hidden rounded-[2rem] p-5 text-white shadow-[0_24px_50px_-28px_rgb(30_50_120/0.7)] transition-[background] duration-700"
+      className="relative isolate overflow-hidden rounded-card p-5 text-white shadow-[0_16px_36px_-22px_rgb(30_50_120/0.6)] ring-1 ring-white/10 ring-inset transition-[background] duration-700"
       style={{ background: sky.background }}
     >
       {/* sun / moon glow */}
@@ -80,7 +80,7 @@ export function TodayHero({ trip, timeline, now, placeName, location }: TodayHer
 
       <div className="relative mt-1 flex items-end justify-between gap-3">
         <p className="text-[4rem] leading-none font-semibold tracking-tighter tabular-nums" dir="ltr">
-          {weather ? `${Math.round(weather.temperature)}°` : <span className="inline-block h-14 w-24 animate-pulse rounded-2xl bg-white/20 align-bottom" />}
+          {weather ? `${Math.round(weather.temperature)}°` : <span className="inline-block h-14 w-24 animate-pulse rounded-control bg-white/20 align-bottom" />}
         </p>
         {weather && conditions && (
           <div className="mb-1.5 text-end text-sm">
