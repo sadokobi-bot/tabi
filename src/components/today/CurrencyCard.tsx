@@ -74,56 +74,60 @@ export function CurrencyCard() {
     setDirection((current) => (current === 'jpy-to-ils' ? 'ils-to-jpy' : 'jpy-to-ils'))
   }
 
+  // One slim row: amount on one side, the converted amount on the other, swap in the middle.
   return (
-    <div className="surface flex min-h-32 min-w-0 flex-col justify-between rounded-3xl p-4">
-      <div className="flex items-center justify-between gap-2">
-        <p className="truncate text-xs font-medium text-muted">המרת מטבע</p>
+    <div className="surface rounded-3xl p-2.5">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2" dir="ltr">
+        <label className="flex h-12 min-w-0 items-center gap-1.5 rounded-2xl bg-fg/5 px-3.5 focus-within:ring-2 focus-within:ring-accent/40">
+          <span aria-hidden className="text-base font-semibold text-muted">
+            {from}
+          </span>
+          <input
+            type="text"
+            inputMode="decimal"
+            enterKeyHint="done"
+            value={amount}
+            onChange={(event) => setAmount(sanitize(event.target.value))}
+            onFocus={(event) => event.target.select()}
+            aria-label={direction === 'jpy-to-ils' ? 'סכום בין' : 'סכום בשקלים'}
+            className="w-full min-w-0 bg-transparent text-lg font-semibold tabular-nums outline-none"
+          />
+        </label>
+
         <button
           type="button"
           onClick={swap}
           aria-label={direction === 'jpy-to-ils' ? 'החלפה להמרה משקלים לין' : 'החלפה להמרה מין לשקלים'}
-          className="-m-1.5 grid size-8 shrink-0 place-items-center rounded-full text-accent transition hover:bg-fg/5 active:scale-90"
+          className="grid size-10 place-items-center rounded-full bg-accent/12 text-accent transition hover:bg-accent/18 active:scale-90 active:rotate-180"
         >
-          <ArrowLeftRight aria-hidden className="size-4" />
+          <ArrowLeftRight aria-hidden className="size-[18px]" />
         </button>
+
+        <p className="flex h-12 min-w-0 items-center gap-1.5 truncate px-2 text-lg font-bold tabular-nums" aria-live="polite">
+          <span className="text-base font-semibold text-muted">{to}</span>
+          {converted == null ? (
+            failed ? (
+              <span className="text-sm font-medium text-muted">—</span>
+            ) : (
+              <span aria-hidden className="inline-block h-5 w-16 animate-pulse rounded-lg bg-fg/8" />
+            )
+          ) : (
+            numberFormat(direction === 'jpy-to-ils' ? 2 : 0).format(converted)
+          )}
+        </p>
       </div>
 
-      <label className="mt-1 flex min-w-0 items-baseline gap-1 rounded-xl bg-fg/5 px-2.5 py-1.5 focus-within:ring-2 focus-within:ring-accent/40" dir="ltr">
-        <span aria-hidden className="text-sm font-semibold text-muted">
-          {from}
-        </span>
-        <input
-          type="text"
-          inputMode="decimal"
-          enterKeyHint="done"
-          value={amount}
-          onChange={(event) => setAmount(sanitize(event.target.value))}
-          onFocus={(event) => event.target.select()}
-          aria-label={direction === 'jpy-to-ils' ? 'סכום בין' : 'סכום בשקלים'}
-          className="w-full min-w-0 bg-transparent text-base font-semibold tabular-nums outline-none"
-        />
-      </label>
-
-      <p className="mt-2 truncate font-display text-[1.7rem] leading-none font-bold tabular-nums" dir="ltr" aria-live="polite">
-        {converted == null ? (
-          failed ? (
-            <span className="text-sm font-medium text-muted">אין שער כרגע</span>
-          ) : (
-            <span aria-hidden className="inline-block h-6 w-20 animate-pulse rounded-lg bg-fg/8 align-middle" />
-          )
-        ) : (
+      <p className="mt-1.5 px-1.5 text-[11px] text-muted">
+        {rate ? (
           <>
-            <span className="me-0.5 text-base font-semibold text-muted">{to}</span>
-            {numberFormat(direction === 'jpy-to-ils' ? 2 : 0).format(converted)}
+            שער חי <span dir="ltr">₪1 = ¥{numberFormat(2).format(rate.jpyPerIls)}</span> · עודכן {rateDate}
           </>
+        ) : failed ? (
+          'אין חיבור לשער כרגע'
+        ) : (
+          'טוענים שער…'
         )}
       </p>
-
-      {rate && (
-        <p className="mt-1.5 truncate text-[11px] text-muted">
-          <span dir="ltr">₪1 = ¥{numberFormat(2).format(rate.jpyPerIls)}</span> · עדכון {rateDate}
-        </p>
-      )}
     </div>
   )
 }

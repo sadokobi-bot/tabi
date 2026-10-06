@@ -1,4 +1,4 @@
-import type { ChatMessage, ChecklistItem, DayPlan, Place, Trip } from '@/data/types'
+import type { ChatMessage, DayPlan, Place, Trip } from '@/data/types'
 import { newId, newInviteCode, normalizeInviteCode } from '@/lib/ids'
 import { AppError, type Backend, type SessionUser } from './types'
 import { checkUsername } from './username'
@@ -70,7 +70,6 @@ const invitesKey = 'invites'
 const placesKey = (tripId: string) => `places:${tripId}`
 const planKey = (tripId: string) => `plan:${tripId}`
 const messagesKey = (tripId: string) => `messages:${tripId}`
-const checklistKey = (tripId: string) => `checklist:${tripId}`
 /** Keeps localStorage small: only the latest messages are stored. */
 const MESSAGE_LIMIT = 300
 
@@ -216,24 +215,6 @@ export function createLocalBackend(): Backend {
       const notify = () => callback(read<ChatMessage[]>(messagesKey(tripId), []))
       notify()
       return subscribe(messagesKey(tripId), notify)
-    },
-
-    watchChecklist(tripId, callback) {
-      const notify = () =>
-        callback(Object.values(read<Record<string, ChecklistItem>>(checklistKey(tripId), {})).sort((a, b) => a.createdAt - b.createdAt))
-      notify()
-      return subscribe(checklistKey(tripId), notify)
-    },
-
-    async saveChecklistItems(tripId, items) {
-      const current = read<Record<string, ChecklistItem>>(checklistKey(tripId), {})
-      write(checklistKey(tripId), { ...current, ...Object.fromEntries(items.map((item) => [item.id, item])) })
-    },
-
-    async deleteChecklistItem(tripId, itemId) {
-      const current = read<Record<string, ChecklistItem>>(checklistKey(tripId), {})
-      delete current[itemId]
-      write(checklistKey(tripId), current)
     },
 
     async sendMessage(tripId, message) {

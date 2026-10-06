@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import clsx from 'clsx'
 import { MapPinPlus, Moon, Sun, Sunrise, Clock4 } from 'lucide-react'
 import { useNavigate } from 'react-router'
@@ -38,6 +39,13 @@ export function DayTimeline({ items, placesById, nowMinutes, nextItemId }: DayTi
     )
   }
 
+  // "Now" line: drawn before the first activity that hasn't started yet (or after the last one).
+  const timed = nowMinutes == null ? [] : items.filter((item) => parseHm(item.time) != null)
+  const upcoming = timed.find((item) => (parseHm(item.time) ?? 0) > (nowMinutes ?? 0))
+  const nowBeforeId = upcoming?.id ?? null
+  const nowAfterId = !upcoming && timed.length ? timed[timed.length - 1]!.id : null
+  const nowLine = nowMinutes != null && <NowLine minutes={nowMinutes} />
+
   return (
     <div className="space-y-6">
       {SECTIONS.map((section) => {
@@ -58,7 +66,9 @@ export function DayTimeline({ items, placesById, nowMinutes, nextItemId }: DayTi
                 const past = nowMinutes != null && minutes != null && minutes + 60 < nowMinutes
                 const isNext = item.id === nextItemId
                 return (
-                  <li key={item.id} className={clsx('relative flex items-center gap-3', past && 'opacity-55')}>
+                  <Fragment key={item.id}>
+                  {item.id === nowBeforeId && nowLine}
+                  <li className={clsx('relative flex items-center gap-3', past && 'opacity-55')}>
                     <span className="w-11 shrink-0 text-end text-sm font-semibold tabular-nums" dir="ltr">
                       {item.time ?? '–'}
                     </span>
@@ -86,6 +96,8 @@ export function DayTimeline({ items, placesById, nowMinutes, nextItemId }: DayTi
                       </span>
                     </button>
                   </li>
+                  {item.id === nowAfterId && nowLine}
+                  </Fragment>
                 )
               })}
             </ol>
@@ -93,5 +105,19 @@ export function DayTimeline({ items, placesById, nowMinutes, nextItemId }: DayTi
         )
       })}
     </div>
+  )
+}
+
+/** A red "you are here" rule across the timeline. */
+function NowLine({ minutes }: { minutes: number }) {
+  const label = `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
+  return (
+    <li aria-label={`עכשיו ${label}`} className="relative flex items-center gap-3">
+      <span className="w-11 shrink-0 text-end text-xs font-bold text-accent tabular-nums" dir="ltr">
+        {label}
+      </span>
+      <span aria-hidden className="relative z-[1] size-3 shrink-0 rounded-full bg-accent ring-4 ring-accent/20" />
+      <span aria-hidden className="h-0.5 flex-1 rounded-full bg-linear-to-l from-accent to-accent/0" />
+    </li>
   )
 }

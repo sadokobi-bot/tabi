@@ -120,13 +120,6 @@ export function utcToZonedParts(iso: string, timeZone: string): { date: string; 
   return { date: isoDateInTz(date, timeZone), time: `${hh}:${mm}` }
 }
 
-const WEEKDAY_KANJI = ['日', '月', '火', '水', '木', '金', '土']
-
-/** Japanese weekday of an ISO date, e.g. "火曜日" (Tuesday). */
-export function weekdayKanji(iso: string): string {
-  return `${WEEKDAY_KANJI[new Date(`${iso}T12:00:00Z`).getUTCDay()]}曜日`
-}
-
 /** Greeting by local hour of the device. */
 export function greetingFor(date: Date): string {
   const hour = date.getHours()

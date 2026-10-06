@@ -1,35 +1,35 @@
 @import "tailwindcss";
 
 /* ──────────────────────────────────────────────────────────────────────────
-   Design tokens: a Japanese travel notebook.
-   Washi paper, sumi ink, a shu-vermilion hanko stamp and ai-indigo for "travel" details
-   (tickets, clocks). Runtime CSS variables so light/dark switches without rebuilding classes.
+   Design tokens. Japanese-inspired palette:
+   washi-paper background, sumi-ink text, shu (torii vermilion) accent.
+   Runtime CSS variables so light/dark switches without rebuilding classes.
    ────────────────────────────────────────────────────────────────────────── */
 :root {
   color-scheme: light dark;
 
-  --app-bg: #f3eee4;
-  --app-fg: #1d1b18;
-  --app-muted: #776f64;
-  --app-card: #fffdf8;
-  --app-line: rgb(29 27 24 / 0.1);
-  --app-accent: #d4442a;
-  --app-accent-fg: #fffaf2;
-  --app-ai: #2c4a7c;
-  --app-matcha: #5d7f3f;
+  --app-bg: #f6f4f1;
+  --app-fg: #15171b;
+  --app-muted: #6b6f76;
+  --app-card: #ffffff;
+  --app-line: rgb(21 23 27 / 0.08);
+  --app-accent: #e2553a;
+  --app-accent-fg: #ffffff;
 
-  --surface-shadow: 0 1px 0 rgb(29 27 24 / 0.04), 0 10px 24px -20px rgb(29 27 24 / 0.35);
+  --surface-shadow: 0 1px 2px rgb(21 23 27 / 0.04), 0 12px 32px -18px rgb(21 23 27 / 0.18);
 
-  /* Glass (floating layers: tab bar, map overlays, bottom sheets): frosted paper, not candy glass */
-  --glass-bg: rgb(251 248 241 / 0.82);
-  --glass-bg-fallback: rgb(251 248 241 / 0.98);
-  --glass-border: rgb(29 27 24 / 0.08);
-  --glass-shadow: 0 14px 36px -18px rgb(29 27 24 / 0.4), 0 2px 6px -2px rgb(29 27 24 / 0.08);
-  --glass-highlight: inset 0 1px 0 rgb(255 255 255 / 0.6);
-  --glass-blur: 18px;
+  /* Glass (floating layers: tab bar, map overlays, bottom sheets) */
+  --glass-bg: rgb(255 255 255 / 0.62);
+  --glass-bg-fallback: rgb(252 251 249 / 0.97);
+  --glass-border: rgb(255 255 255 / 0.7);
+  --glass-shadow: 0 12px 40px -14px rgb(21 23 27 / 0.28), 0 2px 8px -2px rgb(21 23 27 / 0.08);
+  --glass-highlight: inset 0 1px 0 rgb(255 255 255 / 0.75);
+  --glass-blur: 24px;
 
-  /* Paper grain strength (see the body background) */
-  --grain-opacity: 0.5;
+  /* Ambient background blobs (sakura, ai-indigo, shu) */
+  --blob-sakura: rgb(255 172 194 / 0.55);
+  --blob-ai: rgb(116 146 224 / 0.3);
+  --blob-shu: rgb(226 85 58 / 0.18);
 
   /* Floating tab bar geometry, shared by the bar itself and by screen padding */
   --tabbar-height: 4.25rem;
@@ -38,25 +38,24 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --app-bg: #14120f;
-    --app-fg: #f1ebe0;
-    --app-muted: #a59c8f;
-    --app-card: #1e1b17;
-    --app-line: rgb(241 235 224 / 0.09);
-    --app-accent: #ef6142;
-    --app-accent-fg: #1a0e0a;
-    --app-ai: #93abd8;
-    --app-matcha: #9cbb7c;
+    --app-bg: #0b0c0f;
+    --app-fg: #f3f3f4;
+    --app-muted: #9ba0a8;
+    --app-card: #16181d;
+    --app-line: rgb(255 255 255 / 0.07);
+    --app-accent: #ff6a4d;
 
-    --surface-shadow: 0 1px 0 rgb(0 0 0 / 0.35);
+    --surface-shadow: 0 1px 2px rgb(0 0 0 / 0.4);
 
-    --glass-bg: rgb(30 27 23 / 0.8);
-    --glass-bg-fallback: rgb(30 27 23 / 0.98);
-    --glass-border: rgb(241 235 224 / 0.08);
-    --glass-shadow: 0 14px 36px -16px rgb(0 0 0 / 0.75), 0 2px 8px -2px rgb(0 0 0 / 0.4);
-    --glass-highlight: inset 0 1px 0 rgb(255 255 255 / 0.04);
+    --glass-bg: rgb(26 28 33 / 0.55);
+    --glass-bg-fallback: rgb(26 28 33 / 0.97);
+    --glass-border: rgb(255 255 255 / 0.09);
+    --glass-shadow: 0 12px 40px -14px rgb(0 0 0 / 0.7), 0 2px 8px -2px rgb(0 0 0 / 0.4);
+    --glass-highlight: inset 0 1px 0 rgb(255 255 255 / 0.06);
 
-    --grain-opacity: 0.35;
+    --blob-sakura: rgb(255 110 150 / 0.14);
+    --blob-ai: rgb(96 124 230 / 0.18);
+    --blob-shu: rgb(255 106 77 / 0.1);
   }
 }
 
@@ -72,10 +71,6 @@
   /* Inter has no Hebrew glyphs, so Latin text renders in Inter and Hebrew falls through to Heebo.
      Japanese place names fall back to the OS Japanese font. */
   --font-sans: "Inter", "Heebo", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
-  /* Editorial serif for headings and big numbers: the "printed travel guide" voice. */
-  --font-display: "Frank Ruhl Libre", "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", Georgia, serif;
-  /* Decorative kanji (day stamps, city names). Only the glyphs listed in index.html are loaded. */
-  --font-jp: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
 
   --animate-fade-in-delayed: fade-in 0.25s ease-out 0.15s both;
 
@@ -99,8 +94,6 @@
   --color-line: var(--app-line);
   --color-accent: var(--app-accent);
   --color-accent-fg: var(--app-accent-fg);
-  --color-ai: var(--app-ai);
-  --color-matcha: var(--app-matcha);
 }
 
 /* ── Custom utilities ───────────────────────────────────────────────────── */
@@ -172,25 +165,6 @@
   ::selection {
     background-color: color-mix(in oklab, var(--app-accent) 28%, transparent);
   }
-
-  h1 {
-    font-family: var(--font-display);
-    letter-spacing: -0.01em;
-  }
-}
-
-/* Washi paper fibre: a tiny tiled SVG noise, multiplied into the background (no image request). */
-@utility paper-grain {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.38 0 0 0 0 0.28 0 0 0 0.09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  opacity: var(--grain-opacity);
-}
-
-/* Perforated ticket edge (boarding pass, train ticket cards). */
-@utility perforation {
-  background-image: radial-gradient(circle, var(--app-bg) 3px, transparent 3.5px);
-  background-size: 12px 12px;
-  background-position: center;
-  background-repeat: repeat-x;
 }
 
 /* ── Map pins (shared by the Google and MapLibre engines) ─────────────────── */

@@ -22,53 +22,39 @@ export function FlightCountdown({ flights }: { flights: Flight[] }) {
     new Date(next.departAt),
   )
 
-  // A paper boarding pass: route on the main part, the countdown on the tear-off stub.
   return (
-    <div className="surface relative overflow-hidden rounded-3xl" dir="ltr">
-      <span aria-hidden className="absolute inset-y-0 left-0 w-1.5 bg-ai" />
-      <div className="flex items-end justify-between gap-3 px-5 pt-4 pb-3">
-        <div>
-          <p className="text-[10px] font-semibold tracking-[0.18em] text-muted uppercase">From</p>
-          <p className="font-display text-[2rem] leading-none font-black">{next.from || '—'}</p>
-        </div>
-        <div className="mb-2 flex min-w-0 flex-1 items-center gap-2 text-ai">
-          <span className="h-px flex-1 border-t border-dashed border-current opacity-50" />
-          <Plane aria-hidden className="size-5 shrink-0 rotate-45" />
-          <span className="h-px flex-1 border-t border-dashed border-current opacity-50" />
-        </div>
-        <div className="text-right">
-          <p className="text-[10px] font-semibold tracking-[0.18em] text-muted uppercase">To</p>
-          <p className="font-display text-[2rem] leading-none font-black">{next.to || '—'}</p>
-        </div>
-      </div>
-
-      {/* tear line with punched notches */}
-      <div className="relative h-3">
-        <span aria-hidden className="absolute -left-2 top-0 size-3 rounded-full bg-bg" />
-        <span aria-hidden className="absolute -right-2 top-0 size-3 rounded-full bg-bg" />
-        <span aria-hidden className="absolute inset-x-4 top-1/2 border-t-2 border-dotted border-line" />
-      </div>
-
-      <div className="flex items-center justify-between gap-3 px-5 pt-2 pb-4" dir="rtl">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">{next.label}</p>
-          <p className="truncate text-xs text-muted">
-            {next.flightNo ? `${next.flightNo} · ` : ''}
-            {departure}
-          </p>
-        </div>
-        <p className="shrink-0 font-display leading-none font-bold tabular-nums text-ai" dir="ltr" aria-live="off">
-          {days > 0 && (
-            <span className="text-[1.6rem]">
-              {days}
-              <span className="ms-0.5 text-sm font-semibold opacity-75">d</span>{' '}
+    <div className="surface flex items-center gap-3 rounded-3xl p-3 pe-4">
+      <span
+        className="grid size-11 shrink-0 place-items-center rounded-2xl text-white"
+        style={{ background: 'linear-gradient(135deg, #4f7cf0, #3b5bd6)' }}
+      >
+        <Plane aria-hidden className="size-5 -scale-x-100" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold">
+          {next.label}
+          {(next.from || next.to) && (
+            <span dir="ltr" className="mx-1.5 inline-block text-xs font-medium text-muted">
+              {next.from} → {next.to}
             </span>
           )}
-          <span className={days > 0 ? 'text-base' : 'text-[1.6rem]'}>
-            {pad(hours)}:{pad(minutes)}:{pad(seconds)}
-          </span>
+        </p>
+        <p className="truncate text-xs text-muted">
+          {next.flightNo ? `${next.flightNo} · ` : ''}
+          {departure}
         </p>
       </div>
+      <p className="shrink-0 text-end leading-none font-bold tabular-nums" dir="ltr" aria-live="off">
+        {days > 0 && (
+          <span className="block text-xl" dir="rtl">
+            {days}
+            <span className="ms-0.5 text-xs font-semibold text-muted">{days === 1 ? 'יום' : 'ימים'}</span>
+          </span>
+        )}
+        <span className={days > 0 ? 'mt-1 block text-xs font-semibold text-muted' : 'text-xl'}>
+          {pad(hours)}:{pad(minutes)}:{pad(seconds)}
+        </span>
+      </p>
     </div>
   )
 }

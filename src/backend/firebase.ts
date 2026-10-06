@@ -28,7 +28,7 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { firebaseConfig } from '@/config/env'
-import type { ChatMessage, ChecklistItem, DayPlan, Place, Trip } from '@/data/types'
+import type { ChatMessage, DayPlan, Place, Trip } from '@/data/types'
 import { newInviteCode, normalizeInviteCode } from '@/lib/ids'
 import { AppError, type Backend, type ErrorCode, type SessionUser } from './types'
 import { checkUsername, emailToUsername, usernameToEmail } from './username'
@@ -40,7 +40,6 @@ import { checkUsername, emailToUsername, usernameToEmail } from './username'
  *   trips/{tripId}                  Trip (members only)
  *   trips/{tripId}/places/{placeId} Place
  *   trips/{tripId}/meta/plan        { days: DayPlan }
- *   trips/{tripId}/meta/checklist   { items: { [id]: ChecklistItem } }
  *   trips/{tripId}/messages/{id}    ChatMessage (members only; create-only)
  *   invites/{code}                  { tripId }  (get by code only, never listable)
  */
@@ -91,7 +90,6 @@ export function createFirebaseBackend(): Backend {
 
   const tripRef = (tripId: string) => doc(db, 'trips', tripId)
   const planRef = (tripId: string) => doc(db, 'trips', tripId, 'meta', 'plan')
-  const checklistRef = (tripId: string) => doc(db, 'trips', tripId, 'meta', 'checklist')
   const placeRef = (tripId: string, placeId: string) => doc(db, 'trips', tripId, 'places', placeId)
 
   const normalizeTrip = (id: string, data: Record<string, unknown>): Trip => ({
@@ -281,35 +279,6 @@ export function createFirebaseBackend(): Backend {
     async sendMessage(tripId, { id, ...message }) {
       try {
         await setDoc(doc(db, 'trips', tripId, 'messages', id), message)
-      } catch (error) {
-        throw toAppError(error)
-      }
-    },
-
-    watchChecklist(tripId, callback, onError) {
-      return onSnapshot(
-        checklistRef(tripId),
-        (snapshot) => {
-          const items = (snapshot.data()?.items ?? {}) as Record<string, Omit<ChecklistItem, 'id'>>
-          callback(Object.entries(items).map(([id, item]) => ({ ...item, id })).sort((a, b) => a.createdAt - b.createdAt))
-        },
-        (error) => onError(toAppError(error)),
-      )
-    },
-
-    async saveChecklistItems(tripId, items) {
-      try {
-        // merge: each item lives under its own key, so concurrent edits of different items both survive.
-        const entries = Object.fromEntries(items.map(({ id, ...item }) => [id, item]))
-        await setDoc(checklistRef(tripId), { items: entries }, { merge: true })
-      } catch (error) {
-        throw toAppError(error)
-      }
-    },
-
-    async deleteChecklistItem(tripId, itemId) {
-      try {
-        await updateDoc(checklistRef(tripId), new FieldPath('items', itemId), deleteField())
       } catch (error) {
         throw toAppError(error)
       }

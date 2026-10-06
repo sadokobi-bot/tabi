@@ -40,11 +40,7 @@ interface UiState {
   toast: Toast | null
   /** The chat input is focused: the tab bar steps aside so the keyboard sits right under the input. */
   composing: boolean
-  /** Open travel tool sheet (phrasebook, checklist, emergency), if any. */
-  tool: ToolId | null
 }
-
-export type ToolId = 'phrases' | 'checklist' | 'emergency'
 
 export const useUi = create<UiState>(() => ({
   selection: null,
@@ -53,7 +49,6 @@ export const useUi = create<UiState>(() => ({
   profileOpen: false,
   toast: null,
   composing: false,
-  tool: null,
 }))
 
 let nonce = 0
@@ -67,6 +62,5 @@ export const ui = {
   setPicking: (pickingLocation: boolean) => useUi.setState({ pickingLocation, ...(pickingLocation ? { selection: null } : {}) }),
   setProfileOpen: (profileOpen: boolean) => useUi.setState({ profileOpen }),
   setComposing: (composing: boolean) => useUi.setState({ composing }),
-  openTool: (tool: ToolId | null) => useUi.setState({ tool }),
   toast: (message: string, tone: Toast['tone'] = 'info') => useUi.setState({ toast: { id: ++nonce, message, tone } }),
 }
