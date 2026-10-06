@@ -11,10 +11,11 @@
     <meta name="theme-color" content="#f6f4f1" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0b0c0f" media="(prefers-color-scheme: dark)" />
 
-    <!-- Standalone (home-screen) mode on iOS: content draws under the status bar; safe areas handled in CSS -->
+    <!-- Home-screen mode on iOS: an opaque status bar. With black-translucent, iOS 26 sizes the web view
+         one status bar short and leaves a dead band at the bottom (WebKit bug 301108). -->
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Tabi" />
 
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
