@@ -25,15 +25,22 @@ function FieldShell({ id, label, hint, error, trailing, children }: FieldShellPr
         {trailing && <div className="absolute inset-y-0 left-2 flex items-center">{trailing}</div>}
       </div>
       {error ? (
-        <p role="alert" className="mt-1.5 text-xs font-medium text-red-600 dark:text-red-400">
+        <p id={`${id}-note`} role="alert" className="mt-1.5 text-xs font-medium text-red-600 dark:text-red-400">
           {error}
         </p>
       ) : (
-        hint && <p className="mt-1.5 text-xs text-muted">{hint}</p>
+        hint && (
+          <p id={`${id}-note`} className="mt-1.5 text-xs text-muted">
+            {hint}
+          </p>
+        )
       )}
     </div>
   )
 }
+
+/** Screen readers announce the hint or error together with the field. */
+const noteId = (id: string, hint?: string, error?: string | null) => (error || hint ? `${id}-note` : undefined)
 
 interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string
@@ -50,6 +57,7 @@ export function TextField({ label, hint, error, trailing, className, id, ...rest
       <input
         id={inputId}
         aria-invalid={error ? true : undefined}
+        aria-describedby={noteId(inputId, hint, error)}
         className={clsx(CONTROL, 'h-12', trailing && 'pl-12', className)}
         {...rest}
       />
@@ -68,7 +76,13 @@ export function TextAreaField({ label, hint, error, className, id, ...rest }: Te
   const inputId = id ?? autoId
   return (
     <FieldShell id={inputId} label={label} hint={hint} error={error}>
-      <textarea id={inputId} className={clsx(CONTROL, 'min-h-24 resize-y py-3', className)} {...rest} />
+      <textarea
+        id={inputId}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={noteId(inputId, hint, error)}
+        className={clsx(CONTROL, 'min-h-24 resize-y py-3', className)}
+        {...rest}
+      />
     </FieldShell>
   )
 }

@@ -2,6 +2,9 @@ import { useEffect, useRef, type ReactNode } from 'react'
 import { AnimatePresence, motion, useDragControls } from 'motion/react'
 import { useLatest } from '@/hooks/useLatest'
 
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
 interface BottomSheetProps {
   open: boolean
   onClose: () => void
@@ -22,14 +25,31 @@ export function BottomSheet({ open, onClose, label, children }: BottomSheetProps
 
   // Only on opening: re-running on every render (e.g. a new inline onClose) would pull focus out of
   // a text field inside the sheet after each keystroke and close the phone keyboard.
+  // Like a modal dialog: Tab stays inside the sheet, and closing returns focus to what opened it.
   useEffect(() => {
     if (!open) return
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onCloseRef.current()
+      const sheet = sheetRef.current
+      if (event.key !== 'Tab' || !sheet) return
+      const focusables = [...sheet.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.getClientRects().length > 0)
+      if (focusables.length === 0) return
+      const first = focusables[0]!
+      const last = focusables[focusables.length - 1]!
+      const active = document.activeElement
+      if (!sheet.contains(active) || (event.shiftKey ? active === first || active === sheet : active === last)) {
+        event.preventDefault()
+        ;(event.shiftKey ? last : first).focus()
+      }
     }
     window.addEventListener('keydown', onKeyDown)
     sheetRef.current?.focus({ preventScroll: true })
-    return () => window.removeEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      const active = document.activeElement
+      if (opener?.isConnected && (active === document.body || sheetRef.current?.contains(active))) opener.focus({ preventScroll: true })
+    }
   }, [open, onCloseRef])
 
   return (
