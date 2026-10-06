@@ -3,6 +3,7 @@ import clsx from 'clsx'
 import { GripVertical, X } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { ClosedNote } from '@/components/place/ClosedNote'
 import { CategoryIcon } from '@/components/ui/CategoryIcon'
 import { actions } from '@/data/actions'
 import type { ItineraryItem, Place } from '@/data/types'
@@ -33,6 +34,7 @@ export function RowContent({ place, date, item, handle, lifted = false }: RowCon
       <CategoryIcon category={place.category} className="size-9" />
       <button type="button" onClick={() => ui.openPlace(place.id)} className="min-w-0 flex-1 py-1.5 text-start">
         <span className="block truncate text-[15px] font-medium">{place.name}</span>
+        {date && !lifted && <ClosedNote place={place} date={date} time={item?.time} />}
       </button>
 
       {lifted && item?.time && (

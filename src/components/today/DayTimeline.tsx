@@ -2,6 +2,7 @@ import { Fragment } from 'react'
 import clsx from 'clsx'
 import { MapPinPlus, Moon, Sun, Sunrise, Clock4 } from 'lucide-react'
 import { useNavigate } from 'react-router'
+import { ClosedNote } from '@/components/place/ClosedNote'
 import { CategoryIcon } from '@/components/ui/CategoryIcon'
 import { Button } from '@/components/ui/Button'
 import type { ItineraryItem, Place } from '@/data/types'
@@ -9,6 +10,8 @@ import { parseHm } from '@/lib/dates'
 import { ui } from '@/store/ui'
 
 interface DayTimelineProps {
+  /** The day shown (YYYY-MM-DD), for opening-hours warnings. */
+  date: string
   items: ItineraryItem[]
   placesById: Record<string, Place>
   /** Minutes since midnight in Japan when showing today; null for other days. */
@@ -24,7 +27,7 @@ const SECTIONS = [
 ] as const
 
 /** Vertical timeline of the day, grouped into morning / afternoon / evening. */
-export function DayTimeline({ items, placesById, nowMinutes, nextItemId }: DayTimelineProps) {
+export function DayTimeline({ date, items, placesById, nowMinutes, nextItemId }: DayTimelineProps) {
   const navigate = useNavigate()
 
   if (items.length === 0) {
@@ -93,6 +96,7 @@ export function DayTimeline({ items, placesById, nowMinutes, nextItemId }: DayTi
                         {(item.note || place.notes) && (
                           <span className="block truncate text-xs text-muted">{item.note || place.notes}</span>
                         )}
+                        <ClosedNote place={place} date={date} time={item.time} fetch className="mt-0.5" />
                       </span>
                     </button>
                   </li>

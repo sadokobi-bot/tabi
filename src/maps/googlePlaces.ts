@@ -15,10 +15,16 @@ const CACHE_TTL_MS = 10 * 60_000
  * per viewport, rich "Enterprise" fields (rating, hours…) are fetched only when a place is opened,
  * and autocomplete uses session tokens so a search + selection is billed as one session.
  */
+/**
+ * Shared by every provider instance, for this session only: Google's terms don't allow storing
+ * place details, and one request per place per session keeps usage inside the free tier.
+ */
+const detailsCache = new Map<string, Promise<PoiDetails | null>>()
+const detailsSettled = new Map<string, PoiDetails | null>()
+
 export function createGoogleProvider(places: google.maps.PlacesLibrary): PoiProvider {
   const { Place, AutocompleteSuggestion, AutocompleteSessionToken } = places
   const areaCache = new Map<string, { at: number; pois: Poi[] }>()
-  const detailsCache = new Map<string, Promise<PoiDetails | null>>()
   let sessionToken: google.maps.places.AutocompleteSessionToken | null = null
 
   const toPoi = (place: google.maps.places.Place, fallback?: CategoryId): Poi | null => {
@@ -136,6 +142,10 @@ export function createGoogleProvider(places: google.maps.PlacesLibrary): PoiProv
             ratingCount: place.userRatingCount ?? undefined,
             address: place.formattedAddress ?? undefined,
             weekdayHours: place.regularOpeningHours?.weekdayDescriptions,
+            openingPeriods: place.regularOpeningHours?.periods.map((period) => ({
+              open: { day: period.open.day, minutes: period.open.hour * 60 + period.open.minute },
+              ...(period.close ? { close: { day: period.close.day, minutes: period.close.hour * 60 + period.close.minute } } : {}),
+            })),
             website: safeHttpUrl(place.websiteURI),
             phone: place.nationalPhoneNumber ?? undefined,
             googleMapsUri: safeHttpUrl(place.googleMapsURI),
@@ -144,10 +154,17 @@ export function createGoogleProvider(places: google.maps.PlacesLibrary): PoiProv
           }
         })()
         // Don't cache failures: allow a retry the next time the place is opened.
-        pending.catch(() => detailsCache.delete(googlePlaceId))
+        pending.then(
+          (data) => detailsSettled.set(googlePlaceId, data),
+          () => detailsCache.delete(googlePlaceId),
+        )
         detailsCache.set(googlePlaceId, pending)
       }
       return pending
+    },
+
+    peekDetails(googlePlaceId) {
+      return detailsSettled.get(googlePlaceId)
     },
 
     async matchGoogle(name, location) {

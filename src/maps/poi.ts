@@ -25,6 +25,12 @@ export interface PoiPhoto {
   attribution?: { name: string; uri?: string }
 }
 
+/** A weekly opening window: day 0 = Sunday, minutes since local midnight. No close = open around the clock. */
+export interface OpeningPeriod {
+  open: { day: number; minutes: number }
+  close?: { day: number; minutes: number }
+}
+
 /** Rich, live details (Google only). Never persisted, per the Google Maps Platform ToS. */
 export interface PoiDetails {
   name?: string
@@ -34,6 +40,7 @@ export interface PoiDetails {
   ratingCount?: number
   address?: string
   weekdayHours?: string[]
+  openingPeriods?: OpeningPeriod[]
   website?: string
   phone?: string
   googleMapsUri?: string
@@ -58,6 +65,8 @@ export interface PoiProvider {
   suggest(input: string, near: LatLng | null, signal: AbortSignal): Promise<Suggestion[]>
   /** Live details for a Google place (photos, rating, hours…). */
   details(googlePlaceId: string): Promise<PoiDetails | null>
+  /** Details already fetched this session, without a new request (undefined when not fetched yet). */
+  peekDetails?(googlePlaceId: string): PoiDetails | null | undefined
   /** Finds the Google place matching a hand-added / sample place, so it can show photos and ratings. */
   matchGoogle?(name: string, location: LatLng): Promise<string | null>
 }

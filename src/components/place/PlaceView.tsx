@@ -23,6 +23,7 @@ import { actions } from '@/data/actions'
 import type { CategoryId, LatLng, Place } from '@/data/types'
 import { formatDay, tripDates } from '@/lib/dates'
 import { placeUrl, safeHttpUrl } from '@/lib/deeplinks'
+import { checkOpening, closedLabel } from '@/lib/openingHours'
 import type { Poi, PoiProvider } from '@/maps/poi'
 import { usePlaceDetails } from '@/maps/usePlaceDetails'
 import { usePoiProvider } from '@/maps/usePoiProvider'
@@ -201,6 +202,16 @@ export function PlaceView({ subject, onEdit, onSchedule }: PlaceViewProps) {
                 </span>
               ))}
             </div>
+            {schedule.map(({ date, item }) => {
+              const label = closedLabel(checkOpening(data?.openingPeriods, date, item.time))
+              return (
+                label && (
+                  <p key={item.id} className="mt-2 text-xs font-medium text-amber-700 dark:text-amber-400">
+                    יום {dates.indexOf(date) + 1}: {label}
+                  </p>
+                )
+              )
+            })}
           </div>
         )}
 

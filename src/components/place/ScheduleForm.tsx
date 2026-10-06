@@ -5,6 +5,9 @@ import { TextField } from '@/components/ui/TextField'
 import { actions } from '@/data/actions'
 import { getCity } from '@/data/cities'
 import { formatDay, tripDates, tripTimeline } from '@/lib/dates'
+import { checkOpening, closedLabel } from '@/lib/openingHours'
+import { usePlaceDetails } from '@/maps/usePlaceDetails'
+import { usePoiProvider } from '@/maps/usePoiProvider'
 import { usePlace, useTrip, useTripStore } from '@/store/trip'
 
 /** Pick a day (and optionally a time) to add a saved place to the itinerary. */
@@ -16,6 +19,9 @@ export function ScheduleForm({ placeId, onDone }: { placeId: string; onDone: () 
   const [date, setDate] = useState(() => tripTimeline(trip, new Date()).focusDate)
   const [time, setTime] = useState('')
   const dayNumber = dates.indexOf(date) + 1
+  // Hours were already loaded when the place sheet opened, so this is a cache hit.
+  const periods = usePlaceDetails(usePoiProvider(), place?.googlePlaceId).data?.openingPeriods
+  const warning = closedLabel(checkOpening(periods, date, time || undefined))
 
   const submit = () => {
     actions.addToDay(placeId, date, time || undefined, `נוסף ליום ${dayNumber}`)
@@ -54,11 +60,21 @@ export function ScheduleForm({ placeId, onDone }: { placeId: string; onDone: () 
                 {formatDay(iso)}
                 {city && <span className="text-muted"> · {city.name}</span>}
               </span>
-              {count > 0 && <span className="text-xs text-muted">{count} פעילויות</span>}
+              {checkOpening(periods, iso)?.kind === 'closed-day' ? (
+                <span className="text-xs font-medium text-amber-700 dark:text-amber-400">סגור</span>
+              ) : (
+                count > 0 && <span className="text-xs text-muted">{count} פעילויות</span>
+              )}
             </button>
           )
         })}
       </div>
+
+      {warning && (
+        <p role="status" className="mt-3 rounded-control bg-amber-500/12 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
+          {warning}
+        </p>
+      )}
 
       <div className="mt-5 flex gap-3">
         <Button size="lg" className="flex-1" onClick={submit}>
