@@ -10,6 +10,8 @@ export interface AssistantPlace {
   category: CategoryId
   location: LatLng
   why: string
+  /** Street address when the source gave one (imported posts); sharpens the map match. */
+  address?: string
 }
 
 export interface AssistantAnswer {
@@ -24,6 +26,15 @@ const CATEGORY_IDS: CategoryId[] = ['attraction', 'amusement', 'food', 'cafe', '
  * answers "high demand", and older models retire (gemini-3.5-flash: May 2027).
  */
 const MODELS = ['gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-3.5-flash-lite']
+/**
+ * Reading a post is transcription, not reasoning: flash-lite with minimal thinking takes ~3 s where
+ * the larger models take ~35 s on a screenshot. Retires no earlier than July 2027; the rest are the fallback.
+ */
+const IMPORT_MODELS: { model: string; fast?: boolean }[] = [
+  { model: 'gemini-3.5-flash-lite', fast: true },
+  { model: 'gemini-3.8-flash' },
+  { model: 'gemini-3.5-flash' },
+]
 
 const SYSTEM = `You are the travel assistant inside "Tabi", a Hebrew app for a group trip to Japan.
 The user writes (usually in Hebrew) a place in Japan they want to visit: a name, a description ("the shrine with thousands of orange gates"), or a wish ("good ramen near Shibuya").
@@ -34,38 +45,56 @@ Identify real, existing places in Japan only. Never invent places.
 For every place give: "name" in Hebrew as Israelis would write it; "searchName" = the official English (romaji) name exactly as on maps; "city" in English; approximate "lat"/"lng"; a category; and "why" = one short Hebrew sentence on what makes it worth visiting.
 "reply" is one short, friendly Hebrew sentence that introduces the results. Plain text, no markdown.`
 
-let modelsPromise: Promise<import('firebase/ai').GenerativeModel[]> | null = null
+const IMPORT_SYSTEM = `You read a social-media post (a screenshot or pasted text, often Hebrew) that recommends places in Japan, for "Tabi", a Hebrew trip app.
+Extract every place the post recommends, in the post's order. Ignore app interface text, usernames, likes and comments. Never add places the post does not mention. At most 15.
+For each place: "name" exactly as the post writes it; "searchName" = the official English (romaji) name as it appears on maps; "address" = the address the post gives, copied as-is, or "" when there is none; "city" in English; approximate "lat"/"lng"; a category; and "note" = what the post says about the place, in Hebrew, 1-2 short sentences that keep its concrete tips (dishes to order, timing, prices).
+"reply" is one short Hebrew sentence saying how many places were found. Plain text, no markdown.`
 
-function getModels() {
-  modelsPromise ??= Promise.all([import('firebase/app'), import('firebase/ai')]).then(([{ getApp }, ai]) => {
-    const { Schema } = ai
-    const place = Schema.object({
-      properties: {
+type ModelKind = 'ask' | 'import'
+const modelsByKind = new Map<ModelKind, Promise<import('firebase/ai').GenerativeModel[]>>()
+
+function getModels(kind: ModelKind) {
+  let models = modelsByKind.get(kind)
+  if (!models) {
+    models = Promise.all([import('firebase/app'), import('firebase/ai')]).then(([{ getApp }, ai]) => {
+      const { Schema } = ai
+      const common = {
         name: Schema.string(),
         searchName: Schema.string(),
         city: Schema.string(),
         lat: Schema.number(),
         lng: Schema.number(),
         category: Schema.enumString({ enum: CATEGORY_IDS }),
-        why: Schema.string(),
-      },
+      }
+      const place = Schema.object({
+        properties: kind === 'ask' ? { ...common, why: Schema.string() } : { ...common, address: Schema.string(), note: Schema.string() },
+      })
+      const instance = ai.getAI(getApp(), { backend: new ai.GoogleAIBackend() })
+      const responseSchema = Schema.object({ properties: { reply: Schema.string(), places: Schema.array({ items: place }) } })
+      const list = kind === 'ask' ? MODELS.map((model) => ({ model, fast: false })) : IMPORT_MODELS
+      return list.map(({ model, fast }) =>
+        ai.getGenerativeModel(instance, {
+          model,
+          systemInstruction: kind === 'ask' ? SYSTEM : IMPORT_SYSTEM,
+          generationConfig: {
+            responseMimeType: 'application/json',
+            responseSchema,
+            temperature: kind === 'ask' ? 0.4 : 0.2,
+            ...(fast ? { thinkingConfig: { thinkingLevel: ai.ThinkingLevel.MINIMAL } } : {}),
+          },
+        }),
+      )
     })
-    const instance = ai.getAI(getApp(), { backend: new ai.GoogleAIBackend() })
-    const responseSchema = Schema.object({ properties: { reply: Schema.string(), places: Schema.array({ items: place }) } })
-    return MODELS.map((model) =>
-      ai.getGenerativeModel(instance, {
-        model,
-        systemInstruction: SYSTEM,
-        generationConfig: { responseMimeType: 'application/json', responseSchema, temperature: 0.4 },
-      }),
-    )
-  })
-  return modelsPromise
+    modelsByKind.set(kind, models)
+  }
+  return models
 }
 
-async function generate(prompt: string) {
+type Prompt = string | (string | { inlineData: { data: string; mimeType: string } })[]
+
+async function generate(kind: ModelKind, prompt: Prompt) {
   let lastError: unknown
-  for (const model of await getModels()) {
+  for (const model of await getModels(kind)) {
     try {
       return await model.generateContent(prompt)
     } catch (error) {
@@ -79,7 +108,7 @@ async function generate(prompt: string) {
 
 export async function askAssistant(text: string, near: LatLng | null): Promise<AssistantAnswer> {
   const where = near ? `\n(The map is currently around lat ${near.lat.toFixed(4)}, lng ${near.lng.toFixed(4)}.)` : ''
-  const result = await generate(text + where)
+  const result = await generate('ask', text + where)
   const json = JSON.parse(result.response.text()) as {
     reply?: string
     places?: { name: string; searchName: string; city: string; lat: number; lng: number; category: string; why: string }[]
@@ -93,6 +122,35 @@ export async function askAssistant(text: string, near: LatLng | null): Promise<A
       category: CATEGORY_IDS.includes(p.category as CategoryId) ? (p.category as CategoryId) : 'other',
       location: { lat: p.lat, lng: p.lng },
       why: p.why,
+    })),
+  }
+}
+
+/** An image ready for Gemini: base64 JPEG without the data-URL prefix. */
+export interface PromptImage {
+  data: string
+  mimeType: string
+}
+
+/** Every place a shared post (screenshot and/or pasted text) recommends, with its notes in Hebrew. */
+export async function extractPlaces(text: string, image: PromptImage | null): Promise<AssistantAnswer> {
+  const instruction = text.trim() ? `Extract the places from this post:
+${text.trim()}` : 'Extract the places from this post.'
+  const result = await generate('import', image ? [instruction, { inlineData: image }] : instruction)
+  const json = JSON.parse(result.response.text()) as {
+    reply?: string
+    places?: { name: string; searchName: string; address?: string; city: string; lat: number; lng: number; category: string; note?: string }[]
+  }
+  return {
+    reply: json.reply ?? '',
+    places: (json.places ?? []).slice(0, 15).map((p) => ({
+      name: p.name,
+      searchName: p.searchName,
+      city: p.city,
+      category: CATEGORY_IDS.includes(p.category as CategoryId) ? (p.category as CategoryId) : 'other',
+      location: { lat: p.lat, lng: p.lng },
+      why: p.note ?? '',
+      ...(p.address?.trim() ? { address: p.address.trim() } : {}),
     })),
   }
 }
@@ -116,7 +174,7 @@ function nameMatch(a: string, b: string): number {
 }
 
 /** Gemini's coordinates are approximate; a map entry this far away is a different place. */
-const MAX_DISTANCE_M = 5000
+const MAX_DISTANCE_M = 2000
 
 /**
  * Pins the assistant's place to a real map entry (exact position, address, opening hours).
@@ -138,7 +196,7 @@ export async function resolveOnMap(place: AssistantPlace, provider: PoiProvider 
   // Google's own ranking is reliable, and every resolve is a billed Place Details call: take its top hit.
   if (provider.id === 'google') {
     try {
-      const [top] = await provider.suggest(`${place.searchName} ${place.city}`, place.location, signal)
+      const [top] = await provider.suggest(`${place.searchName} ${place.address ?? place.city}`, place.location, signal)
       const poi = top ? await top.resolve() : null
       if (poi && distanceMeters(poi.location, place.location) <= MAX_DISTANCE_M) return { ...poi, name: place.name }
     } catch (error) {
@@ -149,7 +207,7 @@ export async function resolveOnMap(place: AssistantPlace, provider: PoiProvider 
 
   let best: { poi: Poi; score: number } | null = null
   try {
-    for (const query of [`${place.searchName} ${place.city}`, place.searchName]) {
+    for (const query of [`${place.searchName} ${place.address ?? place.city}`, `${place.searchName} ${place.city}`, place.searchName]) {
       const suggestions = await provider.suggest(query, place.location, signal)
       for (const suggestion of suggestions.slice(0, 6)) {
         const poi = await suggestion.resolve()
