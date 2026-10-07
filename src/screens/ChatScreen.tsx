@@ -225,7 +225,8 @@ export default function ChatScreen() {
             onBlur={() => ui.setComposing(false)}
             rows={1}
             maxLength={MAX_LENGTH}
-            dir="auto"
+            // Empty "auto" fields fall back to LTR in Safari, which flips the Hebrew placeholder.
+            dir={text ? 'auto' : 'rtl'}
             enterKeyHint="send"
             placeholder="כתבו הודעה…"
             aria-label="הודעה חדשה"

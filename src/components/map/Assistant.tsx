@@ -318,7 +318,7 @@ export function Assistant({ provider, near }: AssistantProps) {
                 aria-label="מה לחפש"
                 enterKeyHint={wantsImport ? 'enter' : 'search'}
                 maxLength={4000}
-                dir="auto"
+                dir={text ? 'auto' : 'rtl'}
                 className="no-scrollbar min-w-0 flex-1 resize-none self-center bg-transparent py-2 text-base leading-snug outline-none placeholder:text-muted/70"
               />
               <button
