@@ -101,7 +101,7 @@ function ProfileBody({ onClose }: { onClose: () => void }) {
 
       <Section title="שותפים לטיול">
         <div className="surface rounded-card p-4">
-          <p className="text-sm text-muted">שתפו את קוד ההזמנה כדי שבן/בת הזוג יצטרפו ויערכו יחד:</p>
+          <p className="text-sm text-muted">שתפו את קוד ההזמנה עם מי שמטייל איתכם, כדי שיצטרפו ויתכננו יחד:</p>
           <div className="mt-3 flex items-center gap-2">
             <code dir="ltr" className="flex-1 rounded-control bg-fg/6 py-3 text-center font-mono text-xl font-bold tracking-[0.3em] select-all">
               {trip.inviteCode}
