@@ -138,7 +138,7 @@ function ProfileBody({ onClose }: { onClose: () => void }) {
         <form onSubmit={saveTrip} className="space-y-3" noValidate>
           <TextField label="שם הטיול" value={name} onChange={(event) => setName(event.target.value)} maxLength={40} />
           <div className="grid grid-cols-[1fr_6rem] gap-3">
-            <TextField label="יום ראשון ביפן" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} dir="ltr" />
+            <TextField label="יום ראשון ביפן" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
             <TextField label="ימים" type="number" min={1} max={90} value={days} onChange={(event) => setDays(event.target.value)} dir="ltr" />
           </div>
           <Button type="submit" variant="secondary" className="w-full">

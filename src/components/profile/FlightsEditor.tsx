@@ -81,7 +81,7 @@ export function FlightsEditor({ flights }: { flights: Flight[] }) {
           <TextField label="מספר טיסה" value={draft.flightNo} onChange={(e) => set({ flightNo: e.target.value })} dir="ltr" placeholder="LY91" maxLength={10} />
           <TextField label="מוצא" value={draft.from} onChange={(e) => set({ from: e.target.value })} dir="ltr" maxLength={4} />
           <TextField label="יעד" value={draft.to} onChange={(e) => set({ to: e.target.value })} dir="ltr" maxLength={4} />
-          <TextField label="תאריך המראה" type="date" value={draft.date} onChange={(e) => set({ date: e.target.value })} dir="ltr" />
+          <TextField label="תאריך המראה" type="date" value={draft.date} onChange={(e) => set({ date: e.target.value })} />
           <TextField label="שעת המראה" type="time" value={draft.time} onChange={(e) => set({ time: e.target.value })} dir="ltr" />
         </div>
         <div className="flex gap-2" role="radiogroup" aria-label="אזור זמן של שעת ההמראה">

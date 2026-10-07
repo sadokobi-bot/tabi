@@ -118,6 +118,21 @@
   --shadow-accent: 0 12px 26px -12px var(--app-accent-fill);
 }
 
+/* iOS Safari gives native date/time fields an intrinsic min width and centers the value,
+   so in a narrow grid column they spill over their neighbor. */
+input[type='date'],
+input[type='time'] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  min-width: 0;
+}
+input[type='date']::-webkit-date-and-time-value,
+input[type='time']::-webkit-date-and-time-value {
+  margin: 0;
+  text-align: start;
+}
+
 /* ── Custom utilities ───────────────────────────────────────────────────── */
 
 /* Frosted glass. Reserved for layers that float above content. */

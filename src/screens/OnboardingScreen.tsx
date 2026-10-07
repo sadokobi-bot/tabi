@@ -134,7 +134,6 @@ export function OnboardingScreen() {
                   type="date"
                   value={startDate}
                   onChange={(event) => setStartDate(event.target.value)}
-                  dir="ltr"
                 />
                 <TextField
                   label="ימים"
