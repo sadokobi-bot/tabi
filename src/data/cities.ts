@@ -1,3 +1,4 @@
+import { distanceMeters } from '@/lib/geo'
 import type { LatLng } from './types'
 
 export interface City {
@@ -34,4 +35,21 @@ export const DEFAULT_CITY: City = CITIES[0]!
 
 export function getCity(id: string | undefined | null): City | undefined {
   return id ? BY_ID.get(id) : undefined
+}
+
+/** Places farther than this from every listed city belong to none of them. */
+const NEAREST_MAX_M = 60_000
+
+/** The listed city a place belongs to (the nearest one), e.g. Disneyland → Tokyo, USJ → Osaka. */
+export function nearestCity(location: LatLng): City | undefined {
+  let best: City | undefined
+  let bestDistance = NEAREST_MAX_M
+  for (const city of CITIES) {
+    const distance = distanceMeters(location, city.location)
+    if (distance < bestDistance) {
+      best = city
+      bestDistance = distance
+    }
+  }
+  return best
 }

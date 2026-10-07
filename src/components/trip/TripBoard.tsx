@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
+import clsx from 'clsx'
+import { MapPin } from 'lucide-react'
 import {
   DndContext,
   DragOverlay,
@@ -13,7 +15,7 @@ import {
 } from '@dnd-kit/core'
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { actions } from '@/data/actions'
-import { getCity } from '@/data/cities'
+import { CITIES, getCity, nearestCity } from '@/data/cities'
 import type { DayPlan, ItineraryItem, Place, Trip } from '@/data/types'
 import { formatDay, tripDates } from '@/lib/dates'
 import { newId } from '@/lib/ids'
@@ -23,6 +25,9 @@ import { StayPicker } from './StayPicker'
 import { RowContent, SortableRow } from './SortableRow'
 
 const IDEAS = 'ideas'
+const ALL = 'all'
+const OTHER = 'other'
+const cityName = (cityId: string) => getCity(cityId)?.name ?? 'מחוץ לערים'
 const ideaId = (placeId: string) => `idea:${placeId}`
 const isIdea = (id: string) => id.startsWith('idea:')
 
@@ -50,17 +55,41 @@ export function TripBoard({ trip, plan, places, placesById, today }: TripBoardPr
     return map
   }, [plan])
 
+  // Which city each saved place is in, and the order cities come up in the trip (unvisited ones after).
+  const cityOf = useMemo(() => new Map(places.map((place) => [place.id, nearestCity(place.location)?.id ?? OTHER])), [places])
+  const cityRank = useMemo(() => {
+    const order = [...new Set(dates.map((date) => trip.dayCities[date]).filter(Boolean)), ...CITIES.map((city) => city.id), OTHER]
+    return (cityId: string) => order.indexOf(cityId)
+  }, [dates, trip.dayCities])
+  const [chosenCity, setIdeasCity] = useState(ALL)
+
+  // Unscheduled places, grouped by city in trip order, so a long list reads "Tokyo / Kyoto / …".
+  const unscheduled = useMemo(() => {
+    const scheduled = new Set(dates.flatMap((date) => (plan[date] ?? []).map((item) => item.placeId)))
+    return places
+      .filter((place) => !scheduled.has(place.id))
+      .sort((a, b) => cityRank(cityOf.get(a.id)!) - cityRank(cityOf.get(b.id)!))
+  }, [dates, plan, places, cityOf, cityRank])
+
+  const ideaGroups = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const place of unscheduled) counts.set(cityOf.get(place.id)!, (counts.get(cityOf.get(place.id)!) ?? 0) + 1)
+    return [...counts].map(([id, count]) => ({ id, count }))
+  }, [unscheduled, cityOf])
+
+  // A filter whose city has no ideas left (all scheduled) falls back to everything.
+  const ideasCity = ideaGroups.some((group) => group.id === chosenCity) ? chosenCity : ALL
+
   const derived = useMemo<Containers>(() => {
-    const scheduled = new Set<string>()
     const containers: Containers = {}
     for (const date of dates) {
-      const items = (plan[date] ?? []).filter((item) => placesById[item.placeId])
-      items.forEach((item) => scheduled.add(item.placeId))
-      containers[date] = items.map((item) => item.id)
+      containers[date] = (plan[date] ?? []).filter((item) => placesById[item.placeId]).map((item) => item.id)
     }
-    containers[IDEAS] = places.filter((place) => !scheduled.has(place.id)).map((place) => ideaId(place.id))
+    containers[IDEAS] = unscheduled
+      .filter((place) => ideasCity === ALL || cityOf.get(place.id) === ideasCity)
+      .map((place) => ideaId(place.id))
     return containers
-  }, [dates, plan, places, placesById])
+  }, [dates, plan, placesById, unscheduled, ideasCity, cityOf])
 
   const [dragging, setDragging] = useState<{ activeId: string; containers: Containers } | null>(null)
   const containers = dragging?.containers ?? derived
@@ -157,11 +186,47 @@ export function TripBoard({ trip, plan, places, placesById, today }: TripBoardPr
           title="רעיונות שעוד לא שובצו"
           subtitle="גררו מקום ליום כדי לשבץ אותו"
           itemIds={containers[IDEAS] ?? []}
-          emptyLabel={places.length ? 'כל המקומות משובצים' : 'שמרו מקומות מהמפה והם יופיעו כאן'}
+          extra={
+            ideaGroups.length > 1 && (
+              <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 py-0.5" role="group" aria-label="סינון לפי עיר">
+                {[{ id: ALL, count: ideaGroups.reduce((sum, group) => sum + group.count, 0) }, ...ideaGroups].map(({ id, count }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-pressed={ideasCity === id}
+                    onClick={() => setIdeasCity(id)}
+                    className={clsx(
+                      'tap-target relative flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs font-semibold whitespace-nowrap transition-colors',
+                      ideasCity === id ? 'bg-accent-fill text-accent-fg' : 'bg-fg/6 text-fg hover:bg-fg/10',
+                    )}
+                  >
+                    {id === ALL ? 'הכל' : cityName(id)}
+                    <span className={clsx('tabular-nums', ideasCity === id ? 'text-accent-fg/80' : 'text-muted')}>{count}</span>
+                  </button>
+                ))}
+              </div>
+            )
+          }
+          emptyLabel={
+            ideasCity !== ALL ? `אין רעיונות ב${cityName(ideasCity)}` : places.length ? 'כל המקומות משובצים' : 'שמרו מקומות מהמפה והם יופיעו כאן'
+          }
         >
-          {(containers[IDEAS] ?? []).map((id) => {
+          {(containers[IDEAS] ?? []).map((id, index, ids) => {
             const place = placeFor(id)
-            return place ? <SortableRow key={id} id={id} place={place} /> : null
+            if (!place) return null
+            const city = cityOf.get(place.id) ?? OTHER
+            const startsGroup = ideasCity === ALL && ideaGroups.length > 1 && (index === 0 || cityOf.get(ids[index - 1]!.slice('idea:'.length)) !== city)
+            return (
+              <Fragment key={id}>
+                {startsGroup && (
+                  <li role="presentation" className="flex items-center gap-1.5 px-1 pt-2 text-xs font-semibold text-muted first:pt-0">
+                    <MapPin aria-hidden className="size-3.5" />
+                    {cityName(city)}
+                  </li>
+                )}
+                <SortableRow id={id} place={place} />
+              </Fragment>
+            )
           })}
         </DayCard>
 
