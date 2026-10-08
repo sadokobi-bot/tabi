@@ -314,6 +314,17 @@ export function createLocalBackend(): Backend {
       write(messagesKey(tripId), messages.slice(-MESSAGE_LIMIT))
     },
 
+    async deleteMessage(tripId, message) {
+      updateMessage(tripId, message.id, ({ id, authorId, authorName, createdAt }) => ({
+        id,
+        authorId,
+        authorName,
+        createdAt,
+        text: '',
+        deleted: true,
+      }))
+    },
+
     async reactToMessage(tripId, messageId, uid, emoji) {
       updateMessage(tripId, messageId, (message) => {
         const { [uid]: _previous, ...others } = message.reactions ?? {}

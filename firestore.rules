@@ -130,7 +130,8 @@ service cloud.firestore {
 
       // Group chat: members read everything and post as themselves. A message is text, or a card
       // (a shared place, a meeting point or a poll) with optional text. Messages are never edited or
-      // deleted; members only add or change their own reaction and their own poll answer.
+      // deleted outright: members add or change their own reaction and poll answer, and an author can
+      // take a message back (it stays as "deleted", emptied).
       match /messages/{messageId} {
         function kindOf(data) {
           return data.get('kind', 'text');
@@ -138,7 +139,7 @@ service cloud.firestore {
 
         allow read: if isMember(tripId);
         allow create: if isMember(tripId)
-          && request.resource.data.keys().hasOnly(['authorId', 'authorName', 'text', 'createdAt', 'kind', 'place', 'meet', 'poll'])
+          && request.resource.data.keys().hasOnly(['authorId', 'authorName', 'text', 'createdAt', 'kind', 'place', 'meet', 'poll', 'replyTo'])
           && request.resource.data.authorId == request.auth.uid
           && request.resource.data.authorName is string
           && request.resource.data.authorName.size() > 0 && request.resource.data.authorName.size() <= 40
@@ -146,16 +147,26 @@ service cloud.firestore {
           && request.resource.data.text.size() <= 2000
           && kindOf(request.resource.data) in ['text', 'place', 'meet', 'poll']
           && (request.resource.data.text.size() > 0 || kindOf(request.resource.data) != 'text')
+          && (!('replyTo' in request.resource.data) || request.resource.data.replyTo is map)
           && (kindOf(request.resource.data) != 'place' || request.resource.data.place is map)
           && (kindOf(request.resource.data) != 'meet' || request.resource.data.meet is map)
           && (kindOf(request.resource.data) != 'poll'
             || (request.resource.data.poll is map && request.resource.data.poll.options is list
               && request.resource.data.poll.options.size() >= 2 && request.resource.data.poll.options.size() <= 8))
           && request.resource.data.createdAt is int;
-        allow update: if isMember(tripId)
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'votes'])
-          && request.resource.data.get('reactions', {}).diff(resource.data.get('reactions', {})).affectedKeys().hasOnly([request.auth.uid])
-          && request.resource.data.get('votes', {}).diff(resource.data.get('votes', {})).affectedKeys().hasOnly([request.auth.uid]);
+        allow update: if isMember(tripId) && (
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'votes'])
+            && request.resource.data.get('reactions', {}).diff(resource.data.get('reactions', {})).affectedKeys().hasOnly([request.auth.uid])
+            && request.resource.data.get('votes', {}).diff(resource.data.get('votes', {})).affectedKeys().hasOnly([request.auth.uid]))
+          ||
+          // The author deletes their message: only the frame stays, marked deleted, with no content.
+          (resource.data.authorId == request.auth.uid
+            && request.resource.data.keys().hasOnly(['authorId', 'authorName', 'text', 'createdAt', 'deleted'])
+            && request.resource.data.authorId == resource.data.authorId
+            && request.resource.data.createdAt == resource.data.createdAt
+            && request.resource.data.text == ''
+            && request.resource.data.deleted == true)
+        );
         allow delete: if false;
       }
     }

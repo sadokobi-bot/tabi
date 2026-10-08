@@ -163,6 +163,17 @@ export interface ChatMessage {
   reactions?: Record<string, string>
   /** Poll answers: option index per member uid. */
   votes?: Record<string, number>
+  /** The message this one answers (a snapshot, so the quote shows even when it's out of the loaded history). */
+  replyTo?: ReplyRef
+  /** Deleted by its author: shown as "this message was deleted". */
+  deleted?: boolean
+}
+
+export interface ReplyRef {
+  id: string
+  authorName: string
+  /** A short summary: the text, or what the card was ("מקום: …"). */
+  text: string
 }
 
 /** A place shared in the chat: what's needed to show and open it (a saved place's id when it's ours). */

@@ -16,6 +16,15 @@ async function seed(page: Page, update: string) {
   }, update)
 }
 
+/** Holds a finger (the mouse) on a message, as on a phone. */
+async function longPress(page: Page, text: string) {
+  const box = (await page.getByText(text, { exact: true }).first().boundingBox())!
+  await page.mouse.move(box.x + 10, box.y + 5)
+  await page.mouse.down()
+  await page.waitForTimeout(600)
+  await page.mouse.up()
+}
+
 test('chat: places, meeting point, poll, reactions, read and typing', async ({ page }) => {
   test.setTimeout(120_000)
   await signUp(page, uniqueName('chat'))
@@ -43,14 +52,23 @@ test('chat: places, meeting point, poll, reactions, read and typing', async ({ p
   await expect(page.getByText(/נועה מקלידה/)).toBeVisible()
 
   // Reaction by long press.
-  const bubble = page.getByText('יאללה לאכול ראמן?')
-  const box = (await bubble.boundingBox())!
-  await page.mouse.move(box.x + 10, box.y + 5)
-  await page.mouse.down()
-  await page.waitForTimeout(600)
-  await page.mouse.up()
+  await longPress(page, 'יאללה לאכול ראמן?')
   await page.getByRole('button', { name: 'תגובה ❤️' }).click()
   await expect(page.getByRole('button', { name: /❤️ 1, כולל שלך/ })).toBeVisible()
+
+  // Reply to it (the quote shows in the answer), then take the original back.
+  await longPress(page, 'יאללה לאכול ראמן?')
+  await page.getByRole('button', { name: 'תשובה' }).click()
+  await expect(page.getByText('תשובה לעצמך')).toBeVisible()
+  await page.getByLabel('הודעה חדשה').fill('או סושי')
+  await page.getByRole('button', { name: 'שליחה' }).click()
+  const answer = page.locator('[id^="message-"]', { hasText: 'או סושי' })
+  await expect(answer.getByRole('button', { name: /יאללה לאכול ראמן?/ })).toBeVisible()
+  await longPress(page, 'יאללה לאכול ראמן?')
+  await page.getByRole('toolbar', { name: 'פעולות על ההודעה' }).getByRole('button', { name: 'מחיקה' }).click()
+  await page.getByRole('toolbar', { name: 'פעולות על ההודעה' }).getByRole('button', { name: 'מחיקה' }).click()
+  await expect(page.getByText('מחקת את ההודעה הזו')).toBeVisible()
+  await expect(answer.getByText('ההודעה נמחקה')).toBeVisible()
 
   // Share a place.
   await page.getByRole('button', { name: 'שיתוף מקום, נקודת מפגש או סקר' }).click()

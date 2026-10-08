@@ -137,6 +137,8 @@ export interface Backend {
    * server has it, so callers shouldn't wait on it; it rejects if the server refuses the message.
    */
   sendMessage(tripId: string, message: Omit<ChatMessage, 'pending'>): Promise<void>
+  /** The author takes a message back: it stays as "deleted", without its content. */
+  deleteMessage(tripId: string, message: ChatMessage): Promise<void>
   /** Sets (or with null, removes) this member's reaction to a message. */
   reactToMessage(tripId: string, messageId: string, uid: string, emoji: string | null): Promise<void>
   /** Sets (or with null, withdraws) this member's answer to a poll. */

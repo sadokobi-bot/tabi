@@ -1,12 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { firstName } from '@/backend'
-import { MessageCircle, Plus, SendHorizontal, WifiOff, X } from 'lucide-react'
+import { MessageCircle, Plus, Reply, SendHorizontal, WifiOff, X } from 'lucide-react'
 import { useTabActive } from '@/app/tabActive'
 import { AttachSheet } from '@/components/chat/AttachSheet'
 import { PinnedMeet, TypingIndicator } from '@/components/chat/ChatStatus'
 import { MessageRow } from '@/components/chat/MessageRow'
 import { CategoryIcon } from '@/components/ui/CategoryIcon'
-import { sendChatMessage } from '@/data/chat'
+import { replyOf, sendChatMessage } from '@/data/chat'
+import type { ChatMessage } from '@/data/types'
 import { useOnline } from '@/hooks/useOnline'
 import { useTabReselect } from '@/hooks/useTabReselect'
 import { markChatRead } from '@/store/chatRead'
@@ -52,6 +53,8 @@ export default function ChatScreen() {
   const [text, setText] = useState('')
   const [attachOpen, setAttachOpen] = useState(false)
   const [reactingId, setReactingId] = useState<string | null>(null)
+  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null)
+  const [flashId, setFlashId] = useState<string | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const stickToBottom = useRef(true)
@@ -141,13 +144,33 @@ export default function ChatScreen() {
     event?.preventDefault()
     const body = text.trim().slice(0, MAX_LENGTH)
     if (!body && !draft) return
-    sendChatMessage(draft ? { kind: 'place', place: draft, text: body } : { text: body })
+    const reply = replyTo ? { replyTo: replyOf(replyTo) } : {}
+    sendChatMessage(draft ? { kind: 'place', place: draft, text: body, ...reply } : { text: body, ...reply })
     ui.setChatDraft(null)
+    setReplyTo(null)
     setText('')
     stopTyping()
     stickToBottom.current = true
     inputRef.current?.focus()
   }
+
+  const startReply = (message: ChatMessage) => {
+    setReplyTo(message)
+    inputRef.current?.focus()
+  }
+
+  /** Scrolls to a quoted message and highlights it for a moment. */
+  const jumpTo = (id: string) => {
+    const row = document.getElementById(`message-${id}`)
+    if (!row) {
+      ui.toast('ההודעה המקורית ישנה מדי ולא מופיעה כאן')
+      return
+    }
+    row.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    setFlashId(id)
+    setTimeout(() => setFlashId((current) => (current === id ? null : current)), 1400)
+  }
+  const deletedIds = new Set(messages.flatMap((message) => (message.deleted ? [message.id] : [])))
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) send(event)
@@ -157,7 +180,7 @@ export default function ChatScreen() {
   const others = othersIds.map((uid) => trip.members[uid]?.name ?? 'משתתף')
 
   // "Read" under the user's latest message: by whom, or by everyone.
-  const lastMine = [...messages].reverse().find((message) => message.authorId === user.uid)
+  const lastMine = [...messages].reverse().find((message) => message.authorId === user.uid && !message.deleted)
   const readers = lastMine && !lastMine.pending ? othersIds.filter((uid) => (read[uid] ?? 0) >= lastMine.createdAt) : []
   const receipt =
     readers.length === 0
@@ -234,6 +257,10 @@ export default function ChatScreen() {
                   receipt={message.id === lastMine?.id ? receipt : null}
                   reacting={reactingId === message.id}
                   onReacting={(open) => setReactingId(open ? message.id : null)}
+                  onReply={() => startReply(message)}
+                  quoteDeleted={message.replyTo ? deletedIds.has(message.replyTo.id) : false}
+                  onJumpToQuote={jumpTo}
+                  flash={flashId === message.id}
                 />
               </div>
             )
@@ -251,6 +278,27 @@ export default function ChatScreen() {
             : 'calc(var(--tabbar-height) + var(--tabbar-bottom) + 0.75rem)',
         }}
       >
+        {replyTo && (
+          <div className="glass mb-2 flex items-center gap-3 rounded-card p-2 ps-3">
+            <Reply aria-hidden className="size-5 shrink-0 text-accent" />
+            <span className="min-w-0 flex-1 border-s-[3px] border-accent ps-2.5">
+              <span className="block text-xs font-semibold text-accent">
+                תשובה ל{replyTo.authorId === user.uid ? 'עצמך' : replyTo.authorName}
+              </span>
+              <span className="block truncate text-sm text-muted">
+                <bdi>{replyOf(replyTo).text}</bdi>
+              </span>
+            </span>
+            <button
+              type="button"
+              aria-label="ביטול התשובה"
+              onClick={() => setReplyTo(null)}
+              className="grid size-9 shrink-0 place-items-center rounded-full text-muted hover:bg-fg/8"
+            >
+              <X aria-hidden className="size-4.5" />
+            </button>
+          </div>
+        )}
         {draft && (
           <div className="glass mb-2 flex items-center gap-3 rounded-card p-2 ps-3">
             <CategoryIcon category={draft.category} className="size-9" />

@@ -5,7 +5,7 @@ import { newId } from '@/lib/ids'
 import { getBackend, useSession } from '@/store/session'
 import { useTripStore } from '@/store/trip'
 import { ui } from '@/store/ui'
-import type { ChatMessage, MeetPoint, Place, SharedPlace } from './types'
+import type { ChatMessage, MeetPoint, Place, ReplyRef, SharedPlace } from './types'
 
 export const REACTIONS = ['❤️', '👍', '😂', '😮', '😢', '🙏']
 
@@ -19,7 +19,9 @@ function tripId(): string {
 }
 
 /** Posts a message as the signed-in member. Not awaited: offline, it's queued and shown as waiting. */
-export function sendChatMessage(fields: Pick<ChatMessage, 'text'> & Partial<Pick<ChatMessage, 'kind' | 'place' | 'meet' | 'poll'>>) {
+export function sendChatMessage(
+  fields: Pick<ChatMessage, 'text'> & Partial<Pick<ChatMessage, 'kind' | 'place' | 'meet' | 'poll' | 'replyTo'>>,
+) {
   const user = useSession.getState().user
   if (!user) return
   const message: ChatMessage = {
@@ -34,6 +36,30 @@ export function sendChatMessage(fields: Pick<ChatMessage, 'text'> & Partial<Pick
   getBackend()
     .sendMessage(tripId(), message)
     .catch((error: unknown) => ui.toast(`ההודעה לא נשלחה: ${errorMessage(error)}`, 'error'))
+}
+
+/** What a quote of this message shows. */
+export function replyOf(message: ChatMessage): ReplyRef {
+  const what =
+    message.kind === 'place' && message.place
+      ? `מקום: ${message.place.name}`
+      : message.kind === 'meet' && message.meet
+        ? `נקודת מפגש: ${message.meet.name}`
+        : message.kind === 'poll' && message.poll
+          ? `סקר: ${message.poll.question}`
+          : ''
+  const text = [what, message.text].filter(Boolean).join(' · ')
+  return { id: message.id, authorName: message.authorName, text: text.length > 140 ? `${text.slice(0, 139)}…` : text }
+}
+
+export function deleteMessage(message: ChatMessage) {
+  haptic()
+  getBackend()
+    .deleteMessage(tripId(), message)
+    .then(
+      () => undefined,
+      (error: unknown) => ui.toast(`ההודעה לא נמחקה: ${errorMessage(error)}`, 'error'),
+    )
 }
 
 export function reactTo(message: ChatMessage, emoji: string | null) {

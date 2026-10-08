@@ -1,8 +1,8 @@
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
-import { CheckCheck, Clock3, Copy } from 'lucide-react'
+import { Ban, CheckCheck, Clock3, Copy, Reply, Trash2 } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
-import { REACTIONS, reactTo } from '@/data/chat'
+import { deleteMessage, REACTIONS, reactTo } from '@/data/chat'
 import type { ChatMessage, Trip } from '@/data/types'
 import { haptic } from '@/lib/haptics'
 import { ui } from '@/store/ui'
@@ -21,21 +21,33 @@ interface MessageRowProps {
   receipt?: string | null
   reacting: boolean
   onReacting: (open: boolean) => void
+  onReply: () => void
+  /** The quoted message was deleted since. */
+  quoteDeleted?: boolean
+  onJumpToQuote: (id: string) => void
+  /** Briefly highlighted (jumped to from a quote). */
+  flash?: boolean
 }
 
 /**
  * One message: text or a card (place, meeting point, poll). A long press (or right click) opens the
  * reactions; the reactions show under the bubble, and tapping one adds or removes yours.
  */
-export function MessageRow({ message, uid, trip, sameAuthor, receipt, reacting, onReacting }: MessageRowProps) {
+export function MessageRow(props: MessageRowProps) {
+  const { message, uid, trip, sameAuthor, receipt, reacting, onReacting, onReply, quoteDeleted, onJumpToQuote, flash } = props
   const mine = message.authorId === uid
-  const card = message.kind && message.kind !== 'text'
+  const card = !message.deleted && message.kind && message.kind !== 'text'
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  useEffect(() => {
+    if (!reacting) setConfirmDelete(false)
+  }, [reacting])
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const start = useRef<{ x: number; y: number } | null>(null)
   // A long press must not also tap what's under the finger (a poll answer, the place card).
   const swallowClick = useRef(false)
 
   const open = () => {
+    if (message.deleted) return
     haptic()
     swallowClick.current = true
     onReacting(true)
@@ -63,7 +75,10 @@ export function MessageRow({ message, uid, trip, sameAuthor, receipt, reacting, 
   }
 
   return (
-    <div className={clsx('flex items-end gap-2', mine ? 'justify-end' : 'justify-start', sameAuthor ? 'mt-1' : 'mt-3')}>
+    <div
+      id={`message-${message.id}`}
+      className={clsx('flex scroll-my-24 items-end gap-2', mine ? 'justify-end' : 'justify-start', sameAuthor ? 'mt-1' : 'mt-3')}
+    >
       {!mine && <span className="w-7 shrink-0">{!sameAuthor && <Avatar name={message.authorName} className="size-7 text-xs" />}</span>}
       <div className={clsx('relative flex min-w-0 flex-col', card ? 'w-[82%]' : 'max-w-[78%]', mine ? 'items-end' : 'items-start')}>
         {reacting && (
@@ -95,16 +110,6 @@ export function MessageRow({ message, uid, trip, sameAuthor, receipt, reacting, 
                   {emoji}
                 </button>
               ))}
-              {message.text && (
-                <button
-                  type="button"
-                  aria-label="העתקת ההודעה"
-                  onClick={() => void copy()}
-                  className="grid size-10 place-items-center rounded-full text-muted transition active:scale-90"
-                >
-                  <Copy aria-hidden className="size-4.5" />
-                </button>
-              )}
             </div>
           </>
         )}
@@ -138,13 +143,40 @@ export function MessageRow({ message, uid, trip, sameAuthor, receipt, reacting, 
               : mine
                 ? 'rounded-ee-sm bg-accent-fill text-accent-fg'
                 : 'surface rounded-es-sm',
-            reacting && 'ring-2 ring-accent/40',
+            message.deleted && mine && 'opacity-75',
+            (reacting || flash) && 'ring-2 ring-accent/50',
+            flash && 'transition-shadow duration-500',
           )}
         >
           {!mine && !sameAuthor && <p className="mb-1 text-xs font-semibold text-accent">{message.authorName}</p>}
-          {message.kind === 'place' && message.place && <PlaceCard place={message.place} messageId={message.id} />}
-          {message.kind === 'meet' && message.meet && <MeetCard meet={message.meet} />}
-          {message.kind === 'poll' && message.poll && <PollCard message={message} poll={message.poll} uid={uid} trip={trip} />}
+          {message.replyTo && !message.deleted && (
+            <button
+              type="button"
+              onClick={() => onJumpToQuote(message.replyTo!.id)}
+              className={clsx(
+                'mb-1.5 block w-full rounded-inner border-s-[3px] px-2.5 py-1.5 text-start',
+                mine && !card ? 'border-white/70 bg-white/15' : 'border-accent bg-fg/[0.05]',
+              )}
+            >
+              <span className={clsx('block text-xs font-semibold', mine && !card ? 'text-accent-fg' : 'text-accent')}>
+                {message.replyTo.authorName}
+              </span>
+              <span className={clsx('line-clamp-2 block text-[13px] leading-snug', mine && !card ? 'text-accent-fg/85' : 'text-muted')}>
+                {quoteDeleted ? 'ההודעה נמחקה' : <bdi>{message.replyTo.text}</bdi>}
+              </span>
+            </button>
+          )}
+          {message.deleted && (
+            <p className={clsx('flex items-center gap-1.5 text-[14px] italic', mine ? 'text-accent-fg/80' : 'text-muted')}>
+              <Ban aria-hidden className="size-4 shrink-0" />
+              {mine ? 'מחקת את ההודעה הזו' : 'ההודעה נמחקה'}
+            </p>
+          )}
+          {!message.deleted && message.kind === 'place' && message.place && <PlaceCard place={message.place} messageId={message.id} />}
+          {!message.deleted && message.kind === 'meet' && message.meet && <MeetCard meet={message.meet} />}
+          {!message.deleted && message.kind === 'poll' && message.poll && (
+            <PollCard message={message} poll={message.poll} uid={uid} trip={trip} />
+          )}
           {message.text && (
             <p dir="auto" className={clsx('text-[15px] leading-snug break-words whitespace-pre-wrap', card && 'mt-2')}>
               {message.text}
@@ -161,7 +193,68 @@ export function MessageRow({ message, uid, trip, sameAuthor, receipt, reacting, 
           </p>
         </div>
 
-        {counts.length > 0 && (
+        {reacting && (
+          <div
+            role="toolbar"
+            aria-label="פעולות על ההודעה"
+            className="glass relative z-40 mt-1.5 flex items-center gap-0.5 rounded-full p-1 text-sm font-medium shadow-lg"
+          >
+            {confirmDelete ? (
+              <>
+                <span className="px-2 text-xs">למחוק לכולם?</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    deleteMessage(message)
+                    onReacting(false)
+                  }}
+                  className="rounded-full bg-red-500/12 px-3 py-1.5 font-semibold text-red-600 dark:text-red-400"
+                >
+                  מחיקה
+                </button>
+                <button type="button" onClick={() => setConfirmDelete(false)} className="rounded-full px-3 py-1.5 text-muted">
+                  ביטול
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onReacting(false)
+                    onReply()
+                  }}
+                  className="flex items-center gap-1.5 rounded-full px-3 py-1.5 transition active:scale-95"
+                >
+                  <Reply aria-hidden className="size-4" />
+                  תשובה
+                </button>
+                {message.text && (
+                  <button
+                    type="button"
+                    onClick={() => void copy()}
+                    className="flex items-center gap-1.5 rounded-full px-3 py-1.5 transition active:scale-95"
+                  >
+                    <Copy aria-hidden className="size-4" />
+                    העתקה
+                  </button>
+                )}
+                {mine && !message.pending && (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(true)}
+                    className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-red-600 transition active:scale-95 dark:text-red-400"
+                  >
+                    <Trash2 aria-hidden className="size-4" />
+                    מחיקה
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {counts.length > 0 && !message.deleted && (
           <div className={clsx('relative z-[1] -mt-1.5 flex flex-wrap gap-1', mine ? 'me-2' : 'ms-2')}>
             {counts.map(({ emoji, count, mine: chosen }) => (
               <button

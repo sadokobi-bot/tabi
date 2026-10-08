@@ -446,6 +446,21 @@ export function createFirebaseBackend(): Backend {
       }
     },
 
+    async deleteMessage(tripId, message) {
+      try {
+        // Replaces the whole message: nothing of what it said is kept.
+        await setDoc(messageRef(tripId, message.id), {
+          authorId: message.authorId,
+          authorName: message.authorName,
+          createdAt: message.createdAt,
+          text: '',
+          deleted: true,
+        })
+      } catch (error) {
+        throw toAppError(error)
+      }
+    },
+
     async reactToMessage(tripId, messageId, uid, emoji) {
       try {
         await updateDoc(messageRef(tripId, messageId), new FieldPath('reactions', uid), emoji ?? deleteField())
