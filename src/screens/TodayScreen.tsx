@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Route } from 'lucide-react'
 import { motion, type Variants } from 'motion/react'
 import { useNavigate } from 'react-router'
@@ -8,13 +8,15 @@ import { DayTimeline } from '@/components/today/DayTimeline'
 import { FlightCountdown } from '@/components/today/FlightCountdown'
 import { NextUpCard } from '@/components/today/NextUpCard'
 import { TodayHero } from '@/components/today/TodayHero'
-import { TonightRow } from '@/components/today/TonightRow'
+import { PlanDaySheet } from '@/components/trip/PlanDaySheet'
+import { hasFirebase } from '@/config/env'
+import { CheckoutRow, TonightRow } from '@/components/today/TonightRow'
 import { Avatar } from '@/components/ui/Avatar'
 import { DEFAULT_CITY, getCity } from '@/data/cities'
 import { sortedDay } from '@/data/planOps'
 import { stayFor } from '@/data/stays'
 import { useNow } from '@/hooks/useNow'
-import { formatDay, greetingFor, minutesInTz, parseHm, tripTimeline } from '@/lib/dates'
+import { addDays, formatDay, greetingFor, minutesInTz, parseHm, tripTimeline } from '@/lib/dates'
 import { useCurrentUser } from '@/store/session'
 import { useTrip, useTripStore } from '@/store/trip'
 import { ui } from '@/store/ui'
@@ -33,6 +35,7 @@ export default function TodayScreen() {
   const placesById = useTripStore((state) => state.placesById)
   const places = useTripStore((state) => state.places)
   const navigate = useNavigate()
+  const [planning, setPlanning] = useState(false)
 
   const timeline = tripTimeline(trip, now)
   const { phase, focusDate, dayNumber } = timeline
@@ -52,6 +55,9 @@ export default function TodayScreen() {
 
   const stayId = stayFor(trip.stays, focusDate)
   const stay = stayId ? placesById[stayId] : undefined
+  // Hotel changes today: check out of last night's, check in to tonight's.
+  const lastNightId = stayFor(trip.stays, addDays(focusDate, -1))
+  const checkingOut = lastNightId && lastNightId !== stayId ? placesById[lastNightId] : undefined
 
   const city = getCity(trip.dayCities[focusDate])
   const firstPlace = items[0] ? placesById[items[0].placeId] : undefined
@@ -84,6 +90,7 @@ export default function TodayScreen() {
       {next && nextPlace && (
         <motion.div variants={RISE} className="mt-3">
           <NextUpCard
+            date={focusDate}
             item={next}
             place={nextPlace}
             nowMinutes={nowMinutes}
@@ -92,9 +99,15 @@ export default function TodayScreen() {
         </motion.div>
       )}
 
+      {checkingOut && (
+        <motion.div variants={RISE} className="mt-3">
+          <CheckoutRow place={checkingOut} />
+        </motion.div>
+      )}
+
       {stay && (
         <motion.div variants={RISE} className="mt-3">
-          <TonightRow place={stay} />
+          <TonightRow place={stay} checkInToday={stayId !== lastNightId} />
         </motion.div>
       )}
 
@@ -128,8 +141,16 @@ export default function TodayScreen() {
             המסלול של היום במפה
           </button>
         )}
-        <DayTimeline date={focusDate} items={items} placesById={placesById} nowMinutes={nowMinutes} nextItemId={next?.id ?? null} />
+        <DayTimeline
+          date={focusDate}
+          items={items}
+          placesById={placesById}
+          nowMinutes={nowMinutes}
+          nextItemId={next?.id ?? null}
+          onPlan={hasFirebase ? () => setPlanning(true) : undefined}
+        />
       </motion.section>
+      <PlanDaySheet date={planning ? focusDate : null} onClose={() => setPlanning(false)} />
     </motion.div>
   )
 }

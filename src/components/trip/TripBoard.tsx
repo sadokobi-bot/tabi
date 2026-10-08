@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState } from 'react'
 import clsx from 'clsx'
-import { Lightbulb, MapPin } from 'lucide-react'
+import { Lightbulb, MapPin, Sparkles } from 'lucide-react'
 import {
   DndContext,
   DragOverlay,
@@ -22,7 +22,9 @@ import { formatDay, tripDates } from '@/lib/dates'
 import { newId } from '@/lib/ids'
 import { stayFor } from '@/data/stays'
 import { ui } from '@/store/ui'
+import { hasFirebase } from '@/config/env'
 import { CityIdeasSheet } from './CityIdeasSheet'
+import { PlanDaySheet } from './PlanDaySheet'
 import { DayCard } from './DayCard'
 import { StayPicker } from './StayPicker'
 import { RowContent, SortableRow } from './SortableRow'
@@ -31,6 +33,8 @@ const IDEAS = 'ideas'
 const ALL = 'all'
 const OTHER = 'other'
 const cityName = (cityId: string) => getCity(cityId)?.name ?? 'מחוץ לערים'
+const FOOTER_BUTTON =
+  'flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-control bg-accent/[0.06] py-2 text-xs font-semibold text-accent transition hover:bg-accent/10 active:scale-[0.98]'
 const ideaId = (placeId: string) => `idea:${placeId}`
 const isIdea = (id: string) => id.startsWith('idea:')
 
@@ -67,6 +71,7 @@ export function TripBoard({ trip, plan, places, placesById, today }: TripBoardPr
   }, [dates, trip.dayCities])
   const [chosenCity, setIdeasCity] = useState(ALL)
   const [ideasFor, setIdeasFor] = useState<string | null>(null)
+  const [planFor, setPlanFor] = useState<string | null>(null)
 
   // Unscheduled places, grouped by city in trip order, so a long list reads "Tokyo / Kyoto / …".
   const unscheduled = useMemo(() => {
@@ -269,15 +274,22 @@ export function TripBoard({ trip, plan, places, placesById, today }: TripBoardPr
                 />
               }
               footer={
-                city && (
-                  <button
-                    type="button"
-                    onClick={() => setIdeasFor(date)}
-                    className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-control py-2 text-xs font-semibold text-accent transition hover:bg-accent/[0.06] active:scale-[0.98]"
-                  >
-                    <Lightbulb aria-hidden className="size-4" />
-                    רעיונות ב{city.name}
-                  </button>
+                (hasFirebase || city) && (
+                  <div className="mt-2 flex gap-2">
+                    {/* The planner runs on Gemini through Firebase, so it needs cloud mode. */}
+                    {hasFirebase && (
+                      <button type="button" onClick={() => setPlanFor(date)} className={FOOTER_BUTTON}>
+                        <Sparkles aria-hidden className="size-4" />
+                        תכנן לי את היום
+                      </button>
+                    )}
+                    {city && (
+                      <button type="button" onClick={() => setIdeasFor(date)} className={FOOTER_BUTTON}>
+                        <Lightbulb aria-hidden className="size-4" />
+                        רעיונות ב{city.name}
+                      </button>
+                    )}
+                  </div>
                 )
               }
               emptyLabel="יום פנוי. גררו לכאן מקומות"
@@ -293,6 +305,7 @@ export function TripBoard({ trip, plan, places, placesById, today }: TripBoardPr
       </div>
 
       <CityIdeasSheet date={ideasFor} onClose={() => setIdeasFor(null)} />
+      <PlanDaySheet date={planFor} onClose={() => setPlanFor(null)} />
 
       <DragOverlay>{activePlace ? <RowContent place={activePlace} item={activeItem} lifted /> : null}</DragOverlay>
     </DndContext>

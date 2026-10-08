@@ -72,6 +72,8 @@ export interface PoiProvider {
   peekDetails?(googlePlaceId: string): PoiDetails | null | undefined
   /** Finds the Google place matching a hand-added / sample place, so it can show photos and ratings. */
   matchGoogle?(name: string, location: LatLng): Promise<string | null>
+  /** The place's name and address in Japanese (to show a taxi driver). Google only; not to be stored. */
+  localNames?(googlePlaceId: string): Promise<{ name?: string; address?: string } | null>
   /** Real places for a free-text search ("wagyu restaurant in Shinjuku"), best first, biased toward `near`. */
   searchText(query: string, near: LatLng | null, signal: AbortSignal): Promise<Poi[]>
 }

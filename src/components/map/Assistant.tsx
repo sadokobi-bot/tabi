@@ -11,6 +11,7 @@ import {
   askAssistant,
   extractPlaces,
   failureOf,
+  FAILURE_TEXT,
   resolveOnMap,
   type AssistantAnswer,
   type AssistantFailure,
@@ -23,14 +24,6 @@ import { useTripStore } from '@/store/trip'
 import { ui } from '@/store/ui'
 
 const EXAMPLES = ['המקדש עם אלפי השערים הכתומים', 'ראמן טוב ליד שיבויה', 'תצפית יפה על הר פוג׳י']
-
-const FAILURE_TEXT: Record<AssistantFailure, string> = {
-  disabled: 'העוזר עוד לא הופעל. בעל הטיול צריך להפעיל את Firebase AI Logic.',
-  quota:
-    'העוזר הגיע למכסה החינמית של Gemini. נסו שוב בעוד דקה. אם זה חוזר, המכסה היומית נגמרה, והיא מתחדשת כל יום ב-10:00 בבוקר (שעון ישראל).',
-  busy: 'העוזר עמוס כרגע. נסו שוב בעוד דקה.',
-  other: 'העוזר לא זמין כרגע. נסו שוב בעוד רגע.',
-}
 
 /** Longer text than a search (a pasted post) switches to import. */
 const IMPORT_TEXT_LENGTH = 140

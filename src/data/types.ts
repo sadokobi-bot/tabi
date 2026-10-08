@@ -11,16 +11,7 @@ export interface Bounds {
 }
 
 export type CategoryId =
-  | 'attraction'
-  | 'amusement'
-  | 'food'
-  | 'cafe'
-  | 'shopping'
-  | 'nightlife'
-  | 'nature'
-  | 'hotel'
-  | 'transport'
-  | 'other'
+  'attraction' | 'amusement' | 'food' | 'cafe' | 'shopping' | 'nightlife' | 'nature' | 'hotel' | 'transport' | 'other'
 
 /** A place the group saved (from Google, OpenStreetMap or added by hand). */
 export interface Place {
@@ -39,9 +30,22 @@ export interface Place {
   booking?: Booking
   /** We've been here: for the trip journal. */
   visit?: Visit
+  /** Hotel details we type in ourselves (Google's own data is fetched live, never stored). */
+  hotel?: HotelInfo
   createdBy: string
   createdAt: number
   updatedAt: number
+}
+
+export interface HotelInfo {
+  /** "HH:mm" */
+  checkIn?: string
+  checkOut?: string
+  /** Booking / confirmation number. */
+  code?: string
+  phone?: string
+  /** The address in Japanese, for a taxi driver (typed or pasted from the booking). */
+  addressJa?: string
 }
 
 export interface Visit {

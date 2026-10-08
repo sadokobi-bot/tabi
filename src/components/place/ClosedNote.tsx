@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import clsx from 'clsx'
 import { Clock } from 'lucide-react'
 import type { Place } from '@/data/types'
-import { checkOpening, closedLabel } from '@/lib/openingHours'
+import { parseHm } from '@/lib/dates'
+import { checkOpening, closedLabel, closingLabel, closingStatus } from '@/lib/openingHours'
 import type { PoiDetails } from '@/maps/poi'
 import { usePoiProvider } from '@/maps/usePoiProvider'
 
@@ -44,16 +45,29 @@ interface ClosedNoteProps {
   date: string
   time?: string
   fetch?: boolean
+  /** Minutes since midnight in Japan when `date` is today: also warns when it closes soon or already has. */
+  nowMinutes?: number | null
   className?: string
 }
 
 /** A small warning when the place is closed on that day or at that time; nothing otherwise. */
-export function ClosedNote({ place, date, time, fetch = false, className }: ClosedNoteProps) {
+export function ClosedNote({ place, date, time, fetch = false, nowMinutes = null, className }: ClosedNoteProps) {
   const periods = useOpeningPeriods(place.googlePlaceId, fetch)
-  const label = closedLabel(checkOpening(periods, date, time))
+  // Right now beats the plan: "closes in 20 min" matters more than the planned time. A stop with a
+  // later time only needs the scheduled-time check ("opens later" would be noise).
+  const live = nowMinutes == null ? null : closingLabel(closingStatus(periods, date, nowMinutes))
+  const timedLater = time != null && nowMinutes != null && (parseHm(time) ?? 0) > nowMinutes + 30
+  const now = live && !(timedLater && !live.urgent) ? live : null
+  const label = now?.text ?? closedLabel(checkOpening(periods, date, time))
   if (!label) return null
   return (
-    <span className={clsx('flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400', className)}>
+    <span
+      className={clsx(
+        'flex items-center gap-1 text-xs font-medium',
+        now?.urgent ? 'text-red-600 dark:text-red-400' : 'text-amber-700 dark:text-amber-400',
+        className,
+      )}
+    >
       <Clock aria-hidden className="size-3.5 shrink-0" />
       {label}
     </span>

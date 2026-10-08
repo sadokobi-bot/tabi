@@ -21,6 +21,8 @@ const CACHE_TTL_MS = 10 * 60_000
  */
 const detailsCache = new Map<string, Promise<PoiDetails | null>>()
 const detailsSettled = new Map<string, PoiDetails | null>()
+/** Japanese name and address per place, for the taxi card (same session-only rule). */
+const localNamesCache = new Map<string, Promise<{ name?: string; address?: string } | null>>()
 
 export function createGoogleProvider(places: google.maps.PlacesLibrary): PoiProvider {
   const { Place, AutocompleteSuggestion, AutocompleteSessionToken } = places
@@ -104,6 +106,20 @@ export function createGoogleProvider(places: google.maps.PlacesLibrary): PoiProv
           },
         ]
       })
+    },
+
+    localNames(googlePlaceId) {
+      let pending = localNamesCache.get(googlePlaceId)
+      if (!pending) {
+        pending = (async () => {
+          const place = new Place({ id: googlePlaceId, requestedLanguage: 'ja', requestedRegion: 'jp' })
+          await place.fetchFields({ fields: ['displayName', 'formattedAddress'] })
+          return { name: place.displayName ?? undefined, address: place.formattedAddress ?? undefined }
+        })()
+        pending.catch(() => localNamesCache.delete(googlePlaceId))
+        localNamesCache.set(googlePlaceId, pending)
+      }
+      return pending
     },
 
     details(googlePlaceId) {

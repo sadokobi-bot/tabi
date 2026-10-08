@@ -1,6 +1,6 @@
 import { Fragment } from 'react'
 import clsx from 'clsx'
-import { CircleCheck, MapPinPlus, Moon, Sun, Sunrise, Clock4 } from 'lucide-react'
+import { CircleCheck, MapPinPlus, Moon, Sparkles, Sun, Sunrise, Clock4 } from 'lucide-react'
 import { useNavigate } from 'react-router'
 import { ClosedNote } from '@/components/place/ClosedNote'
 import { CategoryIcon } from '@/components/ui/CategoryIcon'
@@ -18,6 +18,8 @@ interface DayTimelineProps {
   /** Minutes since midnight in Japan when showing today; null for other days. */
   nowMinutes: number | null
   nextItemId: string | null
+  /** Offered on an empty day: build it with the AI planner. */
+  onPlan?: () => void
 }
 
 const SECTIONS = [
@@ -28,7 +30,7 @@ const SECTIONS = [
 ] as const
 
 /** Vertical timeline of the day, grouped into morning / afternoon / evening. */
-export function DayTimeline({ date, items, placesById, nowMinutes, nextItemId }: DayTimelineProps) {
+export function DayTimeline({ date, items, placesById, nowMinutes, nextItemId, onPlan }: DayTimelineProps) {
   const navigate = useNavigate()
 
   if (items.length === 0) {
@@ -36,9 +38,20 @@ export function DayTimeline({ date, items, placesById, nowMinutes, nextItemId }:
       <div className="surface rounded-card p-6 text-center">
         <p className="font-semibold">עוד אין תוכנית ליום הזה</p>
         <p className="mt-1 text-sm text-muted">מוסיפים מקומות מהמפה ומשבצים אותם בימים</p>
-        <Button className="mt-4" icon={<MapPinPlus aria-hidden className="size-4.5" />} onClick={() => navigate('/map')}>
-          למפה
-        </Button>
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          {onPlan && (
+            <Button icon={<Sparkles aria-hidden className="size-4.5" />} onClick={onPlan}>
+              תכנן לי את היום
+            </Button>
+          )}
+          <Button
+            variant={onPlan ? 'secondary' : 'primary'}
+            icon={<MapPinPlus aria-hidden className="size-4.5" />}
+            onClick={() => navigate('/map')}
+          >
+            למפה
+          </Button>
+        </div>
       </div>
     )
   }
@@ -106,7 +119,14 @@ export function DayTimeline({ date, items, placesById, nowMinutes, nextItemId }:
                           {(item.note || place.notes) && (
                             <span className="block truncate text-xs text-muted">{item.note || place.notes}</span>
                           )}
-                          <ClosedNote place={place} date={date} time={item.time} fetch className="mt-0.5" />
+                          <ClosedNote
+                            place={place}
+                            date={date}
+                            time={item.time}
+                            fetch
+                            nowMinutes={past ? null : nowMinutes}
+                            className="mt-0.5"
+                          />
                         </span>
                       </button>
                     </li>

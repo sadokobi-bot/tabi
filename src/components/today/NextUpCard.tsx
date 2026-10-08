@@ -1,5 +1,6 @@
 import { ChevronLeft, Navigation } from 'lucide-react'
 import { motion } from 'motion/react'
+import { ClosedNote } from '@/components/place/ClosedNote'
 import { CategoryIcon } from '@/components/ui/CategoryIcon'
 import { CATEGORIES } from '@/data/categories'
 import type { ItineraryItem, Place } from '@/data/types'
@@ -8,6 +9,8 @@ import { parseHm } from '@/lib/dates'
 import { ui } from '@/store/ui'
 
 interface NextUpCardProps {
+  /** The day the item is on (YYYY-MM-DD). */
+  date: string
   item: ItineraryItem
   place: Place
   /** Minutes since midnight in Japan, or null when the card previews a future day. */
@@ -27,7 +30,7 @@ function relativeLabel(time: string | undefined, nowMinutes: number | null): str
 }
 
 /** The highlighted "what's next" card, with one-tap navigation. */
-export function NextUpCard({ item, place, nowMinutes, eyebrow }: NextUpCardProps) {
+export function NextUpCard({ date, item, place, nowMinutes, eyebrow }: NextUpCardProps) {
   const relative = relativeLabel(item.time, nowMinutes)
 
   return (
@@ -56,6 +59,7 @@ export function NextUpCard({ item, place, nowMinutes, eyebrow }: NextUpCardProps
             {item.time && ' · '}
             {item.note || CATEGORIES[place.category].label}
           </span>
+          <ClosedNote place={place} date={date} time={item.time} fetch nowMinutes={nowMinutes} className="mt-1" />
         </span>
         <ChevronLeft aria-hidden className="size-5 shrink-0 text-muted" />
       </button>

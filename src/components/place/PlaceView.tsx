@@ -30,6 +30,7 @@ import { usePoiProvider } from '@/maps/usePoiProvider'
 import { scheduleOf, useTrip, useTripStore } from '@/store/trip'
 import { ui } from '@/store/ui'
 import { BookingSection } from './BookingSection'
+import { HotelSection } from './HotelSection'
 import { NavigateBar } from './NavigateBar'
 import { VisitSection } from './VisitSection'
 import { PlaceHero } from './PlaceHero'
@@ -183,6 +184,9 @@ export function PlaceView({ subject, onEdit, onSchedule }: PlaceViewProps) {
           </a>
         )}
 
+        {saved && (saved.category === 'hotel' || Object.values(trip.stays).includes(saved.id)) && (
+          <HotelSection key={`hotel-${saved.id}`} place={saved} />
+        )}
         {saved && <VisitSection key={`visit-${saved.id}`} place={saved} />}
         {saved && !saved.visit && <BookingSection key={saved.id} place={saved} />}
 
