@@ -1,8 +1,26 @@
 import { useEffect, useState } from 'react'
 import { motion, type Transition } from 'motion/react'
 
-/** The intro plays once per launch; the splash re-mounts between loading steps and should not restart it. */
-let introPlayed = false
+/** How long the intro takes to finish (the progress line is the last thing to appear). */
+const INTRO_MS = 1900
+
+/** When the intro started. It plays once per launch; the splash re-mounts between loading steps and should not restart it. */
+let introStartedAt: number | null = null
+
+/**
+ * False until the launch intro has had time to play, so a fast load doesn't cut it off.
+ * Data keeps loading underneath; this only holds back what replaces the splash.
+ */
+export function useIntroDone(): boolean {
+  const remaining = () => (introStartedAt === null ? 0 : INTRO_MS - (performance.now() - introStartedAt))
+  const [done, setDone] = useState(() => introStartedAt !== null && remaining() <= 0)
+  useEffect(() => {
+    if (done) return
+    const timer = setTimeout(() => setDone(true), Math.max(0, remaining()))
+    return () => clearTimeout(timer)
+  }, [done])
+  return done
+}
 
 const EASE: Transition['ease'] = [0.22, 1, 0.36, 1]
 const at = (delay: number, duration = 0.55): Transition => ({ delay, duration, ease: EASE })
@@ -15,10 +33,11 @@ const SVG_BOX = { transformBox: 'fill-box' } as const
  * that assembles itself, then the wordmark and a quiet progress line.
  */
 export function SplashScreen({ message, failed = false }: { message?: string; failed?: boolean }) {
-  const [intro] = useState(() => !introPlayed)
-  useEffect(() => {
-    introPlayed = true
-  }, [])
+  const [intro] = useState(() => {
+    if (introStartedAt !== null) return false
+    introStartedAt = performance.now()
+    return true
+  })
   const initial = intro ? 'hidden' : false
 
   return (

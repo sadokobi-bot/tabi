@@ -3,7 +3,7 @@ import { APIProvider } from '@vis.gl/react-google-maps'
 import { MotionConfig } from 'motion/react'
 import { BrowserRouter } from 'react-router'
 import { TripDataSync } from '@/app/TripDataSync'
-import { SplashScreen } from '@/components/layout/SplashScreen'
+import { SplashScreen, useIntroDone } from '@/components/layout/SplashScreen'
 import { Toaster } from '@/components/ui/Toaster'
 import { GOOGLE_MAPS_API_KEY, hasGoogleMaps } from '@/config/env'
 import { AppLayout } from '@/layouts/AppLayout'
@@ -33,10 +33,11 @@ export default function App() {
 /** Auth → trip selection → app. */
 function SessionGate() {
   const status = useSession((state) => state.status)
+  const introDone = useIntroDone()
 
   if (status === 'loading') return <SplashScreen />
   if (status === 'error') return <SplashScreen failed message="לא הצלחנו לטעון את האפליקציה. בדקו את החיבור ונסו לרענן." />
-  if (status === 'signedOut') return <AuthScreen />
+  if (status === 'signedOut') return introDone ? <AuthScreen /> : <SplashScreen />
   return (
     <>
       <TripDataSync />
@@ -55,8 +56,9 @@ function SignedInApp() {
   )
   const trip = useActiveTrip()
   const firstTripFailed = useFirstTrip(needsFirstTrip)
+  const introDone = useIntroDone()
 
-  if (!tripsLoaded) return <SplashScreen failed={!!syncError} message={syncError ?? undefined} />
+  if (!tripsLoaded || !introDone) return <SplashScreen failed={!!syncError} message={syncError ?? undefined} />
   // New trips are otherwise created from the trip settings ("הטיולים שלי"); this is only a fallback.
   if (creatingTrip || (!trip && firstTripFailed)) return <OnboardingScreen />
   if (!trip) return <SplashScreen failed={!!syncError} message={syncError ?? 'מכינים את הטיול שלכם…'} />
