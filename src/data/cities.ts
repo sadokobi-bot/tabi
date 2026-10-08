@@ -4,29 +4,31 @@ import type { LatLng } from './types'
 export interface City {
   id: string
   name: string
+  /** English name, for map searches. */
+  en: string
   location: LatLng
 }
 
 /** Common stops on a Japan itinerary. Used for day labels, weather and default map views. */
 export const CITIES: City[] = [
-  { id: 'tokyo', name: 'טוקיו', location: { lat: 35.6812, lng: 139.7671 } },
-  { id: 'kyoto', name: 'קיוטו', location: { lat: 35.0116, lng: 135.7681 } },
-  { id: 'osaka', name: 'אוסקה', location: { lat: 34.6937, lng: 135.5023 } },
-  { id: 'nara', name: 'נארה', location: { lat: 34.6851, lng: 135.8048 } },
-  { id: 'hakone', name: 'הקונה', location: { lat: 35.2324, lng: 139.1069 } },
-  { id: 'kawaguchiko', name: 'קוואגוצ׳יקו (פוג׳י)', location: { lat: 35.5164, lng: 138.7515 } },
-  { id: 'kamakura', name: 'קמאקורה', location: { lat: 35.3192, lng: 139.5467 } },
-  { id: 'nikko', name: 'ניקו', location: { lat: 36.7199, lng: 139.6982 } },
-  { id: 'hiroshima', name: 'הירושימה', location: { lat: 34.3853, lng: 132.4553 } },
-  { id: 'miyajima', name: 'מיאג׳ימה', location: { lat: 34.296, lng: 132.3198 } },
-  { id: 'kobe', name: 'קובה', location: { lat: 34.6901, lng: 135.1955 } },
-  { id: 'kanazawa', name: 'קנאזאווה', location: { lat: 36.5613, lng: 136.6562 } },
-  { id: 'takayama', name: 'טקאיאמה', location: { lat: 36.1461, lng: 137.2522 } },
-  { id: 'matsumoto', name: 'מטסומוטו', location: { lat: 36.238, lng: 137.972 } },
-  { id: 'nagoya', name: 'נגויה', location: { lat: 35.1815, lng: 136.9066 } },
-  { id: 'fukuoka', name: 'פוקואוקה', location: { lat: 33.5904, lng: 130.4017 } },
-  { id: 'sapporo', name: 'סאפורו', location: { lat: 43.0618, lng: 141.3545 } },
-  { id: 'okinawa', name: 'אוקינאווה', location: { lat: 26.2124, lng: 127.6809 } },
+  { id: 'tokyo', name: 'טוקיו', en: 'Tokyo', location: { lat: 35.6812, lng: 139.7671 } },
+  { id: 'kyoto', name: 'קיוטו', en: 'Kyoto', location: { lat: 35.0116, lng: 135.7681 } },
+  { id: 'osaka', name: 'אוסקה', en: 'Osaka', location: { lat: 34.6937, lng: 135.5023 } },
+  { id: 'nara', name: 'נארה', en: 'Nara', location: { lat: 34.6851, lng: 135.8048 } },
+  { id: 'hakone', name: 'הקונה', en: 'Hakone', location: { lat: 35.2324, lng: 139.1069 } },
+  { id: 'kawaguchiko', name: 'קוואגוצ׳יקו (פוג׳י)', en: 'Kawaguchiko', location: { lat: 35.5164, lng: 138.7515 } },
+  { id: 'kamakura', name: 'קמאקורה', en: 'Kamakura', location: { lat: 35.3192, lng: 139.5467 } },
+  { id: 'nikko', name: 'ניקו', en: 'Nikko', location: { lat: 36.7199, lng: 139.6982 } },
+  { id: 'hiroshima', name: 'הירושימה', en: 'Hiroshima', location: { lat: 34.3853, lng: 132.4553 } },
+  { id: 'miyajima', name: 'מיאג׳ימה', en: 'Miyajima', location: { lat: 34.296, lng: 132.3198 } },
+  { id: 'kobe', name: 'קובה', en: 'Kobe', location: { lat: 34.6901, lng: 135.1955 } },
+  { id: 'kanazawa', name: 'קנאזאווה', en: 'Kanazawa', location: { lat: 36.5613, lng: 136.6562 } },
+  { id: 'takayama', name: 'טקאיאמה', en: 'Takayama', location: { lat: 36.1461, lng: 137.2522 } },
+  { id: 'matsumoto', name: 'מטסומוטו', en: 'Matsumoto', location: { lat: 36.238, lng: 137.972 } },
+  { id: 'nagoya', name: 'נגויה', en: 'Nagoya', location: { lat: 35.1815, lng: 136.9066 } },
+  { id: 'fukuoka', name: 'פוקואוקה', en: 'Fukuoka', location: { lat: 33.5904, lng: 130.4017 } },
+  { id: 'sapporo', name: 'סאפורו', en: 'Sapporo', location: { lat: 43.0618, lng: 141.3545 } },
+  { id: 'okinawa', name: 'אוקינאווה', en: 'Okinawa', location: { lat: 26.2124, lng: 127.6809 } },
 ]
 
 const BY_ID = new Map(CITIES.map((city) => [city.id, city]))

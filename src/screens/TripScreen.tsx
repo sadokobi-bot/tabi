@@ -1,6 +1,10 @@
+import { useState } from 'react'
+import clsx from 'clsx'
 import { CalendarCheck, Share2 } from 'lucide-react'
+import { motion } from 'motion/react'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
 import { TripBoard } from '@/components/trip/TripBoard'
+import { TripJournal } from '@/components/trip/TripJournal'
 import { Button } from '@/components/ui/Button'
 import { addDays, formatDay, tripTimeline } from '@/lib/dates'
 import { useNow } from '@/hooks/useNow'
@@ -15,6 +19,7 @@ export default function TripScreen() {
   const placesById = useTripStore((state) => state.placesById)
   const now = useNow(60_000)
   const { phase, today } = tripTimeline(trip, now)
+  const [view, setView] = useState<'plan' | 'journal'>('plan')
 
   const scheduledCount = Object.values(plan).reduce((sum, items) => sum + items.length, 0)
   const range = `${formatDay(trip.startDate, { day: 'numeric', month: 'short' })} - ${formatDay(addDays(trip.startDate, trip.days - 1), { day: 'numeric', month: 'short', year: 'numeric' })}`
@@ -38,15 +43,53 @@ export default function TripScreen() {
         <p className="mt-0.5 text-sm text-muted">
           {trip.days} ימים, {places.length} מקומות שמורים ו-{scheduledCount} פעילויות בלו״ז
         </p>
-        {phase === 'during' && (
-          <Button variant="ghost" className="mt-2 -ms-2 text-accent" icon={<CalendarCheck aria-hidden className="size-4" />} onClick={jumpToToday}>
+        <div role="tablist" aria-label="תצוגה" className="mt-4 grid grid-cols-2 rounded-control bg-fg/6 p-1">
+          {(
+            [
+              ['plan', 'תכנון'],
+              ['journal', 'יומן'],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              role="tab"
+              aria-selected={view === value}
+              onClick={() => setView(value)}
+              className={clsx(
+                'relative h-9 rounded-inner text-sm font-semibold transition-colors',
+                view === value ? 'text-fg' : 'text-muted',
+              )}
+            >
+              {view === value && (
+                <motion.span
+                  layoutId="trip-view"
+                  className="absolute inset-0 rounded-inner bg-card shadow-sm"
+                  transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+                />
+              )}
+              <span className="relative">{label}</span>
+            </button>
+          ))}
+        </div>
+        {view === 'plan' && phase === 'during' && (
+          <Button
+            variant="ghost"
+            className="mt-2 -ms-2 text-accent"
+            icon={<CalendarCheck aria-hidden className="size-4" />}
+            onClick={jumpToToday}
+          >
             קפיצה להיום
           </Button>
         )}
       </div>
 
       <div className="mt-5">
-        <TripBoard trip={trip} plan={plan} places={places} placesById={placesById} today={today} />
+        {view === 'plan' ? (
+          <TripBoard trip={trip} plan={plan} places={places} placesById={placesById} today={today} />
+        ) : (
+          <TripJournal trip={trip} places={places} />
+        )}
       </div>
     </div>
   )

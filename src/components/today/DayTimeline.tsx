@@ -1,6 +1,6 @@
 import { Fragment } from 'react'
 import clsx from 'clsx'
-import { MapPinPlus, Moon, Sun, Sunrise, Clock4 } from 'lucide-react'
+import { CircleCheck, MapPinPlus, Moon, Sun, Sunrise, Clock4 } from 'lucide-react'
 import { useNavigate } from 'react-router'
 import { ClosedNote } from '@/components/place/ClosedNote'
 import { CategoryIcon } from '@/components/ui/CategoryIcon'
@@ -97,7 +97,12 @@ export function DayTimeline({ date, items, placesById, nowMinutes, nextItemId }:
                       >
                         <CategoryIcon category={place.category} />
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate font-semibold">{place.name}</span>
+                          <span className="flex items-center gap-1.5">
+                            <span className="truncate font-semibold">{place.name}</span>
+                            {place.visit && (
+                              <CircleCheck aria-label="היינו פה" className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                            )}
+                          </span>
                           {(item.note || place.notes) && (
                             <span className="block truncate text-xs text-muted">{item.note || place.notes}</span>
                           )}

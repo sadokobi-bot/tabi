@@ -31,6 +31,7 @@ import { scheduleOf, useTrip, useTripStore } from '@/store/trip'
 import { ui } from '@/store/ui'
 import { BookingSection } from './BookingSection'
 import { NavigateBar } from './NavigateBar'
+import { VisitSection } from './VisitSection'
 import { PlaceHero } from './PlaceHero'
 
 export interface PlaceSubject {
@@ -182,7 +183,8 @@ export function PlaceView({ subject, onEdit, onSchedule }: PlaceViewProps) {
           </a>
         )}
 
-        {saved && <BookingSection key={saved.id} place={saved} />}
+        {saved && <VisitSection key={`visit-${saved.id}`} place={saved} />}
+        {saved && !saved.visit && <BookingSection key={saved.id} place={saved} />}
 
         {schedule.length > 0 && (
           <div className="mt-4">

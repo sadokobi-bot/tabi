@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState } from 'react'
 import clsx from 'clsx'
-import { MapPin } from 'lucide-react'
+import { Lightbulb, MapPin } from 'lucide-react'
 import {
   DndContext,
   DragOverlay,
@@ -22,6 +22,7 @@ import { formatDay, tripDates } from '@/lib/dates'
 import { newId } from '@/lib/ids'
 import { stayFor } from '@/data/stays'
 import { ui } from '@/store/ui'
+import { CityIdeasSheet } from './CityIdeasSheet'
 import { DayCard } from './DayCard'
 import { StayPicker } from './StayPicker'
 import { RowContent, SortableRow } from './SortableRow'
@@ -65,6 +66,7 @@ export function TripBoard({ trip, plan, places, placesById, today }: TripBoardPr
     return (cityId: string) => order.indexOf(cityId)
   }, [dates, trip.dayCities])
   const [chosenCity, setIdeasCity] = useState(ALL)
+  const [ideasFor, setIdeasFor] = useState<string | null>(null)
 
   // Unscheduled places, grouped by city in trip order, so a long list reads "Tokyo / Kyoto / …".
   const unscheduled = useMemo(() => {
@@ -266,6 +268,18 @@ export function TripBoard({ trip, plan, places, placesById, today }: TripBoardPr
                   places={places}
                 />
               }
+              footer={
+                city && (
+                  <button
+                    type="button"
+                    onClick={() => setIdeasFor(date)}
+                    className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-control py-2 text-xs font-semibold text-accent transition hover:bg-accent/[0.06] active:scale-[0.98]"
+                  >
+                    <Lightbulb aria-hidden className="size-4" />
+                    רעיונות ב{city.name}
+                  </button>
+                )
+              }
               emptyLabel="יום פנוי. גררו לכאן מקומות"
             >
               {ids.map((id) => {
@@ -277,6 +291,8 @@ export function TripBoard({ trip, plan, places, placesById, today }: TripBoardPr
           )
         })}
       </div>
+
+      <CityIdeasSheet date={ideasFor} onClose={() => setIdeasFor(null)} />
 
       <DragOverlay>{activePlace ? <RowContent place={activePlace} item={activeItem} lifted /> : null}</DragOverlay>
     </DndContext>

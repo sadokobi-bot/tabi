@@ -49,6 +49,7 @@ export interface PlaceFields extends PlaceDraft {
   notes?: string
   url?: string
   booking?: Place['booking']
+  visit?: Place['visit']
 }
 
 export const actions = {

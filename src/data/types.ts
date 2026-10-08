@@ -37,9 +37,19 @@ export interface Place {
   osmId?: string
   /** Needs booking ahead (tickets, popular restaurants): when booking opens, and whether it's done. */
   booking?: Booking
+  /** We've been here: for the trip journal. */
+  visit?: Visit
   createdBy: string
   createdAt: number
   updatedAt: number
+}
+
+export interface Visit {
+  /** YYYY-MM-DD (Japan calendar). */
+  on: string
+  /** 1-5 stars. */
+  rating?: number
+  note?: string
 }
 
 export interface Booking {

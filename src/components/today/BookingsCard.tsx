@@ -11,7 +11,7 @@ const MAX_ROWS = 4
 export function BookingsCard({ places, today }: { places: Place[]; today: string }) {
   const pending = places
     .flatMap((place) => {
-      if (!place.booking) return []
+      if (!place.booking || place.visit) return []
       const status = bookingStatus(place.booking, today)
       return status.kind === 'booked' ? [] : [{ place, status }]
     })

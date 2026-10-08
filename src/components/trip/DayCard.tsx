@@ -18,6 +18,8 @@ interface DayCardProps {
   extra?: ReactNode
   /** Shows the day's stops as a route on the map. */
   onShowRoute?: () => void
+  /** Under the list (ideas for the day's city). */
+  footer?: ReactNode
   emptyLabel: string
   children: ReactNode
 }
@@ -33,6 +35,7 @@ export function DayCard({
   onCityChange,
   extra,
   onShowRoute,
+  footer,
   emptyLabel,
   children,
 }: DayCardProps) {
@@ -100,6 +103,7 @@ export function DayCard({
           )}
         </ol>
       </SortableContext>
+      {footer}
     </section>
   )
 }
