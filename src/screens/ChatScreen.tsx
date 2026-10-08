@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { displayName, firstName } from '@/backend'
 import clsx from 'clsx'
 import { Clock3, MessageCircle, SendHorizontal, WifiOff } from 'lucide-react'
 import { errorMessage } from '@/backend'
@@ -96,7 +97,7 @@ export default function ChatScreen() {
     const message: ChatMessage = {
       id: newId(),
       authorId: user.uid,
-      authorName: user.username,
+      authorName: displayName(user).slice(0, 40), // the rules cap chat names at 40
       text: body.slice(0, MAX_LENGTH),
       createdAt: Date.now(),
     }
@@ -121,10 +122,13 @@ export default function ChatScreen() {
       <header className="pt-screen mx-auto w-full max-w-md px-5 pb-3">
         <h1 className="text-[1.6rem] leading-tight font-bold">צ׳אט הטיול</h1>
         <p className="mt-0.5 truncate text-sm text-muted">
-          {others.length ? [user.username, ...others].join(' · ') : 'עדיין אין שותפים לטיול'}
+          {others.length ? [firstName(user), ...others].join(' · ') : 'עדיין אין שותפים לטיול'}
         </p>
         {mode === 'cloud' && !online && (
-          <p role="status" className="mt-3 flex items-start gap-2 rounded-control bg-amber-500/12 px-3 py-2 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
+          <p
+            role="status"
+            className="mt-3 flex items-start gap-2 rounded-control bg-amber-500/12 px-3 py-2 text-xs leading-relaxed text-amber-800 dark:text-amber-300"
+          >
             <WifiOff aria-hidden className="mt-0.5 size-3.5 shrink-0" />
             אין חיבור כרגע. אפשר לכתוב כרגיל: ההודעות יישלחו לבד כשהחיבור יחזור.
           </p>
@@ -156,9 +160,7 @@ export default function ChatScreen() {
                   ? 'כתבו משהו לשותפים לטיול.'
                   : 'הזמינו את השותפים לטיול עם קוד ההזמנה שבהגדרות (העיגול עם האות שלכם במסך "היום").'}
               </p>
-              {mode === 'local' && (
-                <p className="mt-3 text-xs text-muted">מצב מקומי: ההודעות נשמרות רק בדפדפן הזה.</p>
-              )}
+              {mode === 'local' && <p className="mt-3 text-xs text-muted">מצב מקומי: ההודעות נשמרות רק בדפדפן הזה.</p>}
             </div>
           )}
 
@@ -189,7 +191,9 @@ export default function ChatScreen() {
                     <p dir="auto" className="text-[15px] leading-snug break-words whitespace-pre-wrap">
                       {message.text}
                     </p>
-                    <p className={clsx('mt-0.5 flex items-center justify-end gap-1 text-[10px]', mine ? 'text-accent-fg/75' : 'text-muted')}>
+                    <p
+                      className={clsx('mt-0.5 flex items-center justify-end gap-1 text-[10px]', mine ? 'text-accent-fg/75' : 'text-muted')}
+                    >
                       {message.pending && (
                         <>
                           <Clock3 aria-hidden className="size-3" />

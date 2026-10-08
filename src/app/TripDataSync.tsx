@@ -123,6 +123,21 @@ export function TripDataSync() {
     if (backend && activeTripId && tripDataLoaded) removeSamplePlaces(backend, activeTripId)
   }, [backend, activeTripId, tripDataLoaded, places])
 
+  // Join requests, for the trip's owner only (the rules let nobody else list them).
+  const ownsTrip = useTripStore((state) => {
+    const trip = state.trips.find((t) => t.id === state.activeTripId)
+    return Boolean(trip && uid && trip.ownerId === uid)
+  })
+  useEffect(() => {
+    useTripStore.setState({ joinRequests: [] })
+    if (!backend || !activeTripId || !ownsTrip) return
+    return backend.watchJoinRequests(
+      activeTripId,
+      (joinRequests) => useTripStore.setState({ joinRequests }),
+      (error) => console.warn('[trip] join requests unavailable', error),
+    )
+  }, [backend, activeTripId, ownsTrip])
+
   // The chat stays subscribed on every tab, so the tab bar can show unread messages.
   useEffect(() => {
     if (!backend || !activeTripId) return

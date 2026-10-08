@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import { firstName } from '@/backend'
+import { JoinRequests } from '@/components/profile/JoinRequests'
 import { Languages, Route } from 'lucide-react'
 import { motion, type Variants } from 'motion/react'
 import { useNavigate } from 'react-router'
@@ -72,7 +74,7 @@ export default function TodayScreen() {
       <motion.header variants={RISE} className="flex items-center justify-between gap-4">
         <div className="min-w-0">
           <h1 className="truncate text-[1.85rem] leading-tight font-bold tracking-tight">
-            {greetingFor(now)}, {user.username}
+            {greetingFor(now)}, {firstName(user)}
           </h1>
           <p className="mt-1 text-sm text-muted">{formatDay(timeline.today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
         </div>
@@ -94,11 +96,18 @@ export default function TodayScreen() {
             aria-label="פרופיל והגדרות הטיול"
             className="tap-target relative rounded-full transition active:scale-90"
           >
-            <Avatar name={user.username} className="size-11 text-lg" />
+            <Avatar name={firstName(user)} className="size-11 text-lg" />
           </button>
         </div>
       </motion.header>
       <TranslateSheet open={translating} onClose={() => setTranslating(false)} />
+
+      {/* The trip's owner approves who joins. */}
+      {trip.ownerId === user.uid && (
+        <motion.div variants={RISE} className="mt-5 empty:hidden">
+          <JoinRequests />
+        </motion.div>
+      )}
 
       <motion.div variants={RISE} className="mt-5">
         <TodayHero trip={trip} timeline={timeline} now={now} placeName={placeName} location={weatherLocation} />

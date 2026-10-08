@@ -1,8 +1,8 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import clsx from 'clsx'
-import { ArrowRight, ChevronLeft, LogOut, Sparkles, Users } from 'lucide-react'
+import { ArrowRight, ChevronLeft, Hourglass, LogOut, Sparkles, UserX, Users } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { errorMessage } from '@/backend'
+import { errorMessage, firstName, type JoinStatus } from '@/backend'
 import { SakuraDrift } from '@/components/brand/SakuraDrift'
 import { SunGate } from '@/components/brand/SunGate'
 import { Button } from '@/components/ui/Button'
@@ -10,9 +10,10 @@ import { TextField } from '@/components/ui/TextField'
 import { isoDateInTz } from '@/lib/dates'
 import { normalizeInviteCode } from '@/lib/ids'
 import { getBackend, useCurrentUser } from '@/store/session'
+import { recallPendingJoin, rememberPendingJoin, type PendingJoin } from '@/store/joins'
 import { rememberActiveTrip, useTripStore } from '@/store/trip'
 
-type Step = 'choose' | 'create' | 'join'
+type Step = 'choose' | 'create' | 'join' | 'waiting'
 
 const EASE = [0.22, 1, 0.36, 1] as const
 const LENGTHS = [7, 14, 21, 30]
@@ -24,7 +25,9 @@ const LENGTHS = [7, 14, 21, 30]
 export function OnboardingScreen() {
   const user = useCurrentUser()
   const hasTrips = useTripStore((state) => state.trips.length > 0)
-  const [step, setStep] = useState<Step>('choose')
+  // A request sent earlier (even before the app was closed) opens straight on the waiting screen.
+  const [pending, setPending] = useState<PendingJoin | null>(() => recallPendingJoin(user.uid))
+  const [step, setStep] = useState<Step>(() => (recallPendingJoin(user.uid) ? 'waiting' : 'choose'))
 
   const [name, setName] = useState(`יפן ${new Date().getFullYear()}`)
   const [startDate, setStartDate] = useState(() => isoDateInTz(new Date()))
@@ -64,13 +67,40 @@ export function OnboardingScreen() {
     void run(() => getBackend().createTrip(user, { name: name.trim(), startDate, days: dayCount }))
   }
 
-  const join = (event: FormEvent) => {
+  const join = async (event: FormEvent) => {
     event.preventDefault()
     if (normalizeInviteCode(code).length < 6) {
       setError('הקלידו את קוד ההזמנה שקיבלתם')
       return
     }
-    void run(() => getBackend().joinTrip(user, code))
+    setBusy(true)
+    setError(null)
+    try {
+      const result = await getBackend().requestJoin(user, code)
+      if (result.member) {
+        activate(result.tripId)
+        return
+      }
+      const next: PendingJoin = { tripId: result.tripId, tripName: result.tripName, ownerName: result.ownerName }
+      rememberPendingJoin(user.uid, next)
+      setPending(next)
+      setStep('waiting')
+    } catch (caught) {
+      setError(errorMessage(caught))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const stopWaiting = (cancel: boolean) => {
+    if (pending && cancel)
+      void getBackend()
+        .cancelJoinRequest(pending.tripId, user.uid)
+        .catch(() => undefined)
+    rememberPendingJoin(user.uid, null)
+    setPending(null)
+    setCode('')
+    go('join')
   }
 
   return (
@@ -117,7 +147,7 @@ export function OnboardingScreen() {
                 <header className="flex flex-1 flex-col items-center justify-center py-8 text-center">
                   <SunGate className="size-20" />
                   <h1 className="mt-5 text-[1.75rem] leading-tight font-bold tracking-tight">
-                    {hasTrips ? 'טיול נוסף?' : `ברוכים הבאים, ${user.username}!`}
+                    {hasTrips ? 'טיול נוסף?' : `ברוכים הבאים, ${firstName(user)}!`}
                   </h1>
                   <p className="mt-2 max-w-xs text-muted">איך מתחילים? אפשר ליצור טיול חדש, או להצטרף לטיול שמישהו כבר פתח.</p>
                 </header>
@@ -181,11 +211,11 @@ export function OnboardingScreen() {
             )}
 
             {step === 'join' && (
-              <form onSubmit={join} noValidate className="flex flex-1 flex-col">
+              <form onSubmit={(event) => void join(event)} noValidate className="flex flex-1 flex-col">
                 <StepHeader
                   icon={<Users className="size-6" />}
                   title="הצטרפות לטיול"
-                  text="מקלידים את קוד ההזמנה שקיבלתם, והטיול המשותף נפתח אצלכם"
+                  text="מקלידים את קוד ההזמנה שקיבלתם, ומי שיצר את הטיול מאשר את ההצטרפות"
                 />
                 <div className="surface rounded-card p-5">
                   <TextField
@@ -203,9 +233,11 @@ export function OnboardingScreen() {
                     maxLength={12}
                   />
                 </div>
-                <FormFooter error={error} busy={busy} label="הצטרפות לטיול" />
+                <FormFooter error={error} busy={busy} label="שליחת בקשה להצטרפות" />
               </form>
             )}
+
+            {step === 'waiting' && pending && <Waiting pending={pending} onBack={stopWaiting} />}
           </motion.div>
         </AnimatePresence>
       </main>
@@ -267,6 +299,60 @@ function FormFooter({ error, busy, label }: { error: string | null; busy: boolea
       <Button type="submit" size="lg" className="w-full" loading={busy}>
         {label}
       </Button>
+    </div>
+  )
+}
+
+/**
+ * After asking to join: waits for the owner. Approval shows up as the trip itself (the app then
+ * opens it, see usePendingJoin in App); a decline or a withdrawn request offers another code.
+ */
+function Waiting({ pending, onBack }: { pending: PendingJoin; onBack: (cancel: boolean) => void }) {
+  const user = useCurrentUser()
+  const [status, setStatus] = useState<JoinStatus>({ state: 'pending' })
+
+  useEffect(() => getBackend().watchJoinStatus(pending.tripId, user.uid, setStatus), [pending.tripId, user.uid])
+
+  const declined = status.state === 'declined' || status.state === 'none'
+  const trip = pending.tripName ? `״${pending.tripName}״` : 'הטיול'
+
+  return (
+    <div className="flex flex-1 flex-col">
+      <header className="flex flex-1 flex-col items-center justify-center py-8 text-center">
+        {declined ? (
+          <span aria-hidden className="grid size-20 place-items-center rounded-full bg-fg/6 text-muted">
+            <UserX className="size-9" />
+          </span>
+        ) : (
+          <motion.span
+            aria-hidden
+            className="grid size-20 place-items-center rounded-full bg-accent/12 text-accent"
+            animate={{ scale: [1, 1.06, 1] }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <Hourglass className="size-9" />
+          </motion.span>
+        )}
+        <h1 role="status" className="mt-6 text-[1.75rem] leading-tight font-bold tracking-tight">
+          {declined ? 'הבקשה לא אושרה' : 'הבקשה נשלחה'}
+        </h1>
+        <p className="mt-2 max-w-xs text-muted">
+          {declined
+            ? `הבקשה להצטרף ל${trip} לא אושרה. אפשר לבדוק את הקוד, או לבקש קוד חדש ממי שיצר את הטיול.`
+            : `מחכים לאישור${pending.ownerName ? ` של ${pending.ownerName}` : ''} להצטרפות ל${trip}. ברגע שיאשרו, הטיול ייפתח כאן לבד.`}
+        </p>
+      </header>
+      <div className="mt-auto pt-6">
+        {declined ? (
+          <Button size="lg" className="w-full" onClick={() => onBack(false)}>
+            הקלדת קוד אחר
+          </Button>
+        ) : (
+          <Button size="lg" variant="secondary" className="w-full" onClick={() => onBack(true)}>
+            ביטול הבקשה
+          </Button>
+        )}
+      </div>
     </div>
   )
 }

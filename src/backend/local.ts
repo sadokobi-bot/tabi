@@ -1,6 +1,6 @@
-import type { ChatMessage, DayPlan, Place, Presence, Trip } from '@/data/types'
+import type { ChatMessage, DayPlan, JoinRequest, Place, Presence, Trip } from '@/data/types'
 import { newId, newInviteCode, normalizeInviteCode } from '@/lib/ids'
-import { AppError, type Backend, type SessionUser } from './types'
+import { AppError, memberOf, type Backend, type Profile, type SessionUser } from './types'
 import { checkUsername } from './username'
 
 /**
@@ -17,6 +17,7 @@ interface LocalUser {
   salt: string
   hash: string
   createdAt: number
+  profile?: Profile
 }
 
 function read<T>(key: string, fallback: T): T {
@@ -71,6 +72,7 @@ const placesKey = (tripId: string) => `places:${tripId}`
 const planKey = (tripId: string) => `plan:${tripId}`
 const messagesKey = (tripId: string) => `messages:${tripId}`
 const presenceKey = (tripId: string) => `presence:${tripId}`
+const requestsKey = (tripId: string) => `requests:${tripId}`
 /** Keeps localStorage small: only the latest messages are stored. */
 const MESSAGE_LIMIT = 300
 
@@ -94,10 +96,15 @@ export function createLocalBackend(): Backend {
       const notify = () => {
         const uid = read<string | null>('session', null)
         const user = uid ? Object.values(read<Record<string, LocalUser>>('users', {})).find((u) => u.uid === uid) : undefined
-        callback(user ? ({ uid: user.uid, username: user.username } satisfies SessionUser) : null)
+        callback(user ? ({ uid: user.uid, username: user.username, profile: user.profile ?? null } satisfies SessionUser) : null)
       }
       notify()
-      return subscribe('session', notify)
+      const stopSession = subscribe('session', notify)
+      const stopUsers = subscribe('users', notify)
+      return () => {
+        stopSession()
+        stopUsers()
+      }
     },
 
     async signIn(username, password) {
@@ -110,7 +117,7 @@ export function createLocalBackend(): Backend {
       write('session', user.uid)
     },
 
-    async signUp(username, password) {
+    async signUp(username, password, profile) {
       const check = checkUsername(username)
       if (!check.ok) throw new AppError('invalid-username', check.reason)
       if (password.length < 6) throw new AppError('weak-password')
@@ -118,7 +125,7 @@ export function createLocalBackend(): Backend {
       if (users[check.key]) throw new AppError('username-taken')
       const { salt, hash } = await hashPassword(password)
       const uid = newId()
-      users[check.key] = { uid, username: check.display, salt, hash, createdAt: Date.now() }
+      users[check.key] = { uid, username: check.display, salt, hash, createdAt: Date.now(), profile }
       write('users', users)
       write('session', uid)
     },
@@ -150,7 +157,7 @@ export function createLocalBackend(): Backend {
         days: input.days,
         ownerId: user.uid,
         memberIds: [user.uid],
-        members: { [user.uid]: { name: user.username } },
+        members: { [user.uid]: memberOf(user) },
         inviteCode,
         dayCities: {},
         stays: {},
@@ -164,19 +171,76 @@ export function createLocalBackend(): Backend {
       return id
     },
 
-    async joinTrip(user, inviteCode) {
+    async saveProfile(user, profile, tripIds) {
+      const users = read<Record<string, LocalUser>>('users', {})
+      const entry = Object.entries(users).find(([, u]) => u.uid === user.uid)
+      if (!entry) throw new AppError('unknown')
+      users[entry[0]] = { ...entry[1], profile }
+      write('users', users)
+      const member = memberOf({ ...user, profile })
+      for (const tripId of tripIds) updateTripRecord(tripId, (trip) => ({ ...trip, members: { ...trip.members, [user.uid]: member } }))
+    },
+
+    async requestJoin(user, inviteCode) {
       const tripId = read<Record<string, string>>(invitesKey, {})[normalizeInviteCode(inviteCode)]
-      if (!tripId || !readTrips()[tripId]) throw new AppError('invite-not-found')
+      const trip = tripId ? readTrips()[tripId] : undefined
+      if (!tripId || !trip) throw new AppError('invite-not-found')
+      const names = { tripName: trip.name, ownerName: trip.members[trip.ownerId]?.name ?? '' }
+      if (trip.memberIds.includes(user.uid)) return { tripId, member: true, ...names }
+      const request: JoinRequest = { uid: user.uid, ...memberOf(user), at: Date.now(), status: 'pending' }
+      write(requestsKey(tripId), { ...read<Record<string, JoinRequest>>(requestsKey(tripId), {}), [user.uid]: request })
+      return { tripId, member: false, ...names }
+    },
+
+    watchJoinStatus(tripId, uid, callback) {
+      const notify = () => {
+        const request = read<Record<string, JoinRequest>>(requestsKey(tripId), {})[uid]
+        callback(!request ? { state: 'none' } : request.status === 'declined' ? { state: 'declined' } : { state: 'pending' })
+      }
+      notify()
+      return subscribe(requestsKey(tripId), notify)
+    },
+
+    async cancelJoinRequest(tripId, uid) {
+      const { [uid]: _removed, ...rest } = read<Record<string, JoinRequest>>(requestsKey(tripId), {})
+      write(requestsKey(tripId), rest)
+    },
+
+    watchJoinRequests(tripId, callback) {
+      const notify = () =>
+        callback(
+          Object.values(read<Record<string, JoinRequest>>(requestsKey(tripId), {}))
+            .filter((request) => request.status === 'pending')
+            .sort((a, b) => a.at - b.at),
+        )
+      notify()
+      return subscribe(requestsKey(tripId), notify)
+    },
+
+    async approveJoin(tripId, request) {
       updateTripRecord(tripId, (trip) =>
-        trip.memberIds.includes(user.uid)
+        trip.memberIds.includes(request.uid)
           ? trip
           : {
               ...trip,
-              memberIds: [...trip.memberIds, user.uid],
-              members: { ...trip.members, [user.uid]: { name: user.username } },
+              memberIds: [...trip.memberIds, request.uid],
+              members: { ...trip.members, [request.uid]: { name: request.name, ...(request.gender ? { gender: request.gender } : {}) } },
             },
       )
-      return tripId
+      const { [request.uid]: _approved, ...rest } = read<Record<string, JoinRequest>>(requestsKey(tripId), {})
+      write(requestsKey(tripId), rest)
+    },
+
+    async declineJoin(tripId, uid) {
+      const requests = read<Record<string, JoinRequest>>(requestsKey(tripId), {})
+      if (requests[uid]) write(requestsKey(tripId), { ...requests, [uid]: { ...requests[uid], status: 'declined' } })
+    },
+
+    async removeMember(tripId, uid) {
+      updateTripRecord(tripId, (trip) => {
+        const { [uid]: _removed, ...members } = trip.members
+        return { ...trip, memberIds: trip.memberIds.filter((id) => id !== uid), members }
+      })
     },
 
     async updateTrip(tripId, patch) {

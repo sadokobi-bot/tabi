@@ -1,12 +1,41 @@
-import type { ChatMessage, DayPlan, Place, Presence, Trip } from '@/data/types'
+import type { ChatMessage, DayPlan, Gender, JoinRequest, Place, Presence, Trip } from '@/data/types'
 
 export type Unsubscribe = () => void
 
+/** Personal details from sign-up (private: only the user reads them; trips get the name and gender). */
+export interface Profile {
+  firstName: string
+  lastName: string
+  gender: Gender
+}
+
 export interface SessionUser {
   uid: string
-  /** Username as the user typed it at sign-up (display form). */
+  /** Username as the user typed it at sign-up (display form). Used to sign in. */
   username: string
+  /** Undefined while loading; null for accounts from before profiles (asked to fill it in once). */
+  profile?: Profile | null
 }
+
+/** How the user is called in the app: first and last name, or the username before a profile exists. */
+export function displayName(user: SessionUser): string {
+  return user.profile ? `${user.profile.firstName} ${user.profile.lastName}`.trim() : user.username
+}
+
+/** The short, friendly form (greetings, chat): the first name. */
+export function firstName(user: SessionUser): string {
+  return user.profile?.firstName || user.username
+}
+
+/** What a trip stores about a member. */
+export function memberOf(user: SessionUser): { name: string; gender?: Gender } {
+  // The rules cap names at 60 characters (first and last name are up to 30 each, plus a space).
+  return { name: displayName(user).slice(0, 60), ...(user.profile ? { gender: user.profile.gender } : {}) }
+}
+
+/** Where a join request stands, seen by the person who sent it. */
+export type JoinStatus =
+  { state: 'pending'; tripName?: string; ownerName?: string } | { state: 'declined' } | { state: 'member' } | { state: 'none' }
 
 export type ErrorCode =
   | 'invalid-username'
@@ -65,7 +94,9 @@ export interface Backend {
 
   onAuthChange(callback: (user: SessionUser | null) => void): Unsubscribe
   signIn(username: string, password: string): Promise<void>
-  signUp(username: string, password: string): Promise<void>
+  signUp(username: string, password: string, profile: Profile): Promise<void>
+  /** Saves the profile and refreshes the name / gender shown in the user's trips. */
+  saveProfile(user: SessionUser, profile: Profile, tripIds: string[]): Promise<void>
   signOut(): Promise<void>
 
   /**
@@ -74,7 +105,17 @@ export interface Backend {
    */
   watchTrips(uid: string, callback: (trips: Trip[], confirmed: boolean) => void, onError: (error: AppError) => void): Unsubscribe
   createTrip(user: SessionUser, input: NewTripInput): Promise<string>
-  joinTrip(user: SessionUser, inviteCode: string): Promise<string>
+  /** Asks to join the trip behind an invite code. Already a member: resolves with `member: true`. */
+  requestJoin(user: SessionUser, inviteCode: string): Promise<{ tripId: string; member: boolean; tripName?: string; ownerName?: string }>
+  /** The user's own request to that trip (pending / declined / approved → member). */
+  watchJoinStatus(tripId: string, uid: string, callback: (status: JoinStatus) => void): Unsubscribe
+  cancelJoinRequest(tripId: string, uid: string): Promise<void>
+  /** The owner's view: pending requests to their trip. */
+  watchJoinRequests(tripId: string, callback: (requests: JoinRequest[]) => void, onError: (error: AppError) => void): Unsubscribe
+  approveJoin(tripId: string, request: JoinRequest): Promise<void>
+  declineJoin(tripId: string, uid: string): Promise<void>
+  /** The owner removes a member from the trip. */
+  removeMember(tripId: string, uid: string): Promise<void>
   updateTrip(tripId: string, patch: TripPatch): Promise<void>
   setDayCity(tripId: string, date: string, cityId: string | null): Promise<void>
   /** placeId starts a stay that night, '' ends one, null removes the entry (the night inherits). */

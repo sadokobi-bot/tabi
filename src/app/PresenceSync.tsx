@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { firstName } from '@/backend'
 import type { Presence } from '@/data/types'
 import { distanceMeters } from '@/lib/geo'
 import { recallSharing, usePresence } from '@/store/presence'
@@ -60,7 +61,7 @@ export function PresenceSync() {
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
         const presence: Presence = {
-          name: user.username,
+          name: firstName(user),
           location: { lat: position.coords.latitude, lng: position.coords.longitude },
           accuracy: Math.round(position.coords.accuracy),
           at: Date.now(),

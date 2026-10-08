@@ -85,8 +85,22 @@ export interface Flight {
   tz?: string
 }
 
+export type Gender = 'male' | 'female' | 'other'
+
 export interface TripMember {
   name: string
+  /** For Hebrew grammar ("מבקש" / "מבקשת"); absent for members who joined before profiles. */
+  gender?: Gender
+}
+
+/** Someone asking to join a trip with its invite code; the owner approves or declines. */
+export interface JoinRequest {
+  uid: string
+  name: string
+  gender?: Gender
+  /** When it was sent (ms). */
+  at: number
+  status: 'pending' | 'declined'
 }
 
 export interface Trip {

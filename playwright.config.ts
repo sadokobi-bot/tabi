@@ -10,6 +10,8 @@ const PORT = 5175
 export default defineConfig({
   testDir: 'tests/e2e',
   fullyParallel: true,
+  // Sign-ups hash a password (PBKDF2) and wait out the launch intro: generous under parallel load.
+  timeout: 60_000,
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
   outputDir: 'test-results',
   use: {

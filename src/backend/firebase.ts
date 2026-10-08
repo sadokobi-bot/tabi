@@ -10,8 +10,10 @@ import {
 } from 'firebase/auth'
 import {
   FieldPath,
+  arrayRemove,
   arrayUnion,
   collection,
+  deleteDoc,
   deleteField,
   doc,
   getDoc,
@@ -28,21 +30,34 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { firebaseConfig } from '@/config/env'
-import type { ChatMessage, DayPlan, Place, Presence, Trip } from '@/data/types'
+import type { ChatMessage, DayPlan, Gender, JoinRequest, Place, Presence, Trip } from '@/data/types'
 import { newInviteCode, normalizeInviteCode } from '@/lib/ids'
-import { AppError, type Backend, type ErrorCode, type SessionUser } from './types'
+import { AppError, displayName, memberOf, type Backend, type ErrorCode, type Profile, type SessionUser } from './types'
 import { checkUsername, emailToUsername, usernameToEmail } from './username'
 
 /**
  * Cloud backend: Firebase Auth (username → synthetic e-mail + password) and Firestore.
  *
  * Firestore layout (see firestore.rules):
- *   trips/{tripId}                  Trip (members only)
+ *   users/{uid}                     Profile (the user only)
+ *   trips/{tripId}                  Trip (members only; the owner renames it and decides who's in)
+ *   trips/{tripId}/requests/{uid}   join requests (the asker and the owner)
  *   trips/{tripId}/places/{placeId} Place
  *   trips/{tripId}/meta/plan        { days: DayPlan }
  *   trips/{tripId}/messages/{id}    ChatMessage (members only; create-only)
- *   invites/{code}                  { tripId }  (get by code only, never listable)
+ *   invites/{code}                  { tripId, tripName, ownerName }  (get by code only, never listable)
  */
+
+const GENDERS: Gender[] = ['male', 'female', 'other']
+
+function toProfile(data: Record<string, unknown> | undefined): Profile | null {
+  if (!data || typeof data.firstName !== 'string' || typeof data.lastName !== 'string') return null
+  return {
+    firstName: data.firstName,
+    lastName: data.lastName,
+    gender: GENDERS.includes(data.gender as Gender) ? (data.gender as Gender) : 'other',
+  }
+}
 
 /** How many recent chat messages are kept in sync. */
 const MESSAGE_LIMIT = 300
@@ -81,13 +96,12 @@ export function createFirebaseBackend(): Backend {
     username: user.displayName || emailToUsername(user.email ?? ''),
   })
 
-  // onAuthStateChanged fires before updateProfile() finishes on sign-up, so we re-emit afterwards.
-  const authCallbacks = new Set<(user: SessionUser | null) => void>()
-  const emitCurrentUser = () => {
-    const user = auth.currentUser
-    authCallbacks.forEach((callback) => callback(user ? toSession(user) : null))
-  }
+  // onAuthStateChanged fires before updateProfile() finishes on sign-up, so listeners re-emit afterwards.
+  const reemitters = new Set<() => void>()
+  const emitCurrentUser = () => reemitters.forEach((reemit) => reemit())
 
+  const profileRef = (uid: string) => doc(db, 'users', uid)
+  const requestRef = (tripId: string, uid: string) => doc(db, 'trips', tripId, 'requests', uid)
   const tripRef = (tripId: string) => doc(db, 'trips', tripId)
   const planRef = (tripId: string) => doc(db, 'trips', tripId, 'meta', 'plan')
   // One small doc per trip: members may write meta docs (see firestore.rules), so no rule change is needed.
@@ -113,10 +127,39 @@ export function createFirebaseBackend(): Backend {
     mode: 'cloud',
 
     onAuthChange(callback) {
-      authCallbacks.add(callback)
-      const unsubscribe = onAuthStateChanged(auth, (user) => callback(user ? toSession(user) : null))
+      // The user, then again with their profile once it's read (undefined = still loading,
+      // null = the server says there is none: an account from before profiles).
+      let profile: Profile | null | undefined
+      let stopProfile: (() => void) | null = null
+      const emit = () => {
+        const user = auth.currentUser
+        callback(user ? { ...toSession(user), profile } : null)
+      }
+      reemitters.add(emit)
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        stopProfile?.()
+        stopProfile = null
+        profile = undefined
+        emit()
+        if (!user) return
+        stopProfile = onSnapshot(
+          profileRef(user.uid),
+          (snapshot) => {
+            // Missing from the offline cache isn't missing: wait for the server before asking for details.
+            if (!snapshot.exists() && snapshot.metadata.fromCache) return
+            profile = toProfile(snapshot.data())
+            emit()
+          },
+          (error) => {
+            console.warn('[profile] not readable', error)
+            profile = null
+            emit()
+          },
+        )
+      })
       return () => {
-        authCallbacks.delete(callback)
+        reemitters.delete(emit)
+        stopProfile?.()
         unsubscribe()
       }
     },
@@ -131,14 +174,26 @@ export function createFirebaseBackend(): Backend {
       }
     },
 
-    async signUp(username, password) {
+    async signUp(username, password, profile) {
       const check = checkUsername(username)
       if (!check.ok) throw new AppError('invalid-username', check.reason)
       if (password.length < 6) throw new AppError('weak-password')
       try {
         const credential = await createUserWithEmailAndPassword(auth, usernameToEmail(check.key), password)
         await updateProfile(credential.user, { displayName: check.display })
+        await setDoc(profileRef(credential.user.uid), { ...profile, updatedAt: Date.now() })
         emitCurrentUser()
+      } catch (error) {
+        throw toAppError(error)
+      }
+    },
+
+    async saveProfile(user, profile, tripIds) {
+      try {
+        await setDoc(profileRef(user.uid), { ...profile, updatedAt: Date.now() })
+        // Members may update their own entry in their trips (name and gender).
+        const member = memberOf({ ...user, profile })
+        await Promise.all(tripIds.map((tripId) => updateDoc(tripRef(tripId), { [`members.${user.uid}`]: member }).catch(() => undefined)))
       } catch (error) {
         throw toAppError(error)
       }
@@ -170,35 +225,114 @@ export function createFirebaseBackend(): Backend {
         days: input.days,
         ownerId: user.uid,
         memberIds: [user.uid],
-        members: { [user.uid]: { name: user.username } },
+        members: { [user.uid]: memberOf(user) },
         inviteCode,
         dayCities: {},
         stays: {},
         flights: [],
         createdAt: Date.now(),
       }
-      try {
+      const write = (invite: Record<string, string>) => {
         const batch = writeBatch(db)
         batch.set(ref, trip)
-        batch.set(doc(db, 'invites', inviteCode), { tripId: ref.id })
+        batch.set(doc(db, 'invites', inviteCode), invite)
         batch.set(planRef(ref.id), { days: {} })
-        await batch.commit()
+        return batch.commit()
+      }
+      try {
+        // The invite carries the trip and owner names, so whoever asks to join sees what they're joining.
+        await write({ tripId: ref.id, tripName: input.name, ownerName: displayName(user) }).catch((error: unknown) => {
+          // Rules from before join requests only accept { tripId }.
+          if ((error as { code?: string }).code !== 'permission-denied') throw error
+          return write({ tripId: ref.id })
+        })
         return ref.id
       } catch (error) {
         throw toAppError(error)
       }
     },
 
-    async joinTrip(user, inviteCode) {
+    async requestJoin(user, inviteCode) {
       try {
         const invite = await getDoc(doc(db, 'invites', normalizeInviteCode(inviteCode)))
-        const tripId = invite.exists() ? (invite.data().tripId as string | undefined) : undefined
+        const data = invite.exists() ? invite.data() : undefined
+        const tripId = data?.tripId as string | undefined
         if (!tripId) throw new AppError('invite-not-found')
-        await updateDoc(tripRef(tripId), {
-          memberIds: arrayUnion(user.uid),
-          [`members.${user.uid}`]: { name: user.username },
+        const names = {
+          ...(typeof data?.tripName === 'string' ? { tripName: data.tripName } : {}),
+          ...(typeof data?.ownerName === 'string' ? { ownerName: data.ownerName } : {}),
+        }
+        // Only members can read a trip: if this read works, we're already in.
+        const member = await getDoc(tripRef(tripId)).then(
+          (trip) => trip.exists() && ((trip.data().memberIds as string[] | undefined) ?? []).includes(user.uid),
+          () => false,
+        )
+        if (member) return { tripId, member: true, ...names }
+        await setDoc(requestRef(tripId, user.uid), { ...memberOf(user), at: Date.now(), status: 'pending' })
+        return { tripId, member: false, ...names }
+      } catch (error) {
+        throw toAppError(error)
+      }
+    },
+
+    watchJoinStatus(tripId, uid, callback) {
+      return onSnapshot(
+        requestRef(tripId, uid),
+        (snapshot) => {
+          if (!snapshot.exists()) callback({ state: 'none' })
+          else callback(snapshot.data().status === 'declined' ? { state: 'declined' } : { state: 'pending' })
+        },
+        () => callback({ state: 'none' }),
+      )
+    },
+
+    async cancelJoinRequest(tripId, uid) {
+      try {
+        await deleteDoc(requestRef(tripId, uid))
+      } catch (error) {
+        throw toAppError(error)
+      }
+    },
+
+    watchJoinRequests(tripId, callback, onError) {
+      return onSnapshot(
+        collection(db, 'trips', tripId, 'requests'),
+        (snapshot) =>
+          callback(
+            snapshot.docs
+              .map((d) => ({ ...(d.data() as Omit<JoinRequest, 'uid'>), uid: d.id }))
+              .filter((request) => request.status === 'pending')
+              .sort((a, b) => a.at - b.at),
+          ),
+        (error) => onError(toAppError(error)),
+      )
+    },
+
+    async approveJoin(tripId, request) {
+      try {
+        const batch = writeBatch(db)
+        batch.update(tripRef(tripId), {
+          memberIds: arrayUnion(request.uid),
+          [`members.${request.uid}`]: { name: request.name, ...(request.gender ? { gender: request.gender } : {}) },
         })
-        return tripId
+        batch.delete(requestRef(tripId, request.uid))
+        await batch.commit()
+      } catch (error) {
+        throw toAppError(error)
+      }
+    },
+
+    async declineJoin(tripId, uid) {
+      try {
+        await updateDoc(requestRef(tripId, uid), { status: 'declined' })
+      } catch (error) {
+        throw toAppError(error)
+      }
+    },
+
+    async removeMember(tripId, uid) {
+      try {
+        await updateDoc(tripRef(tripId), { memberIds: arrayRemove(uid), [`members.${uid}`]: deleteField() })
       } catch (error) {
         throw toAppError(error)
       }

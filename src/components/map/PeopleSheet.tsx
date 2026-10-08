@@ -3,6 +3,7 @@ import clsx from 'clsx'
 import { Footprints, LocateFixed, Users } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { directionsUrl } from '@/lib/deeplinks'
+import { byGender } from '@/lib/hebrew'
 import { useNow } from '@/hooks/useNow'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { PRESENCE_FRESH_MS, rememberSharing, usePresence } from '@/store/presence'
@@ -82,7 +83,9 @@ export function PeopleSheet({ open, onClose }: { open: boolean; onClose: () => v
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold">{member.name}</p>
                   <p className={clsx('text-xs', live ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted')}>
-                    {live ? `משתף מיקום · ${agoLabel(presence.at, now)}` : 'לא משתף מיקום כרגע'}
+                    {live
+                      ? `${byGender(member.gender, { male: 'משתף', female: 'משתפת' })} מיקום · ${agoLabel(presence.at, now)}`
+                      : `לא ${byGender(member.gender, { male: 'משתף', female: 'משתפת' })} מיקום כרגע`}
                   </p>
                 </div>
                 {live && (

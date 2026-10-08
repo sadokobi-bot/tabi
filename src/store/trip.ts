@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { ChatMessage, DayPlan, ItineraryItem, Place, Trip } from '@/data/types'
+import type { ChatMessage, DayPlan, ItineraryItem, JoinRequest, Place, Trip } from '@/data/types'
 
 interface TripState {
   trips: Trip[]
@@ -19,6 +19,8 @@ interface TripState {
   messages: ChatMessage[]
   messagesLoaded: boolean
   chatError: string | null
+  /** Pending requests to join the active trip (only its owner sees them). */
+  joinRequests: JoinRequest[]
 }
 
 export const useTripStore = create<TripState>(() => ({
@@ -36,6 +38,7 @@ export const useTripStore = create<TripState>(() => ({
   messages: [],
   messagesLoaded: false,
   chatError: null,
+  joinRequests: [],
 }))
 
 const activeTripStorageKey = (uid: string) => `tabi:activeTrip:${uid}`

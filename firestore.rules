@@ -2,11 +2,14 @@ rules_version = '2';
 
 // Security rules for the cloud (Firebase) mode. Paste into Firebase console → Firestore → Rules.
 //
-//   trips/{tripId}                  readable/writable by members only
-//   trips/{tripId}/places/{placeId} members only
-//   trips/{tripId}/meta/{docId}     members only (the itinerary lives in meta/plan)
-//   trips/{tripId}/messages/{id}    members only; post as yourself, no edits or deletes
-//   invites/{code}                  fetch by exact code only; never listable
+//   users/{uid}                        your own profile only
+//   trips/{tripId}                     members read; only the owner renames / resizes the trip and
+//                                      decides who's in it; members plan together (cities, hotels, flights)
+//   trips/{tripId}/requests/{uid}      join requests: you ask for yourself, the owner approves or declines
+//   trips/{tripId}/places/{placeId}    members only
+//   trips/{tripId}/meta/{docId}        members only (the itinerary lives in meta/plan)
+//   trips/{tripId}/messages/{id}       members only; post as yourself, no edits or deletes
+//   invites/{code}                     fetch by exact code only; never listable
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -28,12 +31,29 @@ service cloud.firestore {
       return signedIn() && request.auth.uid in getAfter(tripPath(tripId)).data.memberIds;
     }
 
+    function isOwner(tripId) {
+      return signedIn() && get(tripPath(tripId)).data.ownerId == request.auth.uid;
+    }
+
+    function shortText(value, max) {
+      return value is string && value.size() > 0 && value.size() <= max;
+    }
+
     function validTrip(data) {
-      return data.name is string && data.name.size() > 0 && data.name.size() <= 60
+      return shortText(data.name, 60)
         && data.startDate is string && data.startDate.size() == 10
         && data.days is int && data.days >= 1 && data.days <= 90
         && data.memberIds is list && data.memberIds.size() <= 20
         && data.flights is list && data.flights.size() <= 20;
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['firstName', 'lastName', 'gender', 'updatedAt'])
+        && shortText(request.resource.data.firstName, 30)
+        && shortText(request.resource.data.lastName, 30)
+        && request.resource.data.gender in ['male', 'female', 'other'];
     }
 
     match /trips/{tripId} {
@@ -44,22 +64,53 @@ service cloud.firestore {
         && request.resource.data.memberIds == [request.auth.uid]
         && validTrip(request.resource.data);
 
-      allow update: if signedIn() && validTrip(request.resource.data) && (
-        // Members edit trip details, but never ownership, the invite code or membership.
-        (request.auth.uid in resource.data.memberIds
-          && !request.resource.data.diff(resource.data).affectedKeys()
-              .hasAny(['ownerId', 'inviteCode', 'createdAt', 'memberIds']))
-        ||
-        // Joining with an invite: a non-member may add exactly themselves (and their display name).
-        (!(request.auth.uid in resource.data.memberIds)
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'members'])
-          && request.resource.data.memberIds.hasAll(resource.data.memberIds)
-          && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1
-          && request.auth.uid in request.resource.data.memberIds
-          && request.resource.data.members.diff(resource.data.members).affectedKeys().hasOnly([request.auth.uid]))
-      );
+      allow update: if signedIn() && validTrip(request.resource.data)
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId', 'inviteCode', 'createdAt'])
+        && (
+          // The owner edits the trip and decides who's in it (approving requests, removing members),
+          // but always stays in it.
+          (resource.data.ownerId == request.auth.uid && request.auth.uid in request.resource.data.memberIds)
+          ||
+          // Members plan together (day cities, hotels, flights) but don't rename or resize the trip,
+          // and never change who's in it. Joining goes through a request (below), not here.
+          (request.auth.uid in resource.data.memberIds
+            && !request.resource.data.diff(resource.data).affectedKeys()
+                .hasAny(['name', 'startDate', 'days', 'memberIds', 'members']))
+          ||
+          // A member updates their own entry (name / gender after editing their profile).
+          (request.auth.uid in resource.data.memberIds
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+            && request.resource.data.members.diff(resource.data.members).affectedKeys().hasOnly([request.auth.uid]))
+        );
 
       allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
+
+      // Asking to join (with the invite code): only for yourself, while not a member.
+      // The owner sees the requests and approves (adds you to memberIds and deletes the request)
+      // or declines (marks it declined). You can withdraw your own request.
+      match /requests/{uid} {
+        function validRequest(data) {
+          return data.keys().hasOnly(['name', 'gender', 'at', 'status'])
+            && shortText(data.name, 60)
+            && data.at is int
+            && data.status == 'pending';
+        }
+
+        allow get: if signedIn() && (request.auth.uid == uid || isOwner(tripId));
+        allow list: if isOwner(tripId);
+        allow create: if signedIn() && request.auth.uid == uid
+          && !(uid in get(tripPath(tripId)).data.memberIds)
+          && validRequest(request.resource.data);
+        allow update: if
+          (isOwner(tripId)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+            && request.resource.data.status == 'declined')
+          ||
+          (signedIn() && request.auth.uid == uid
+            && !(uid in get(tripPath(tripId)).data.memberIds)
+            && validRequest(request.resource.data));
+        allow delete: if signedIn() && (request.auth.uid == uid || isOwner(tripId));
+      }
 
       match /places/{placeId} {
         allow read: if isMember(tripId);
@@ -92,12 +143,13 @@ service cloud.firestore {
     }
 
     match /invites/{code} {
-      // Knowing the exact code is the invitation. Codes are random (32^8) and cannot be listed.
+      // Knowing the exact code lets you ask to join (the owner still approves). Codes are random
+      // (32^8) and cannot be listed. The trip and owner names let the asker see what they're joining.
       allow get: if signedIn();
       allow list: if false;
       allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['tripId'])
-        && request.auth.uid in getAfter(tripPath(request.resource.data.tripId)).data.memberIds;
+        && request.resource.data.keys().hasOnly(['tripId', 'tripName', 'ownerName'])
+        && request.auth.uid == getAfter(tripPath(request.resource.data.tripId)).data.ownerId;
       allow update, delete: if false;
     }
   }
