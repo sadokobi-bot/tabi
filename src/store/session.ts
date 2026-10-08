@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { loadBackend, type Backend, type SessionUser, type Unsubscribe } from '@/backend'
+import { useUi } from './ui'
 
 interface SessionState {
   backend: Backend | null
@@ -18,9 +19,11 @@ export function startSession(): Unsubscribe {
     .then((backend) => {
       if (cancelled) return
       useSession.setState({ backend })
-      unsubscribe = backend.onAuthChange((user) =>
-        useSession.setState({ user, status: user ? 'signedIn' : 'signedOut' }),
-      )
+      unsubscribe = backend.onAuthChange((user) => {
+        // Signing out happens inside the profile sheet: without this, the next sign-in opens on it.
+        if (!user) useUi.setState({ profileOpen: false, selection: null, ticket: null, routeDate: null, pickingLocation: false })
+        useSession.setState({ user, status: user ? 'signedIn' : 'signedOut' })
+      })
     })
     .catch((error: unknown) => {
       console.error('[session] backend failed to load', error)

@@ -71,3 +71,19 @@ test('the sign-up screen has no horizontal overflow on a phone', async ({ page }
   expect(field!.x + paddingLeft).toBeGreaterThanOrEqual(eye!.x + eye!.width)
   await page.screenshot({ path: 'test-results/signup-screen.png' })
 })
+
+test('signing out from the profile sheet and back in opens the app, not the sheet', async ({ page }) => {
+  const username = uniqueName('out')
+  await signUp(page, username)
+  await createFirstTrip(page)
+  await page.getByRole('button', { name: 'פרופיל והגדרות הטיול' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'יציאה' }).click()
+  // Straight back in, without reloading the page (as on a phone).
+  await page.getByLabel('שם משתמש').fill(username)
+  await page.getByLabel('סיסמה', { exact: true }).fill(PASSWORD)
+  await page.getByRole('button', { name: 'כניסה' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  // The sheet used to slide in a moment after Today appeared.
+  await page.waitForTimeout(1500)
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+})
