@@ -73,8 +73,9 @@ export function AuthScreen() {
   const signIn = mode === 'signIn'
 
   return (
-    // Exactly one screen tall and never scrolls; the header gives up space first on short screens.
-    <div className="relative flex h-dvh flex-col overflow-hidden">
+    // Pinned to the screen like the app shell (AppLayout): on iOS home-screen apps 100dvh can exceed
+    // the visible area, which leaves the page a little room to scroll. The header gives up space first.
+    <div className="fixed inset-0 flex flex-col overflow-hidden">
       {/* Warm haze behind the sun, as on the launch screen */}
       <div
         aria-hidden

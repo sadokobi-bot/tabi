@@ -43,7 +43,7 @@ export function SplashScreen({ message, failed = false }: { message?: string; fa
   })
 
   return (
-    <div className="relative grid min-h-dvh place-items-center overflow-hidden px-8 text-center">
+    <div className="fixed inset-0 grid place-items-center overflow-hidden px-8 text-center">
       {/* Warm haze behind the sun */}
       <motion.div
         aria-hidden
