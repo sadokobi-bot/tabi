@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { lazy, Suspense, useState, type FormEvent } from 'react'
 import clsx from 'clsx'
 import { Eye, EyeOff, HardDrive, Lock, LockKeyhole, User } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
@@ -6,6 +6,8 @@ import { AppError, errorMessage } from '@/backend'
 import { checkUsername } from '@/backend/username'
 import { SakuraDrift } from '@/components/brand/SakuraDrift'
 import { LuckyCat, type CatMood } from '@/components/brand/LuckyCat'
+
+const Cat3D = lazy(() => import('@/components/brand/Cat3D'))
 import { SunGate } from '@/components/brand/SunGate'
 import { ProfileFields, validateProfile, type ProfileDraft, type ProfileErrors } from '@/components/profile/ProfileFields'
 import { Button } from '@/components/ui/Button'
@@ -142,7 +144,17 @@ export function AuthScreen() {
             transition={{ type: 'spring', stiffness: 260, damping: 20 }}
             className="flex items-end gap-1"
           >
-            <LuckyCat mood={catMood} className="size-28 shrink-0 [@media(max-height:760px)]:size-20 [@media(max-height:640px)]:size-14" />
+            {/* The 3D cat (Three.js) only loads for sign-up; the flat one stands in meanwhile. */}
+            <Suspense
+              fallback={
+                <LuckyCat
+                  mood={catMood}
+                  className="size-36 shrink-0 [@media(max-height:760px)]:size-24 [@media(max-height:640px)]:size-16"
+                />
+              }
+            >
+              <Cat3D mood={catMood} className="size-36 shrink-0 [@media(max-height:760px)]:size-24 [@media(max-height:640px)]:size-16" />
+            </Suspense>
             <AnimatePresence mode="popLayout" initial={false}>
               <motion.p
                 key={catLine}
