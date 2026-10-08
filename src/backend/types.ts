@@ -1,4 +1,4 @@
-import type { ChatMessage, DayPlan, Gender, JoinRequest, Place, Presence, Ticket, Trip } from '@/data/types'
+import type { ChatMessage, ChatMeta, DayPlan, Gender, JoinRequest, Place, Presence, Ticket, Trip } from '@/data/types'
 
 export type Unsubscribe = () => void
 
@@ -137,6 +137,15 @@ export interface Backend {
    * server has it, so callers shouldn't wait on it; it rejects if the server refuses the message.
    */
   sendMessage(tripId: string, message: Omit<ChatMessage, 'pending'>): Promise<void>
+  /** Sets (or with null, removes) this member's reaction to a message. */
+  reactToMessage(tripId: string, messageId: string, uid: string, emoji: string | null): Promise<void>
+  /** Sets (or with null, withdraws) this member's answer to a poll. */
+  voteInPoll(tripId: string, messageId: string, uid: string, option: number | null): Promise<void>
+  /** Read markers and typing indicators of the trip's members. */
+  watchChatMeta(tripId: string, callback: (meta: ChatMeta) => void, onError: (error: AppError) => void): Unsubscribe
+  setChatRead(tripId: string, uid: string, upTo: number): Promise<void>
+  /** When this member last typed (null: stopped). */
+  setTyping(tripId: string, uid: string, at: number | null): Promise<void>
 
   /** Live positions of the members who share theirs, by uid. */
   watchPresence(tripId: string, callback: (byUid: Record<string, Presence>) => void, onError: (error: AppError) => void): Unsubscribe

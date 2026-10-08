@@ -8,7 +8,8 @@ rules_version = '2';
 //   trips/{tripId}/requests/{uid}      join requests: you ask for yourself, the owner approves or declines
 //   trips/{tripId}/places/{placeId}    members only
 //   trips/{tripId}/meta/{docId}        members only (the itinerary lives in meta/plan)
-//   trips/{tripId}/messages/{id}       members only; post as yourself, no edits or deletes
+//   trips/{tripId}/messages/{id}       members only; post as yourself; members react and vote (their own
+//                                      entry only); no edits or deletes
 //   invites/{code}                     fetch by exact code only; never listable
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -127,18 +128,35 @@ service cloud.firestore {
         allow write: if isMemberAfter(tripId);
       }
 
-      // Group chat: members read everything and post as themselves; messages are never edited or deleted.
+      // Group chat: members read everything and post as themselves. A message is text, or a card
+      // (a shared place, a meeting point or a poll) with optional text. Messages are never edited or
+      // deleted; members only add or change their own reaction and their own poll answer.
       match /messages/{messageId} {
+        function kindOf(data) {
+          return data.get('kind', 'text');
+        }
+
         allow read: if isMember(tripId);
         allow create: if isMember(tripId)
-          && request.resource.data.keys().hasOnly(['authorId', 'authorName', 'text', 'createdAt'])
+          && request.resource.data.keys().hasOnly(['authorId', 'authorName', 'text', 'createdAt', 'kind', 'place', 'meet', 'poll'])
           && request.resource.data.authorId == request.auth.uid
           && request.resource.data.authorName is string
           && request.resource.data.authorName.size() > 0 && request.resource.data.authorName.size() <= 40
           && request.resource.data.text is string
-          && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 2000
+          && request.resource.data.text.size() <= 2000
+          && kindOf(request.resource.data) in ['text', 'place', 'meet', 'poll']
+          && (request.resource.data.text.size() > 0 || kindOf(request.resource.data) != 'text')
+          && (kindOf(request.resource.data) != 'place' || request.resource.data.place is map)
+          && (kindOf(request.resource.data) != 'meet' || request.resource.data.meet is map)
+          && (kindOf(request.resource.data) != 'poll'
+            || (request.resource.data.poll is map && request.resource.data.poll.options is list
+              && request.resource.data.poll.options.size() >= 2 && request.resource.data.poll.options.size() <= 8))
           && request.resource.data.createdAt is int;
-        allow update, delete: if false;
+        allow update: if isMember(tripId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'votes'])
+          && request.resource.data.get('reactions', {}).diff(resource.data.get('reactions', {})).affectedKeys().hasOnly([request.auth.uid])
+          && request.resource.data.get('votes', {}).diff(resource.data.get('votes', {})).affectedKeys().hasOnly([request.auth.uid]);
+        allow delete: if false;
       }
     }
 

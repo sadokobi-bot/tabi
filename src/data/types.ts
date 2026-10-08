@@ -154,6 +154,47 @@ export interface ChatMessage {
   createdAt: number
   /** Written on this device but not yet delivered to the server (no connection). */
   pending?: boolean
+  /** A card instead of (or with) the text. Plain text when unset. */
+  kind?: 'text' | 'place' | 'meet' | 'poll'
+  place?: SharedPlace
+  meet?: MeetPoint
+  poll?: Poll
+  /** Emoji reaction per member uid. */
+  reactions?: Record<string, string>
+  /** Poll answers: option index per member uid. */
+  votes?: Record<string, number>
+}
+
+/** A place shared in the chat: what's needed to show and open it (a saved place's id when it's ours). */
+export interface SharedPlace {
+  name: string
+  category: CategoryId
+  location: LatLng
+  address?: string
+  placeId?: string
+  googlePlaceId?: string
+  osmId?: string
+}
+
+/** "Meet at … at …": pinned at the top of the chat until a little after the time. */
+export interface MeetPoint {
+  name: string
+  location: LatLng
+  /** YYYY-MM-DD and HH:mm, Japan time. */
+  date: string
+  time: string
+  placeId?: string
+}
+
+export interface Poll {
+  question: string
+  options: { label: string; placeId?: string }[]
+}
+
+/** Who read the chat up to when, and who is typing right now (ms timestamps by uid). */
+export interface ChatMeta {
+  read: Record<string, number>
+  typing: Record<string, number>
 }
 
 /**

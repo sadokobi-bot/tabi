@@ -8,6 +8,7 @@ import {
   Globe,
   Map as MapIcon,
   MapPin,
+  MessageCircle,
   Pencil,
   Phone,
   Star,
@@ -20,6 +21,7 @@ import { useNavigate } from 'react-router'
 import { CategoryBadge } from '@/components/ui/CategoryIcon'
 import { Button } from '@/components/ui/Button'
 import { actions } from '@/data/actions'
+import { sharedPlaceOf } from '@/data/chat'
 import type { CategoryId, LatLng, Place } from '@/data/types'
 import { formatDay, tripDates } from '@/lib/dates'
 import { placeUrl, safeHttpUrl } from '@/lib/deeplinks'
@@ -238,6 +240,27 @@ export function PlaceView({ subject, onEdit, onSchedule }: PlaceViewProps) {
           <ActionButton icon={MapIcon} label="במפה" onClick={showOnMap} />
           <ActionButton icon={ExternalLink} label="Google Maps" href={googleLink} />
         </div>
+        <button
+          type="button"
+          onClick={() => {
+            ui.setChatDraft(
+              sharedPlaceOf({
+                name,
+                category,
+                location: subject.location,
+                ...(address ? { address } : {}),
+                ...(saved ? { id: saved.id } : {}),
+                ...(subject.googlePlaceId ? { googlePlaceId: subject.googlePlaceId } : {}),
+                ...(subject.osmId ? { osmId: subject.osmId } : {}),
+              }),
+            )
+            navigate('/chat')
+          }}
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-control bg-fg/5 py-3 text-sm font-semibold transition hover:bg-fg/8 active:scale-[0.98]"
+        >
+          <MessageCircle aria-hidden className="size-4.5" />
+          שיתוף בצ׳אט של הטיול
+        </button>
 
         {saved && (
           <div className="mt-4 flex items-center justify-center">

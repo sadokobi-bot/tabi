@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Bounds, CategoryId, LatLng, Ticket } from '@/data/types'
+import type { Bounds, CategoryId, LatLng, SharedPlace, Ticket } from '@/data/types'
 import type { Poi } from '@/maps/poi'
 
 /** Fields of a place that is about to be created (from the map, a search result or by hand). */
@@ -46,6 +46,8 @@ interface UiState {
   routeDate: string | null
   /** The entry ticket shown full screen. */
   ticket: Ticket | null
+  /** A place about to be shared in the chat (shown above the message box). */
+  chatDraft: SharedPlace | null
 }
 
 export const useUi = create<UiState>(() => ({
@@ -57,6 +59,7 @@ export const useUi = create<UiState>(() => ({
   composing: false,
   routeDate: null,
   ticket: null,
+  chatDraft: null,
 }))
 
 let nonce = 0
@@ -73,5 +76,6 @@ export const ui = {
   showRoute: (routeDate: string) => useUi.setState({ routeDate, selection: null, pickingLocation: false }),
   clearRoute: () => useUi.setState({ routeDate: null }),
   openTicket: (ticket: Ticket | null) => useUi.setState({ ticket }),
+  setChatDraft: (chatDraft: SharedPlace | null) => useUi.setState({ chatDraft, ...(chatDraft ? { selection: null } : {}) }),
   toast: (message: string, tone: Toast['tone'] = 'info') => useUi.setState({ toast: { id: ++nonce, message, tone } }),
 }

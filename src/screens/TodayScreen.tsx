@@ -18,6 +18,7 @@ import { TodayHero } from '@/components/today/TodayHero'
 import { TranslateSheet } from '@/components/today/TranslateSheet'
 import { PlanDaySheet } from '@/components/trip/PlanDaySheet'
 import { RainPlanSheet } from '@/components/trip/RainPlan'
+import { PinnedMeet } from '@/components/chat/ChatStatus'
 import { hasFirebase } from '@/config/env'
 import { CheckoutRow, TonightRow } from '@/components/today/TonightRow'
 import { Avatar } from '@/components/ui/Avatar'
@@ -42,6 +43,7 @@ export default function TodayScreen() {
   const trip = useTrip()
   const plan = useTripStore((state) => state.plan)
   const placesById = useTripStore((state) => state.placesById)
+  const messages = useTripStore((state) => state.messages)
   const places = useTripStore((state) => state.places)
   const navigate = useNavigate()
   const [planning, setPlanning] = useState(false)
@@ -112,6 +114,11 @@ export default function TodayScreen() {
         </div>
       </motion.header>
       <TranslateSheet open={translating} onClose={() => setTranslating(false)} />
+
+      {/* A meeting point set in the chat. */}
+      <motion.div variants={RISE} className="mt-5 empty:hidden">
+        <PinnedMeet messages={messages} />
+      </motion.div>
 
       {/* The trip's owner approves who joins. */}
       {trip.ownerId === user.uid && (

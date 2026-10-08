@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { ChatMessage, DayPlan, ItineraryItem, JoinRequest, Place, Ticket, Trip } from '@/data/types'
+import type { ChatMessage, ChatMeta, DayPlan, ItineraryItem, JoinRequest, Place, Ticket, Trip } from '@/data/types'
 
 interface TripState {
   trips: Trip[]
@@ -19,6 +19,8 @@ interface TripState {
   messages: ChatMessage[]
   messagesLoaded: boolean
   chatError: string | null
+  /** Who read the chat up to when, and who's typing. */
+  chatMeta: ChatMeta
   /** Pending requests to join the active trip (only its owner sees them). */
   joinRequests: JoinRequest[]
   /** Entry tickets saved ahead for the trip's places, newest first. */
@@ -40,6 +42,7 @@ export const useTripStore = create<TripState>(() => ({
   messages: [],
   messagesLoaded: false,
   chatError: null,
+  chatMeta: { read: {}, typing: {} },
   joinRequests: [],
   tickets: [],
 }))

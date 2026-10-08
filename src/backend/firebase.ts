@@ -30,7 +30,7 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { firebaseConfig } from '@/config/env'
-import type { ChatMessage, DayPlan, Gender, JoinRequest, Place, Presence, Ticket, Trip } from '@/data/types'
+import type { ChatMessage, ChatMeta, DayPlan, Gender, JoinRequest, Place, Presence, Ticket, Trip } from '@/data/types'
 import { newInviteCode, normalizeInviteCode } from '@/lib/ids'
 import { AppError, displayName, memberOf, type Backend, type ErrorCode, type Profile, type SessionUser } from './types'
 import { checkUsername, emailToUsername, usernameToEmail } from './username'
@@ -109,6 +109,9 @@ export function createFirebaseBackend(): Backend {
   // One small doc per trip: members may write meta docs (see firestore.rules), so no rule change is needed.
   const presenceRef = (tripId: string) => doc(db, 'trips', tripId, 'meta', 'presence')
   const placeRef = (tripId: string, placeId: string) => doc(db, 'trips', tripId, 'places', placeId)
+  // Read markers and typing: one small meta doc (members write meta docs, no rule change needed).
+  const chatMetaRef = (tripId: string) => doc(db, 'trips', tripId, 'meta', 'chat')
+  const messageRef = (tripId: string, messageId: string) => doc(db, 'trips', tripId, 'messages', messageId)
   // Tickets live in meta docs too (members read and write them): an index, and one doc per page.
   const ticketsRef = (tripId: string) => doc(db, 'trips', tripId, 'meta', 'tickets')
   const ticketPageRef = (tripId: string, ticketId: string, page: number) => doc(db, 'trips', tripId, 'meta', `ticket-${ticketId}-${page}`)
@@ -438,6 +441,49 @@ export function createFirebaseBackend(): Backend {
     async sendMessage(tripId, { id, ...message }) {
       try {
         await setDoc(doc(db, 'trips', tripId, 'messages', id), message)
+      } catch (error) {
+        throw toAppError(error)
+      }
+    },
+
+    async reactToMessage(tripId, messageId, uid, emoji) {
+      try {
+        await updateDoc(messageRef(tripId, messageId), new FieldPath('reactions', uid), emoji ?? deleteField())
+      } catch (error) {
+        throw toAppError(error)
+      }
+    },
+
+    async voteInPoll(tripId, messageId, uid, option) {
+      try {
+        await updateDoc(messageRef(tripId, messageId), new FieldPath('votes', uid), option ?? deleteField())
+      } catch (error) {
+        throw toAppError(error)
+      }
+    },
+
+    watchChatMeta(tripId, callback, onError) {
+      return onSnapshot(
+        chatMetaRef(tripId),
+        (snapshot) => {
+          const data = snapshot.data() as Partial<ChatMeta> | undefined
+          callback({ read: data?.read ?? {}, typing: data?.typing ?? {} })
+        },
+        (error) => onError(toAppError(error)),
+      )
+    },
+
+    async setChatRead(tripId, uid, upTo) {
+      try {
+        await setDoc(chatMetaRef(tripId), { read: { [uid]: upTo } }, { merge: true })
+      } catch (error) {
+        throw toAppError(error)
+      }
+    },
+
+    async setTyping(tripId, uid, at) {
+      try {
+        await setDoc(chatMetaRef(tripId), { typing: { [uid]: at ?? deleteField() } }, { merge: true })
       } catch (error) {
         throw toAppError(error)
       }

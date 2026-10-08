@@ -1,4 +1,4 @@
-import type { ChatMessage, DayPlan, JoinRequest, Place, Presence, Ticket, Trip } from '@/data/types'
+import type { ChatMessage, ChatMeta, DayPlan, JoinRequest, Place, Presence, Ticket, Trip } from '@/data/types'
 import { cachedPages, cachePages, dropPages } from '@/lib/ticketCache'
 import { newId, newInviteCode, normalizeInviteCode } from '@/lib/ids'
 import { AppError, memberOf, type Backend, type Profile, type SessionUser } from './types'
@@ -73,6 +73,7 @@ const placesKey = (tripId: string) => `places:${tripId}`
 const planKey = (tripId: string) => `plan:${tripId}`
 const messagesKey = (tripId: string) => `messages:${tripId}`
 const presenceKey = (tripId: string) => `presence:${tripId}`
+const chatMetaKey = (tripId: string) => `chatMeta:${tripId}`
 // The list here; the pages (too big for localStorage) in IndexedDB.
 const ticketsKey = (tripId: string) => `tickets:${tripId}`
 const requestsKey = (tripId: string) => `requests:${tripId}`
@@ -89,6 +90,13 @@ function updateTripRecord(tripId: string, update: (trip: Trip) => Trip) {
   if (!trip) throw new AppError('unknown', 'הטיול לא נמצא')
   trips[tripId] = update(trip)
   write(tripsKey, trips)
+}
+
+function updateMessage(tripId: string, messageId: string, update: (message: ChatMessage) => ChatMessage) {
+  write(
+    messagesKey(tripId),
+    read<ChatMessage[]>(messagesKey(tripId), []).map((message) => (message.id === messageId ? update(message) : message)),
+  )
 }
 
 export function createLocalBackend(): Backend {
@@ -304,6 +312,37 @@ export function createLocalBackend(): Backend {
     async sendMessage(tripId, message) {
       const messages = [...read<ChatMessage[]>(messagesKey(tripId), []), message].sort((a, b) => a.createdAt - b.createdAt)
       write(messagesKey(tripId), messages.slice(-MESSAGE_LIMIT))
+    },
+
+    async reactToMessage(tripId, messageId, uid, emoji) {
+      updateMessage(tripId, messageId, (message) => {
+        const { [uid]: _previous, ...others } = message.reactions ?? {}
+        return { ...message, reactions: emoji ? { ...others, [uid]: emoji } : others }
+      })
+    },
+
+    async voteInPoll(tripId, messageId, uid, option) {
+      updateMessage(tripId, messageId, (message) => {
+        const { [uid]: _previous, ...others } = message.votes ?? {}
+        return { ...message, votes: option == null ? others : { ...others, [uid]: option } }
+      })
+    },
+
+    watchChatMeta(tripId, callback) {
+      const notify = () => callback(read<ChatMeta>(chatMetaKey(tripId), { read: {}, typing: {} }))
+      notify()
+      return subscribe(chatMetaKey(tripId), notify)
+    },
+
+    async setChatRead(tripId, uid, upTo) {
+      const meta = read<ChatMeta>(chatMetaKey(tripId), { read: {}, typing: {} })
+      write(chatMetaKey(tripId), { ...meta, read: { ...meta.read, [uid]: upTo } })
+    },
+
+    async setTyping(tripId, uid, at) {
+      const meta = read<ChatMeta>(chatMetaKey(tripId), { read: {}, typing: {} })
+      const { [uid]: _previous, ...others } = meta.typing
+      write(chatMetaKey(tripId), { ...meta, typing: at == null ? others : { ...others, [uid]: at } })
     },
 
     watchPresence(tripId, callback) {

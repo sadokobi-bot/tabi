@@ -1,15 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
-import { displayName, firstName } from '@/backend'
-import clsx from 'clsx'
-import { Clock3, MessageCircle, SendHorizontal, WifiOff } from 'lucide-react'
-import { errorMessage } from '@/backend'
+import { firstName } from '@/backend'
+import { MessageCircle, Plus, SendHorizontal, WifiOff, X } from 'lucide-react'
 import { useTabActive } from '@/app/tabActive'
-import { Avatar } from '@/components/ui/Avatar'
-import type { ChatMessage } from '@/data/types'
+import { AttachSheet } from '@/components/chat/AttachSheet'
+import { PinnedMeet, TypingIndicator } from '@/components/chat/ChatStatus'
+import { MessageRow } from '@/components/chat/MessageRow'
+import { CategoryIcon } from '@/components/ui/CategoryIcon'
+import { sendChatMessage } from '@/data/chat'
 import { useOnline } from '@/hooks/useOnline'
 import { useTabReselect } from '@/hooks/useTabReselect'
-import { haptic } from '@/lib/haptics'
-import { newId } from '@/lib/ids'
 import { markChatRead } from '@/store/chatRead'
 import { getBackend, useCurrentUser, useSession } from '@/store/session'
 import { useTrip, useTripStore } from '@/store/trip'
@@ -18,8 +17,9 @@ import { ui, useUi } from '@/store/ui'
 const MAX_LENGTH = 2000
 /** Within this distance (px) of the bottom, new messages keep the list scrolled to the end. */
 const STICK_THRESHOLD = 120
+/** "Typing" is refreshed at most this often while writing. */
+const TYPING_EVERY_MS = 4000
 
-const timeFormat = new Intl.DateTimeFormat('he-IL', { hour: '2-digit', minute: '2-digit' })
 const dayFormat = new Intl.DateTimeFormat('he-IL', { weekday: 'long', day: 'numeric', month: 'long' })
 const dayKey = (ms: number) => new Date(ms).toDateString()
 
@@ -32,8 +32,9 @@ function dayLabel(ms: number): string {
 }
 
 /**
- * Group chat of the trip's members. Messages written without a connection appear immediately
- * (marked as waiting) and are delivered automatically once the phone is back online.
+ * Group chat of the trip's members: text, shared places, meeting points and polls, with reactions,
+ * "read" and "typing". Messages written without a connection appear immediately (marked as waiting)
+ * and are delivered automatically once the phone is back online.
  */
 export default function ChatScreen() {
   const user = useCurrentUser()
@@ -41,15 +42,20 @@ export default function ChatScreen() {
   const messages = useTripStore((state) => state.messages)
   const messagesLoaded = useTripStore((state) => state.messagesLoaded)
   const chatError = useTripStore((state) => state.chatError)
+  const read = useTripStore((state) => state.chatMeta.read)
   const mode = useSession((state) => state.backend?.mode)
   const active = useTabActive()
   const online = useOnline()
   const composing = useUi((state) => state.composing)
+  const draft = useUi((state) => state.chatDraft)
 
   const [text, setText] = useState('')
+  const [attachOpen, setAttachOpen] = useState(false)
+  const [reactingId, setReactingId] = useState<string | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const stickToBottom = useRef(true)
+  const typingSentAt = useRef(0)
 
   const scrollToBottom = (behavior: ScrollBehavior = 'auto') => {
     const list = listRef.current
@@ -74,11 +80,52 @@ export default function ChatScreen() {
     if (active && lastMessage) markChatRead(user.uid, trip.id, lastMessage.createdAt)
   }, [active, lastMessage, user.uid, trip.id])
 
-  // Leaving the tab while typing must bring the tab bar back.
+  // Tell the others how far we've read (for their "read" marks), once per new message.
+  const myRead = read[user.uid] ?? 0
+  const lastAt = lastMessage && !lastMessage.pending ? lastMessage.createdAt : 0
   useEffect(() => {
-    if (!active) ui.setComposing(false)
+    if (!active || !online || lastAt <= myRead) return
+    getBackend()
+      .setChatRead(trip.id, user.uid, lastAt)
+      .catch(() => undefined)
+  }, [active, online, lastAt, myRead, trip.id, user.uid])
+
+  const stopTyping = () => {
+    if (!typingSentAt.current) return
+    typingSentAt.current = 0
+    getBackend()
+      .setTyping(trip.id, user.uid, null)
+      .catch(() => undefined)
+  }
+
+  const onText = (value: string) => {
+    setText(value)
+    const now = Date.now()
+    if (!value.trim()) stopTyping()
+    else if (now - typingSentAt.current > TYPING_EVERY_MS) {
+      typingSentAt.current = now
+      getBackend()
+        .setTyping(trip.id, user.uid, now)
+        .catch(() => undefined)
+    }
+  }
+
+  // Leaving the tab while typing must bring the tab bar back (and stop "typing…").
+  useEffect(() => {
+    if (!active) {
+      ui.setComposing(false)
+      setReactingId(null)
+    }
   }, [active])
   useEffect(() => () => ui.setComposing(false), [])
+
+  // A place shared from elsewhere in the app: ready to send, with a comment if wanted.
+  useEffect(() => {
+    if (draft && active) {
+      stickToBottom.current = true
+      scrollToBottom()
+    }
+  }, [draft, active])
 
   useTabReselect('chat', () => scrollToBottom('smooth'))
 
@@ -92,22 +139,13 @@ export default function ChatScreen() {
 
   const send = (event?: FormEvent) => {
     event?.preventDefault()
-    const body = text.trim()
-    if (!body) return
-    const message: ChatMessage = {
-      id: newId(),
-      authorId: user.uid,
-      authorName: displayName(user).slice(0, 40), // the rules cap chat names at 40
-      text: body.slice(0, MAX_LENGTH),
-      createdAt: Date.now(),
-    }
-    haptic()
+    const body = text.trim().slice(0, MAX_LENGTH)
+    if (!body && !draft) return
+    sendChatMessage(draft ? { kind: 'place', place: draft, text: body } : { text: body })
+    ui.setChatDraft(null)
     setText('')
+    stopTyping()
     stickToBottom.current = true
-    // Not awaited: offline, the write is queued and the promise only settles once it reaches the server.
-    getBackend()
-      .sendMessage(trip.id, message)
-      .catch((error: unknown) => ui.toast(`ההודעה לא נשלחה: ${errorMessage(error)}`, 'error'))
     inputRef.current?.focus()
   }
 
@@ -115,7 +153,18 @@ export default function ChatScreen() {
     if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) send(event)
   }
 
-  const others = trip.memberIds.filter((uid) => uid !== user.uid).map((uid) => trip.members[uid]?.name ?? 'משתתף')
+  const othersIds = trip.memberIds.filter((uid) => uid !== user.uid)
+  const others = othersIds.map((uid) => trip.members[uid]?.name ?? 'משתתף')
+
+  // "Read" under the user's latest message: by whom, or by everyone.
+  const lastMine = [...messages].reverse().find((message) => message.authorId === user.uid)
+  const readers = lastMine && !lastMine.pending ? othersIds.filter((uid) => (read[uid] ?? 0) >= lastMine.createdAt) : []
+  const receipt =
+    readers.length === 0
+      ? null
+      : readers.length === othersIds.length && othersIds.length > 1
+        ? 'נקרא ע״י כולם'
+        : `נקרא ע״י ${readers.map((uid) => (trip.members[uid]?.name ?? '').split(' ')[0]).join(', ')}`
 
   return (
     <div className="flex h-full flex-col">
@@ -138,6 +187,9 @@ export default function ChatScreen() {
             {chatError}
           </p>
         )}
+        <div className="mt-3 empty:hidden">
+          <PinnedMeet messages={messages} />
+        </div>
       </header>
 
       <div
@@ -148,7 +200,7 @@ export default function ChatScreen() {
         }}
         className="no-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
       >
-        <div className="mx-auto flex min-h-full w-full max-w-md flex-col justify-end px-4 pb-3">
+        <div className="mx-auto flex min-h-full w-full max-w-md flex-col justify-end px-4 pt-14 pb-3">
           {messagesLoaded && messages.length === 0 && (
             <div className="my-auto flex flex-col items-center px-6 py-10 text-center">
               <span className="grid size-14 place-items-center rounded-full bg-accent/12 text-accent">
@@ -157,7 +209,7 @@ export default function ChatScreen() {
               <p className="mt-4 font-semibold">עדיין אין הודעות</p>
               <p className="mt-1 text-sm leading-relaxed text-muted">
                 {others.length
-                  ? 'כתבו משהו לשותפים לטיול.'
+                  ? 'כתבו משהו לשותפים לטיול, או לחצו על + כדי לשתף מקום, לקבוע נקודת מפגש או לפתוח סקר.'
                   : 'הזמינו את השותפים לטיול עם קוד ההזמנה שבהגדרות (העיגול עם האות שלכם במסך "היום").'}
               </p>
               {mode === 'local' && <p className="mt-3 text-xs text-muted">מצב מקומי: ההודעות נשמרות רק בדפדפן הזה.</p>}
@@ -166,10 +218,7 @@ export default function ChatScreen() {
 
           {messages.map((message, index) => {
             const previous = messages[index - 1]
-            const mine = message.authorId === user.uid
             const newDay = !previous || dayKey(previous.createdAt) !== dayKey(message.createdAt)
-            const sameAuthor = !newDay && previous?.authorId === message.authorId
-
             return (
               <div key={message.id}>
                 {newDay && (
@@ -177,68 +226,81 @@ export default function ChatScreen() {
                     <span className="rounded-full bg-fg/6 px-3 py-1 text-[11px] font-medium text-muted">{dayLabel(message.createdAt)}</span>
                   </p>
                 )}
-                <div className={clsx('flex items-end gap-2', mine ? 'justify-end' : 'justify-start', sameAuthor ? 'mt-1' : 'mt-3')}>
-                  {!mine && (
-                    <span className="w-7 shrink-0">{!sameAuthor && <Avatar name={message.authorName} className="size-7 text-xs" />}</span>
-                  )}
-                  <div
-                    className={clsx(
-                      'max-w-[78%] rounded-card px-3.5 py-2 shadow-sm',
-                      mine ? 'rounded-ee-sm bg-accent-fill text-accent-fg' : 'surface rounded-es-sm',
-                    )}
-                  >
-                    {!mine && !sameAuthor && <p className="mb-0.5 text-xs font-semibold text-accent">{message.authorName}</p>}
-                    <p dir="auto" className="text-[15px] leading-snug break-words whitespace-pre-wrap">
-                      {message.text}
-                    </p>
-                    <p
-                      className={clsx('mt-0.5 flex items-center justify-end gap-1 text-[10px]', mine ? 'text-accent-fg/75' : 'text-muted')}
-                    >
-                      {message.pending && (
-                        <>
-                          <Clock3 aria-hidden className="size-3" />
-                          <span>ממתינה לשליחה ·</span>
-                        </>
-                      )}
-                      <span dir="ltr">{timeFormat.format(message.createdAt)}</span>
-                    </p>
-                  </div>
-                </div>
+                <MessageRow
+                  message={message}
+                  uid={user.uid}
+                  trip={trip}
+                  sameAuthor={!newDay && previous?.authorId === message.authorId}
+                  receipt={message.id === lastMine?.id ? receipt : null}
+                  reacting={reactingId === message.id}
+                  onReacting={(open) => setReactingId(open ? message.id : null)}
+                />
               </div>
             )
           })}
         </div>
       </div>
 
+      <TypingIndicator trip={trip} uid={user.uid} />
       <form
         onSubmit={send}
-        className="mx-auto w-full max-w-md px-4 pt-2 transition-[padding] duration-200"
+        className="mx-auto w-full max-w-md px-4 pt-1 transition-[padding] duration-200"
         style={{
           paddingBottom: composing
             ? 'max(0.5rem, env(safe-area-inset-bottom))'
             : 'calc(var(--tabbar-height) + var(--tabbar-bottom) + 0.75rem)',
         }}
       >
-        <div className="glass flex items-end gap-2 rounded-card p-1.5 ps-4">
+        {draft && (
+          <div className="glass mb-2 flex items-center gap-3 rounded-card p-2 ps-3">
+            <CategoryIcon category={draft.category} className="size-9" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[11px] text-muted">שיתוף מקום</span>
+              <span className="block truncate text-sm font-semibold" dir="auto">
+                {draft.name}
+              </span>
+            </span>
+            <button
+              type="button"
+              aria-label="ביטול שיתוף המקום"
+              onClick={() => ui.setChatDraft(null)}
+              className="grid size-9 shrink-0 place-items-center rounded-full text-muted hover:bg-fg/8"
+            >
+              <X aria-hidden className="size-4.5" />
+            </button>
+          </div>
+        )}
+        <div className="glass flex items-end gap-1.5 rounded-card p-1.5">
+          <button
+            type="button"
+            aria-label="שיתוף מקום, נקודת מפגש או סקר"
+            onClick={() => setAttachOpen(true)}
+            className="grid size-10 shrink-0 place-items-center rounded-control text-accent transition hover:bg-fg/6 active:scale-90"
+          >
+            <Plus aria-hidden className="size-5.5" />
+          </button>
           <textarea
             ref={inputRef}
             value={text}
-            onChange={(event) => setText(event.target.value)}
+            onChange={(event) => onText(event.target.value)}
             onKeyDown={onKeyDown}
             onFocus={() => ui.setComposing(true)}
-            onBlur={() => ui.setComposing(false)}
+            onBlur={() => {
+              ui.setComposing(false)
+              stopTyping()
+            }}
             rows={1}
             maxLength={MAX_LENGTH}
             // Empty "auto" fields fall back to LTR in Safari, which flips the Hebrew placeholder.
             dir={text ? 'auto' : 'rtl'}
             enterKeyHint="send"
-            placeholder="כתבו הודעה…"
+            placeholder={draft ? 'הוסיפו כמה מילים (לא חובה)…' : 'כתבו הודעה…'}
             aria-label="הודעה חדשה"
             className="no-scrollbar max-h-33 min-w-0 flex-1 resize-none bg-transparent py-2 text-base leading-snug outline-none placeholder:text-muted"
           />
           <button
             type="submit"
-            disabled={!text.trim()}
+            disabled={!text.trim() && !draft}
             aria-label="שליחה"
             // Keep focus in the input so the keyboard stays open between messages.
             onPointerDown={(event) => event.preventDefault()}
@@ -248,6 +310,7 @@ export default function ChatScreen() {
           </button>
         </div>
       </form>
+      <AttachSheet open={attachOpen} onClose={() => setAttachOpen(false)} />
     </div>
   )
 }

@@ -164,6 +164,16 @@ export function TripDataSync() {
     }
   }, [tickets, online])
 
+  // Read markers and typing indicators.
+  useEffect(() => {
+    useTripStore.setState({ chatMeta: { read: {}, typing: {} } })
+    if (!backend || !activeTripId) return
+    return resubscribing(
+      (onError) => backend.watchChatMeta(activeTripId, (chatMeta) => useTripStore.setState({ chatMeta }), onError),
+      (error) => console.warn('[trip] chat read markers unavailable', error),
+    )
+  }, [backend, activeTripId])
+
   // The chat stays subscribed on every tab, so the tab bar can show unread messages.
   useEffect(() => {
     if (!backend || !activeTripId) return
