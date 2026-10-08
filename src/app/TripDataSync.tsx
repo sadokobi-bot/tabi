@@ -98,7 +98,8 @@ export function TripDataSync() {
         const { activeTripId: current, trips: before } = useTripStore.getState()
         // The open trip is gone for good (the owner removed us, or deleted it): say so.
         const lost = confirmed && current ? before.find((trip) => trip.id === current && !trips.some((t) => t.id === current)) : undefined
-        if (lost) ui.toast(lost.ownerId === uid ? `הטיול "${lost.name}" נמחק` : `הטיול "${lost.name}" כבר לא ברשימה שלכם`)
+        // (The owner deleting it sees the deletion screen instead.)
+        if (lost && lost.ownerId !== uid) ui.toast(`הטיול "${lost.name}" כבר לא ברשימה שלכם`)
         const remembered = recallActiveTrip(uid)
         const pick = [current, remembered].find((id) => id && trips.some((trip) => trip.id === id)) ?? trips[0]?.id ?? null
         useTripStore.setState({ trips, tripsLoaded: true, tripsConfirmed: confirmed, activeTripId: pick, syncError: null })

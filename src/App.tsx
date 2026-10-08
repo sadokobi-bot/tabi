@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router'
 import { TripDataSync } from '@/app/TripDataSync'
 import { SplashScreen, useIntroDone } from '@/components/layout/SplashScreen'
 import { Toaster } from '@/components/ui/Toaster'
+import { DeletionScreen } from '@/components/profile/DeletionScreen'
 import { GOOGLE_MAPS_API_KEY, hasGoogleMaps } from '@/config/env'
 import { AppLayout } from '@/layouts/AppLayout'
 import { AuthScreen } from '@/screens/AuthScreen'
@@ -27,6 +28,7 @@ export default function App() {
       <MotionConfig reducedMotion="user">
         <SessionGate />
         <Toaster />
+        <DeletionScreen />
       </MotionConfig>
     </BrowserRouter>
   )

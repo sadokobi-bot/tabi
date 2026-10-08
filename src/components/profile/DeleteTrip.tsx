@@ -1,11 +1,9 @@
 import { useState } from 'react'
 import { TriangleAlert, Trash2 } from 'lucide-react'
-import { AppError, errorMessage } from '@/backend'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
 import type { Trip } from '@/data/types'
-import { getBackend } from '@/store/session'
-import { ui } from '@/store/ui'
+import { deleteTripWithProgress } from '@/store/deletion'
 
 const CONFIRM_WORD = 'מחיקה'
 
@@ -16,20 +14,13 @@ const CONFIRM_WORD = 'מחיקה'
 export function DeleteTrip({ trip, onDeleted }: { trip: Trip; onDeleted: () => void }) {
   const [open, setOpen] = useState(false)
   const [typed, setTyped] = useState('')
-  const [busy, setBusy] = useState(false)
   const confirmed = typed.trim() === CONFIRM_WORD
 
-  const remove = async () => {
+  // The deletion runs behind a full-screen "deleting…" screen, above the profile sheet that started it.
+  const remove = () => {
     if (!confirmed) return
-    setBusy(true)
-    try {
-      await getBackend().deleteTrip(trip)
-      onDeleted()
-    } catch (error) {
-      const denied = error instanceof AppError && error.code === 'permission-denied'
-      ui.toast(denied ? 'אין הרשאה למחוק. ייתכן שההרשאות ב-Firebase עוד לא עודכנו' : errorMessage(error), 'error')
-      setBusy(false)
-    }
+    onDeleted()
+    void deleteTripWithProgress(trip)
   }
 
   if (!open)
@@ -51,7 +42,11 @@ export function DeleteTrip({ trip, onDeleted }: { trip: Trip; onDeleted: () => v
         למחוק את הטיול לצמיתות?
       </p>
       <p className="mt-2 text-sm leading-relaxed">
-        כל מה שבטיול <b>״<bdi>{trip.name}</bdi>״</b> יימחק לכל השותפים: המקומות, הלו״ז, הצ׳אט והכרטיסים. <b>אי אפשר לשחזר את זה.</b>
+        כל מה שבטיול{' '}
+        <b>
+          ״<bdi>{trip.name}</bdi>״
+        </b>{' '}
+        יימחק לכל השותפים: המקומות, הלו״ז, הצ׳אט והכרטיסים. <b>אי אפשר לשחזר את זה.</b>
       </p>
       <div className="mt-3">
         <TextField
@@ -63,12 +58,11 @@ export function DeleteTrip({ trip, onDeleted }: { trip: Trip; onDeleted: () => v
         />
       </div>
       <div className="mt-3 flex gap-2">
-        <Button variant="danger" className="flex-1" disabled={!confirmed} loading={busy} onClick={() => void remove()}>
+        <Button variant="danger" className="flex-1" disabled={!confirmed} onClick={remove}>
           מחיקה לצמיתות
         </Button>
         <Button
           variant="ghost"
-          disabled={busy}
           onClick={() => {
             setOpen(false)
             setTyped('')

@@ -353,7 +353,7 @@ export function createFirebaseBackend(): Backend {
       }
     },
 
-    async deleteTrip(trip) {
+    async deleteTrip(trip, onProgress) {
       if (!navigator.onLine) throw new AppError('network')
       try {
         const docsOf = async (name: string) => (await getDocs(collection(db, 'trips', trip.id, name))).docs.map((d) => d.ref)
@@ -367,9 +367,13 @@ export function createFirebaseBackend(): Backend {
         // The chat first: deleting messages is the newest rule, so with older rules this stops before
         // anything is lost. The trip document goes last (the other rules read it).
         await remove(await docsOf('messages'))
+        onProgress?.('chat')
         if (trip.inviteCode) await remove([doc(db, 'invites', trip.inviteCode)])
+        onProgress?.('invite')
         await remove([...(await docsOf('requests')), ...(await docsOf('places')), ...(await docsOf('meta'))])
+        onProgress?.('places')
         await deleteDoc(tripRef(trip.id))
+        onProgress?.('trip')
       } catch (error) {
         throw toAppError(error)
       }

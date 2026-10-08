@@ -37,6 +37,9 @@ export function memberOf(user: SessionUser): { name: string; gender?: Gender } {
 export type JoinStatus =
   { state: 'pending'; tripName?: string; ownerName?: string } | { state: 'declined' } | { state: 'member' } | { state: 'none' }
 
+/** What a trip deletion has just finished removing, in order. */
+export type DeletePhase = 'chat' | 'invite' | 'places' | 'trip'
+
 export type ErrorCode =
   | 'invalid-username'
   | 'username-taken'
@@ -118,7 +121,7 @@ export interface Backend {
   removeMember(tripId: string, uid: string): Promise<void>
   updateTrip(tripId: string, patch: TripPatch): Promise<void>
   /** The owner deletes the trip and everything in it (places, plan, chat, tickets, its invite code). */
-  deleteTrip(trip: Trip): Promise<void>
+  deleteTrip(trip: Trip, onProgress?: (phase: DeletePhase) => void): Promise<void>
   setDayCity(tripId: string, date: string, cityId: string | null): Promise<void>
   /** placeId starts a stay that night, '' ends one, null removes the entry (the night inherits). */
   setStay(tripId: string, date: string, placeId: string | null): Promise<void>

@@ -254,7 +254,9 @@ export function createLocalBackend(): Backend {
       })
     },
 
-    async deleteTrip(trip) {
+    async deleteTrip(trip, onProgress) {
+      onProgress?.('chat')
+      onProgress?.('invite')
       const tickets = read<Ticket[]>(ticketsKey(trip.id), [])
       await Promise.all(tickets.map((ticket) => dropPages(ticket.id)))
       for (const key of [placesKey, planKey, messagesKey, presenceKey, chatMetaKey, ticketsKey, requestsKey].map((k) => k(trip.id))) {
@@ -263,8 +265,10 @@ export function createLocalBackend(): Backend {
       }
       const { [trip.inviteCode]: _invite, ...invites } = read<Record<string, string>>(invitesKey, {})
       write(invitesKey, invites)
+      onProgress?.('places')
       const { [trip.id]: _trip, ...trips } = readTrips()
       write(tripsKey, trips)
+      onProgress?.('trip')
     },
 
     async updateTrip(tripId, patch) {

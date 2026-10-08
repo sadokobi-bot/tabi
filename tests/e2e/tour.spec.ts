@@ -41,6 +41,11 @@ test('the owner deletes a trip only after typing "מחיקה"', async ({ page })
   await expect(remove).toBeDisabled()
   await confirm.getByLabel(/הקלידו "מחיקה"/).fill('מחיקה')
   await remove.click()
+  // A "deleting…" screen ticks off each part, says it's done, then the welcome screen.
+  const deleting = page.getByRole('alertdialog', { name: 'מוחקים את הטיול' })
+  await expect(deleting).toContainText('מוחקים את הטיול…')
+  await expect(deleting).toContainText('הטיול נמחק', { timeout: 10_000 })
+  await expect(deleting).toHaveCount(0, { timeout: 10_000 })
   // No trips left: back to choosing a trip.
   await expect(page.getByRole('button', { name: /טיול חדש משלי/ })).toBeVisible()
 })
