@@ -65,6 +65,7 @@ export function AppLayout() {
   return (
     <div className="fixed inset-0 overflow-hidden">
       <AmbientBackground />
+      <div aria-hidden className="status-blend absolute inset-x-0 top-0 h-28" />
 
       <main className="absolute inset-0">
         {TABS.map((tab, index) => {

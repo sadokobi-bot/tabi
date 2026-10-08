@@ -52,6 +52,7 @@ export function SplashScreen({ message, failed = false }: { message?: string; fa
         animate={{ opacity: [0.7, 1, 0.7] }}
         transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
       />
+      <div aria-hidden className="status-blend absolute inset-x-0 top-0 h-24" />
 
       <div className="relative flex flex-col items-center">
         <motion.div layoutId="sun-gate" transition={{ duration: 0.7, ease: EASE }}>

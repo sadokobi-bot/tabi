@@ -91,6 +91,7 @@ export function AuthScreen() {
       >
         <SakuraDrift />
       </motion.div>
+      <div aria-hidden className="status-blend absolute inset-x-0 top-0 h-24" />
 
       <header className="relative flex min-h-0 flex-1 flex-col items-center justify-center px-6 pt-[calc(env(safe-area-inset-top)+1rem)] pb-6 text-center">
         {/* Shared with the launch screen: the sun glides up into place. Sign-up needs the room, so it shrinks there. */}

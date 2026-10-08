@@ -166,6 +166,7 @@ export default function MapScreen() {
       </div>
 
       {/* Top overlay: search + filter chips (glass, floating over the map) */}
+      <div aria-hidden className="status-blend absolute inset-x-0 top-0 z-[5] h-16" />
       <div className="pt-screen pointer-events-none absolute inset-x-0 top-0 z-10 space-y-2">
         <div className="pointer-events-auto px-4">
           <MapSearch provider={provider} near={viewport?.center ?? null} />

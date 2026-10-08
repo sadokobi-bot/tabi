@@ -165,6 +165,13 @@ input[type='time']::-webkit-date-and-time-value {
   }
 }
 
+/* Fades from the page color at the top edge. The iOS status bar is opaque (see index.html) and painted
+   in theme-color, which is the page color, so this melts the bar into the screen instead of a hard seam. */
+@utility status-blend {
+  pointer-events: none;
+  background: linear-gradient(to bottom, var(--app-bg) 0%, color-mix(in oklab, var(--app-bg) 70%, transparent) 35%, transparent);
+}
+
 /* Top padding that clears the notch / status bar. */
 @utility pt-screen {
   padding-top: calc(env(safe-area-inset-top) + 1.25rem);
