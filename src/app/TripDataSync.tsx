@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { errorMessage, type Backend } from '@/backend'
+import { AppError, errorMessage, type Backend } from '@/backend'
 import { removePlaceEverywhere } from '@/data/planOps'
 import { useSession } from '@/store/session'
 import { recallActiveTrip, setPlaces, useTripStore } from '@/store/trip'
@@ -37,6 +37,43 @@ function removeSamplePlaces(backend: Backend, tripId: string) {
   )
 }
 
+const RETRIES = 6
+
+/**
+ * Starts listeners and, when the server refuses them, starts them again a little later. A trip
+ * created a moment ago appears in the local cache before the server has it, and the security rules
+ * (which read the trip on the server) refuse its places / plan / chat until it lands. Any other error,
+ * or a refusal that persists, goes to `onError`.
+ */
+function resubscribing(start: (onError: (error: unknown) => void) => () => void, onError: (error: unknown) => void): () => void {
+  let stop: (() => void) | null = null
+  let timer: ReturnType<typeof setTimeout> | undefined
+  let attempt = 0
+  let closed = false
+
+  const run = () => {
+    let failed = false
+    stop = start((error) => {
+      if (failed || closed) return
+      failed = true // several listeners may fail together: retry once for all of them
+      if (error instanceof AppError && error.code === 'permission-denied' && attempt < RETRIES) {
+        attempt++
+        stop?.()
+        timer = setTimeout(run, 600 * attempt)
+      } else {
+        onError(error)
+      }
+    })
+  }
+
+  run()
+  return () => {
+    closed = true
+    clearTimeout(timer)
+    stop?.()
+  }
+}
+
 /**
  * Keeps the trip store in sync with the backend:
  * the signed-in user's trips, and the places, plan and chat of the active trip (real-time in cloud mode).
@@ -57,8 +94,7 @@ export function TripDataSync() {
       (trips, confirmed) => {
         const { activeTripId: current } = useTripStore.getState()
         const remembered = recallActiveTrip(uid)
-        const pick =
-          [current, remembered].find((id) => id && trips.some((trip) => trip.id === id)) ?? trips[0]?.id ?? null
+        const pick = [current, remembered].find((id) => id && trips.some((trip) => trip.id === id)) ?? trips[0]?.id ?? null
         useTripStore.setState({ trips, tripsLoaded: true, tripsConfirmed: confirmed, activeTripId: pick, syncError: null })
       },
       (error) => useTripStore.setState({ tripsLoaded: true, syncError: errorMessage(error) }),
@@ -69,13 +105,17 @@ export function TripDataSync() {
     if (!backend || !activeTripId) return
     useTripStore.setState({ places: [], placesById: {}, placesLoaded: false, plan: {}, planLoaded: false })
 
-    const onError = (error: unknown) => useTripStore.setState({ syncError: errorMessage(error) })
-    const stopPlaces = backend.watchPlaces(activeTripId, setPlaces, onError)
-    const stopPlan = backend.watchPlan(activeTripId, (plan) => useTripStore.setState({ plan, planLoaded: true }), onError)
-    return () => {
-      stopPlaces()
-      stopPlan()
-    }
+    return resubscribing(
+      (onError) => {
+        const stopPlaces = backend.watchPlaces(activeTripId, setPlaces, onError)
+        const stopPlan = backend.watchPlan(activeTripId, (plan) => useTripStore.setState({ plan, planLoaded: true }), onError)
+        return () => {
+          stopPlaces()
+          stopPlan()
+        }
+      },
+      (error) => useTripStore.setState({ syncError: errorMessage(error) }),
+    )
   }, [backend, activeTripId])
 
   // Re-checked on every places update: the first snapshot may come from an incomplete offline cache.
@@ -87,9 +127,13 @@ export function TripDataSync() {
   useEffect(() => {
     if (!backend || !activeTripId) return
     useTripStore.setState({ messages: [], messagesLoaded: false, chatError: null })
-    return backend.watchMessages(
-      activeTripId,
-      (messages) => useTripStore.setState({ messages, messagesLoaded: true, chatError: null }),
+    return resubscribing(
+      (onError) =>
+        backend.watchMessages(
+          activeTripId,
+          (messages) => useTripStore.setState({ messages, messagesLoaded: true, chatError: null }),
+          onError,
+        ),
       (error) => useTripStore.setState({ messagesLoaded: true, chatError: errorMessage(error) }),
     )
   }, [backend, activeTripId])

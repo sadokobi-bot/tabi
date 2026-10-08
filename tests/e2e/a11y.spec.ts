@@ -20,6 +20,8 @@ test('a sheet keeps Tab inside and returns focus to its opener', async ({ page }
   await page.getByLabel('סיסמה', { exact: true }).fill('tabi-test-123')
   await page.getByLabel('אימות סיסמה').fill('tabi-test-123')
   await page.getByRole('button', { name: 'יצירת חשבון' }).click()
+  await page.getByRole('button', { name: /טיול חדש משלי/ }).click()
+  await page.getByRole('button', { name: 'יצירת הטיול' }).click()
 
   const opener = page.getByRole('button', { name: 'פרופיל והגדרות הטיול' })
   await opener.focus()

@@ -17,12 +17,17 @@ async function fillSignUp(page: Page, username: string, password: string, confir
   await page.getByRole('button', { name: 'יצירת חשבון' }).click()
 }
 
-test('a new user signs up and lands on Today with a first trip', async ({ page }) => {
+test('a new user signs up, creates a trip and lands on Today', async ({ page }) => {
   const username = uniqueName('maya')
   await openSignUp(page)
   await fillSignUp(page, username, PASSWORD)
 
-  // A trip is created automatically, so the app opens straight on the Today screen.
+  // A new account chooses how to start: its own trip, or joining one with an invite code.
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(`ברוכים הבאים, ${username}`)
+  await expect(page.getByRole('button', { name: /הצטרפות לטיול קיים/ })).toBeVisible()
+  await page.getByRole('button', { name: /טיול חדש משלי/ }).click()
+  await page.getByRole('button', { name: 'יצירת הטיול' }).click()
+
   await expect(page.getByRole('heading', { level: 1 })).toContainText(username)
   await expect(page.getByRole('navigation', { name: 'ניווט ראשי' })).toBeVisible()
   await expect(page.getByText(/יום \d+ מתוך \d+|עוד \d+ ימים לטיול|מחר טסים/)).toBeVisible()
