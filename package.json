@@ -12,7 +12,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "typecheck": "tsc",
-    "icons": "pwa-assets-generator --preset minimal-2023 public/icon.svg",
+    "icons": "pwa-assets-generator",
     "test:e2e": "playwright test"
   },
   "dependencies": {
