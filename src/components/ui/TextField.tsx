@@ -66,7 +66,15 @@ export function TextField({ label, hint, error, leading, trailing, className, id
         id={inputId}
         aria-invalid={error ? true : undefined}
         aria-describedby={noteId(inputId, hint, error)}
-        className={clsx(CONTROL, 'h-12', leading && 'pr-11', trailing && 'pl-12', className)}
+        className={clsx(
+          CONTROL,
+          'h-12',
+          // iOS draws a date / time value at the top of the box: a full-height line box centers it.
+          (rest.type === 'date' || rest.type === 'time') && 'leading-[2.875rem]',
+          leading && 'pr-11',
+          trailing && 'pl-12',
+          className,
+        )}
         {...rest}
       />
     </FieldShell>

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import clsx from 'clsx'
-import { GripVertical, X } from 'lucide-react'
+import { Clock, GripVertical, X } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { ClosedNote } from '@/components/place/ClosedNote'
@@ -45,17 +45,22 @@ export function RowContent({ place, date, item, handle, lifted = false }: RowCon
 
       {!lifted && date && item && (
         <>
-          <label>
-            <span className="sr-only">שעה</span>
+          {/* A visible pill over the native picker: the bare iOS time field shows nothing when empty
+              and pins its value to the top. Tapping anywhere on the pill opens the picker. */}
+          <label
+            className={clsx(
+              'relative flex h-9 shrink-0 items-center gap-1 rounded-full px-2.5 text-sm tabular-nums transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent/40',
+              item.time ? 'bg-fg/6 font-semibold text-fg' : 'border border-dashed border-fg/20 text-muted',
+            )}
+          >
+            <Clock aria-hidden className="size-3.5 shrink-0" />
+            <span dir="ltr">{item.time ?? 'שעה'}</span>
             <input
               type="time"
+              aria-label={item.time ? `שעה ${item.time}, לשינוי` : 'הוספת שעה'}
               value={item.time ?? ''}
               onChange={(event) => actions.setItemTime(date, item.id, event.target.value || undefined)}
-              dir="ltr"
-              className={clsx(
-                'h-9 w-[4.5rem] shrink-0 rounded-inner px-1 text-center [&::-webkit-calendar-picker-indicator]:hidden text-sm tabular-nums outline-none focus:ring-2 focus:ring-accent/40',
-                item.time ? 'bg-fg/6 font-semibold' : 'bg-transparent text-muted',
-              )}
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
             />
           </label>
           <button
@@ -81,11 +86,7 @@ export function SortableRow({ id, ...content }: SortableRowProps) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id })
 
   return (
-    <li
-      ref={setNodeRef}
-      style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={clsx(isDragging && 'opacity-35')}
-    >
+    <li ref={setNodeRef} style={{ transform: CSS.Translate.toString(transform), transition }} className={clsx(isDragging && 'opacity-35')}>
       <RowContent
         {...content}
         handle={
