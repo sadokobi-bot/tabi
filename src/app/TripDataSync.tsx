@@ -5,6 +5,7 @@ import { prefetchTickets } from '@/data/tickets'
 import { useOnline } from '@/hooks/useOnline'
 import { useSession } from '@/store/session'
 import { recallActiveTrip, setPlaces, useTripStore } from '@/store/trip'
+import { ui } from '@/store/ui'
 
 /** Sample places whose deletion was already sent (snapshots can show them again until it lands). */
 const removing = new Set<string>()
@@ -94,7 +95,10 @@ export function TripDataSync() {
     return backend.watchTrips(
       uid,
       (trips, confirmed) => {
-        const { activeTripId: current } = useTripStore.getState()
+        const { activeTripId: current, trips: before } = useTripStore.getState()
+        // The open trip is gone for good (the owner removed us, or deleted it): say so.
+        const lost = confirmed && current ? before.find((trip) => trip.id === current && !trips.some((t) => t.id === current)) : undefined
+        if (lost) ui.toast(lost.ownerId === uid ? `הטיול "${lost.name}" נמחק` : `הוסרתם מהטיול "${lost.name}"`)
         const remembered = recallActiveTrip(uid)
         const pick = [current, remembered].find((id) => id && trips.some((trip) => trip.id === id)) ?? trips[0]?.id ?? null
         useTripStore.setState({ trips, tripsLoaded: true, tripsConfirmed: confirmed, activeTripId: pick, syncError: null })

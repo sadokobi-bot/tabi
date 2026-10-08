@@ -7,6 +7,7 @@ import { SakuraDrift } from '@/components/brand/SakuraDrift'
 import { SunGate } from '@/components/brand/SunGate'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
+import { useLatest } from '@/hooks/useLatest'
 import { isoDateInTz } from '@/lib/dates'
 import { normalizeInviteCode } from '@/lib/ids'
 import { getBackend, useCurrentUser } from '@/store/session'
@@ -90,6 +91,14 @@ export function OnboardingScreen() {
     } finally {
       setBusy(false)
     }
+  }
+
+  // The request is no longer there and no trip came of it (approved and then removed, or withdrawn
+  // elsewhere): back to choosing between joining and a trip of one's own.
+  const forgetRequest = () => {
+    rememberPendingJoin(user.uid, null)
+    setPending(null)
+    go('choose')
   }
 
   const stopWaiting = (cancel: boolean) => {
@@ -237,7 +246,7 @@ export function OnboardingScreen() {
               </form>
             )}
 
-            {step === 'waiting' && pending && <Waiting pending={pending} onBack={stopWaiting} />}
+            {step === 'waiting' && pending && <Waiting pending={pending} onBack={stopWaiting} onGone={forgetRequest} />}
           </motion.div>
         </AnimatePresence>
       </main>
@@ -307,13 +316,23 @@ function FormFooter({ error, busy, label }: { error: string | null; busy: boolea
  * After asking to join: waits for the owner. Approval shows up as the trip itself (the app then
  * opens it, see usePendingJoin in App); a decline or a withdrawn request offers another code.
  */
-function Waiting({ pending, onBack }: { pending: PendingJoin; onBack: (cancel: boolean) => void }) {
+function Waiting({ pending, onBack, onGone }: { pending: PendingJoin; onBack: (cancel: boolean) => void; onGone: () => void }) {
   const user = useCurrentUser()
   const [status, setStatus] = useState<JoinStatus>({ state: 'pending' })
 
   useEffect(() => getBackend().watchJoinStatus(pending.tripId, user.uid, setStatus), [pending.tripId, user.uid])
 
-  const declined = status.state === 'declined' || status.state === 'none'
+  // No request any more. An approval also deletes it, and the trip may take a moment to arrive (this
+  // screen then closes by itself); if it doesn't, the request is simply gone.
+  const gone = status.state === 'none'
+  const onGoneRef = useLatest(onGone)
+  useEffect(() => {
+    if (!gone) return
+    const timer = setTimeout(() => onGoneRef.current(), 4000)
+    return () => clearTimeout(timer)
+  }, [gone, onGoneRef])
+
+  const declined = status.state === 'declined'
   const trip = pending.tripName ? `״${pending.tripName}״` : 'הטיול'
 
   return (

@@ -210,8 +210,12 @@ export function createFirebaseBackend(): Backend {
 
     watchTrips(uid, callback, onError) {
       const q = query(collection(db, 'trips'), where('memberIds', 'array-contains', uid))
+      // Metadata changes too: when the user is removed from a trip, the list can first drop it from the
+      // cache and only then be confirmed by the server, with no change to the documents themselves. Without
+      // them that confirmation never arrives, and the app waits forever instead of offering a new trip.
       return onSnapshot(
         q,
+        { includeMetadataChanges: true },
         (snapshot) =>
           callback(
             snapshot.docs.map((d) => normalizeTrip(d.id, d.data())),
@@ -284,8 +288,10 @@ export function createFirebaseBackend(): Backend {
       return onSnapshot(
         requestRef(tripId, uid),
         (snapshot) => {
-          if (!snapshot.exists()) callback({ state: 'none' })
-          else callback(snapshot.data().status === 'declined' ? { state: 'declined' } : { state: 'pending' })
+          // A cache miss isn't an answer (a new device, a cleared cache): wait for the server.
+          if (!snapshot.exists()) {
+            if (!snapshot.metadata.fromCache) callback({ state: 'none' })
+          } else callback(snapshot.data().status === 'declined' ? { state: 'declined' } : { state: 'pending' })
         },
         () => callback({ state: 'none' }),
       )
