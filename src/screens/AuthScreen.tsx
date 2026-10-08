@@ -1,13 +1,12 @@
-import { lazy, Suspense, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import clsx from 'clsx'
 import { Eye, EyeOff, HardDrive, Lock, LockKeyhole, User } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { AppError, errorMessage } from '@/backend'
 import { checkUsername } from '@/backend/username'
 import { SakuraDrift } from '@/components/brand/SakuraDrift'
-import { LuckyCat, type CatMood } from '@/components/brand/LuckyCat'
+import { CatMascot, type CatMood } from '@/components/brand/CatMascot'
 
-const Cat3D = lazy(() => import('@/components/brand/Cat3D'))
 import { SunGate } from '@/components/brand/SunGate'
 import { ProfileFields, validateProfile, type ProfileDraft, type ProfileErrors } from '@/components/profile/ProfileFields'
 import { Button } from '@/components/ui/Button'
@@ -137,24 +136,14 @@ export function AuthScreen() {
             <SunGate className="size-24" />
           </motion.div>
         ) : (
-          // Sign-up has a guide: a lucky cat that waves hello and looks away from passwords.
+          // Sign-up has a guide: a ramen-eating cat that says hello and looks away from passwords.
           <motion.div
             initial={{ opacity: 0, scale: 0.85, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ type: 'spring', stiffness: 260, damping: 20 }}
             className="flex items-end gap-1"
           >
-            {/* The 3D cat (Three.js) only loads for sign-up; the flat one stands in meanwhile. */}
-            <Suspense
-              fallback={
-                <LuckyCat
-                  mood={catMood}
-                  className="size-36 shrink-0 [@media(max-height:760px)]:size-24 [@media(max-height:640px)]:size-16"
-                />
-              }
-            >
-              <Cat3D mood={catMood} className="size-36 shrink-0 [@media(max-height:760px)]:size-24 [@media(max-height:640px)]:size-16" />
-            </Suspense>
+            <CatMascot mood={catMood} className="size-36 shrink-0 [@media(max-height:760px)]:size-24 [@media(max-height:640px)]:size-16" />
             <AnimatePresence mode="popLayout" initial={false}>
               <motion.p
                 key={catLine}

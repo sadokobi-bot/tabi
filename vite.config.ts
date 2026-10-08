@@ -39,8 +39,6 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
-        // The 3D sign-up cat (Three.js) is only needed once: fetched on demand, not precached.
-        globIgnores: ['**/Cat3D-*.js'],
         navigateFallback: 'index.html',
         // Map tiles and Google/OSM API responses are intentionally NOT cached by the service worker
         // (Google Maps Platform ToS; tiles are large). Firestore keeps its own offline cache.

@@ -7,3 +7,6 @@ dev-dist
 *.log
 test-results
 playwright-report
+
+# Source artwork (originals, not shipped)
+design/
