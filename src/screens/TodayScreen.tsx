@@ -1,5 +1,8 @@
 import { useMemo } from 'react'
+import { Route } from 'lucide-react'
 import { motion, type Variants } from 'motion/react'
+import { useNavigate } from 'react-router'
+import { BookingsCard } from '@/components/today/BookingsCard'
 import { CurrencyCard } from '@/components/today/CurrencyCard'
 import { DayTimeline } from '@/components/today/DayTimeline'
 import { FlightCountdown } from '@/components/today/FlightCountdown'
@@ -28,13 +31,12 @@ export default function TodayScreen() {
   const trip = useTrip()
   const plan = useTripStore((state) => state.plan)
   const placesById = useTripStore((state) => state.placesById)
+  const places = useTripStore((state) => state.places)
+  const navigate = useNavigate()
 
   const timeline = tripTimeline(trip, now)
   const { phase, focusDate, dayNumber } = timeline
-  const items = useMemo(
-    () => sortedDay(plan[focusDate]).filter((item) => placesById[item.placeId]),
-    [plan, focusDate, placesById],
-  )
+  const items = useMemo(() => sortedDay(plan[focusDate]).filter((item) => placesById[item.placeId]), [plan, focusDate, placesById])
 
   const nowMinutes = phase === 'during' ? minutesInTz(now) : null
   const next =
@@ -100,6 +102,10 @@ export default function TodayScreen() {
         <FlightCountdown flights={trip.flights} />
       </motion.div>
 
+      <motion.div variants={RISE} className="mt-3 empty:hidden">
+        <BookingsCard places={places} today={timeline.today} />
+      </motion.div>
+
       <motion.div variants={RISE} className="mt-3">
         <CurrencyCard />
       </motion.div>
@@ -109,6 +115,19 @@ export default function TodayScreen() {
           <span className="text-lg font-bold tracking-tight">{phase === 'during' ? 'הלו״ז של היום' : `יום ${dayNumber}`}</span>
           <span className="text-sm text-muted">{formatDay(focusDate, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
         </h2>
+        {items.length > 1 && (
+          <button
+            type="button"
+            onClick={() => {
+              ui.showRoute(focusDate)
+              navigate('/map')
+            }}
+            className="-mt-1 mb-4 inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-3.5 py-2 text-sm font-semibold text-accent transition active:scale-95"
+          >
+            <Route aria-hidden className="size-4" />
+            המסלול של היום במפה
+          </button>
+        )}
         <DayTimeline date={focusDate} items={items} placesById={placesById} nowMinutes={nowMinutes} nextItemId={next?.id ?? null} />
       </motion.section>
     </motion.div>

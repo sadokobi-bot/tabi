@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useTabActive } from '@/app/tabActive'
 import { Assistant } from '@/components/map/Assistant'
 import { CategoryChips } from '@/components/map/CategoryChips'
+import { DayRouteBar, useDayRoute } from '@/components/map/DayRoute'
 import { MapControls } from '@/components/map/MapControls'
 import { MapSearch } from '@/components/map/MapSearch'
 import { PickLocationOverlay } from '@/components/map/PickLocationOverlay'
@@ -35,13 +36,16 @@ export default function MapScreen() {
   const selection = useUi((state) => state.selection)
   const camera = useUi((state) => state.camera)
   const picking = useUi((state) => state.pickingLocation)
+  const routeDate = useUi((state) => state.routeDate)
+  const route = useDayRoute(routeDate)
 
   const [showSaved, setShowSaved] = useState(true)
   const [categories, setCategories] = useState<CategoryId[]>([])
   const [viewport, setViewport] = useState<Viewport | null>(null)
   const [following, setFollowing] = useState(false)
   const geo = useGeolocation(isActive)
-  const recommendations = useAreaRecommendations(provider, viewport, categories)
+  // No recommendations while a day route is shown (and none of their billed lookups).
+  const recommendations = useAreaRecommendations(provider, route ? null : viewport, categories)
 
   // Start where the trip is today: the day's city, else its first stop, else Tokyo.
   const [initialCenter] = useState<LatLng>(() => {
@@ -78,10 +82,26 @@ export default function MapScreen() {
 
   useTabReselect('map', locate)
 
+  // Frame the whole day when a route opens or gains / loses a stop (not on every plan edit).
+  const routePoints = route?.path
+  const routeKey = route ? `${route.date}:${route.path.length}` : null
+  useEffect(() => {
+    if (!routeKey || !routePoints?.length) return
+    setFollowing(false)
+    if (routePoints.length === 1) {
+      ui.moveCamera({ center: routePoints[0], zoom: 15 })
+      return
+    }
+    const lats = routePoints.map((point) => point.lat)
+    const lngs = routePoints.map((point) => point.lng)
+    ui.moveCamera({ bounds: { north: Math.max(...lats), south: Math.min(...lats), east: Math.max(...lngs), west: Math.min(...lngs) } })
+  }, [routeKey])
+
   const selectedId =
     selection?.kind === 'place' ? `place:${selection.placeId}` : selection?.kind === 'poi' ? `poi:${selection.poi.key}` : null
 
   const markers = useMemo<MapMarker[]>(() => {
+    if (route) return route.markers
     const savedGoogle = new Set(places.flatMap((p) => (p.googlePlaceId ? [p.googlePlaceId] : [])))
     const savedOsm = new Set(places.flatMap((p) => (p.osmId ? [p.osmId] : [])))
     const isSaved = (poi: { googlePlaceId?: string; osmId?: string }) =>
@@ -114,16 +134,19 @@ export default function MapScreen() {
       }))
 
     return [...suggested, ...saved]
-  }, [places, showSaved, recommendations.pois, selection, selectedId])
+  }, [route, places, showSaved, recommendations.pois, selection, selectedId])
 
   const handleMarkerClick = (marker: MapMarker) => {
+    if (marker.id.startsWith('stop:')) {
+      ui.openPlace(marker.id.split(':')[1]!)
+      return
+    }
     if (marker.kind === 'saved') {
       ui.openPlace(marker.id.slice('place:'.length))
       return
     }
     const key = marker.id.slice('poi:'.length)
-    const poi =
-      recommendations.pois.find((p) => p.key === key) ?? (selection?.kind === 'poi' ? selection.poi : undefined)
+    const poi = recommendations.pois.find((p) => p.key === key) ?? (selection?.kind === 'poi' ? selection.poi : undefined)
     if (poi) ui.openPoi(poi)
   }
 
@@ -132,11 +155,25 @@ export default function MapScreen() {
     if (poi?.googlePlaceId) {
       const saved = places.find((place) => place.googlePlaceId === poi.googlePlaceId)
       if (saved) ui.openPlace(saved.id)
-      else ui.openPoi({ key: `g:${poi.googlePlaceId}`, source: 'google', name: '', category: 'other', location, googlePlaceId: poi.googlePlaceId })
+      else
+        ui.openPoi({
+          key: `g:${poi.googlePlaceId}`,
+          source: 'google',
+          name: '',
+          category: 'other',
+          location,
+          googlePlaceId: poi.googlePlaceId,
+        })
       return
     }
     if (poi?.name) {
-      ui.openPoi({ key: `tile:${location.lat.toFixed(6)},${location.lng.toFixed(6)}`, source: 'osm', name: poi.name, category: poi.category ?? 'other', location })
+      ui.openPoi({
+        key: `tile:${location.lat.toFixed(6)},${location.lng.toFixed(6)}`,
+        source: 'osm',
+        name: poi.name,
+        category: poi.category ?? 'other',
+        location,
+      })
       return
     }
     if (selection) ui.closeSheet()
@@ -152,6 +189,7 @@ export default function MapScreen() {
         <Suspense fallback={<MapLoading />}>
           <MapEngine
             markers={markers}
+            path={route?.path}
             user={geo.fix}
             camera={camera}
             initialCenter={initialCenter}
@@ -171,16 +209,24 @@ export default function MapScreen() {
         <div className="pointer-events-auto px-4">
           <MapSearch provider={provider} near={viewport?.center ?? null} />
         </div>
-        <div className="pointer-events-auto">
-          <CategoryChips
-            showSaved={showSaved}
-            savedCount={places.length}
-            onToggleSaved={() => setShowSaved((value) => !value)}
-            active={categories}
-            onToggle={toggleCategory}
-          />
-        </div>
-        <AreaStatus status={recommendations.status} count={recommendations.pois.length} />
+        {route ? (
+          <div className="pointer-events-auto">
+            <DayRouteBar route={route} />
+          </div>
+        ) : (
+          <>
+            <div className="pointer-events-auto">
+              <CategoryChips
+                showSaved={showSaved}
+                savedCount={places.length}
+                onToggleSaved={() => setShowSaved((value) => !value)}
+                active={categories}
+                onToggle={toggleCategory}
+              />
+            </div>
+            <AreaStatus status={recommendations.status} count={recommendations.pois.length} />
+          </>
+        )}
       </div>
 
       {!picking && (

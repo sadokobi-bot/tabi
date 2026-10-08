@@ -29,6 +29,7 @@ import { usePlaceDetails } from '@/maps/usePlaceDetails'
 import { usePoiProvider } from '@/maps/usePoiProvider'
 import { scheduleOf, useTrip, useTripStore } from '@/store/trip'
 import { ui } from '@/store/ui'
+import { BookingSection } from './BookingSection'
 import { NavigateBar } from './NavigateBar'
 import { PlaceHero } from './PlaceHero'
 
@@ -126,9 +127,7 @@ export function PlaceView({ subject, onEdit, onSchedule }: PlaceViewProps) {
             <span className="inline-flex items-center gap-1 text-sm font-semibold">
               <Star aria-hidden className="size-4 fill-amber-400 text-amber-400" />
               {data.rating.toFixed(1)}
-              {data.ratingCount != null && (
-                <span className="font-normal text-muted">({data.ratingCount.toLocaleString('he-IL')})</span>
-              )}
+              {data.ratingCount != null && <span className="font-normal text-muted">({data.ratingCount.toLocaleString('he-IL')})</span>}
             </span>
           )}
           {data?.typeLabel && <span className="text-xs text-muted">{data.typeLabel}</span>}
@@ -145,7 +144,9 @@ export function PlaceView({ subject, onEdit, onSchedule }: PlaceViewProps) {
               </button>
               {showHours && (
                 <ul className="mt-1.5 space-y-0.5 text-xs text-muted">
-                  {hours?.map((line) => <li key={line}>{line}</li>)}
+                  {hours?.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
                 </ul>
               )}
             </InfoRow>
@@ -168,9 +169,7 @@ export function PlaceView({ subject, onEdit, onSchedule }: PlaceViewProps) {
         </div>
 
         {saved?.notes && (
-          <p className="mt-4 rounded-control bg-amber-400/12 px-4 py-3 text-sm leading-relaxed whitespace-pre-line">
-            {saved.notes}
-          </p>
+          <p className="mt-4 rounded-control bg-amber-400/12 px-4 py-3 text-sm leading-relaxed whitespace-pre-line">{saved.notes}</p>
         )}
         {saved?.url && safeHttpUrl(saved.url) && (
           <a
@@ -182,6 +181,8 @@ export function PlaceView({ subject, onEdit, onSchedule }: PlaceViewProps) {
             <ExternalLink aria-hidden className="size-4" /> קישור שמרתם
           </a>
         )}
+
+        {saved && <BookingSection key={saved.id} place={saved} />}
 
         {schedule.length > 0 && (
           <div className="mt-4">

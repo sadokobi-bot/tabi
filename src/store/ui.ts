@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { CategoryId, LatLng } from '@/data/types'
+import type { Bounds, CategoryId, LatLng } from '@/data/types'
 import type { Poi } from '@/maps/poi'
 
 /** Fields of a place that is about to be created (from the map, a search result or by hand). */
@@ -19,6 +19,8 @@ export type Selection =
 
 /** Imperative camera request for whichever map engine is active. Zoom uses Google's scale. */
 export interface CameraCommand {
+  /** Fit this area (wins over center / zoom). */
+  bounds?: Bounds
   center?: LatLng
   zoom?: number
   bearing?: number
@@ -40,6 +42,8 @@ interface UiState {
   toast: Toast | null
   /** The chat input is focused: the tab bar steps aside so the keyboard sits right under the input. */
   composing: boolean
+  /** The map shows this day's stops in order, joined by a line (YYYY-MM-DD). */
+  routeDate: string | null
 }
 
 export const useUi = create<UiState>(() => ({
@@ -49,6 +53,7 @@ export const useUi = create<UiState>(() => ({
   profileOpen: false,
   toast: null,
   composing: false,
+  routeDate: null,
 }))
 
 let nonce = 0
@@ -62,5 +67,7 @@ export const ui = {
   setPicking: (pickingLocation: boolean) => useUi.setState({ pickingLocation, ...(pickingLocation ? { selection: null } : {}) }),
   setProfileOpen: (profileOpen: boolean) => useUi.setState({ profileOpen }),
   setComposing: (composing: boolean) => useUi.setState({ composing }),
+  showRoute: (routeDate: string) => useUi.setState({ routeDate, selection: null, pickingLocation: false }),
+  clearRoute: () => useUi.setState({ routeDate: null }),
   toast: (message: string, tone: Toast['tone'] = 'info') => useUi.setState({ toast: { id: ++nonce, message, tone } }),
 }

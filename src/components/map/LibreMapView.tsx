@@ -20,6 +20,9 @@ setWorkerUrl(workerUrl)
 const STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/liberty'
 const STYLE_DARK = 'https://tiles.openfreemap.org/styles/dark'
 const ACCURACY_SOURCE = 'user-accuracy'
+const ROUTE_SOURCE = 'day-route'
+/** Room for the search bar above and the tab bar below when fitting a route. */
+const ROUTE_PADDING = { top: 170, bottom: 110, left: 48, right: 48 }
 
 /** MapLibre uses 512px tiles, so its zoom is one level below Google's for the same scale. */
 const toLibreZoom = (googleZoom: number) => googleZoom - 1
@@ -77,7 +80,7 @@ function localizeLabels(map: LibreMap) {
 }
 
 export default function LibreMapView(props: MapViewProps) {
-  const { markers, user, camera, onMarkerClick } = props
+  const { markers, path, user, camera, onMarkerClick } = props
   const containerRef = useRef<HTMLDivElement>(null)
   const [map, setMap] = useState<LibreMap | null>(null)
   const [unsupported, setUnsupported] = useState(false)
@@ -134,6 +137,22 @@ export default function LibreMapView(props: MapViewProps) {
         source: ACCURACY_SOURCE,
         paint: { 'line-color': '#2f7cf6', 'line-opacity': 0.35, 'line-width': 1 },
       })
+      const accent = getComputedStyle(document.documentElement).getPropertyValue('--app-accent-fill').trim() || '#cc4329'
+      instance.addSource(ROUTE_SOURCE, { type: 'geojson', data: EMPTY })
+      instance.addLayer({
+        id: 'day-route-halo',
+        type: 'line',
+        source: ROUTE_SOURCE,
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: { 'line-color': '#ffffff', 'line-opacity': 0.85, 'line-width': 8 },
+      })
+      instance.addLayer({
+        id: 'day-route-line',
+        type: 'line',
+        source: ROUTE_SOURCE,
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: { 'line-color': accent, 'line-width': 4 },
+      })
       setMap(instance)
       emitViewport()
     })
@@ -146,9 +165,7 @@ export default function LibreMapView(props: MapViewProps) {
       if (target?.closest('.maplibregl-marker')) return // our own markers handle their clicks
 
       const clicked: LatLng = { lat: event.lngLat.lat, lng: event.lngLat.lng }
-      const feature = instance
-        .queryRenderedFeatures(event.point)
-        .find((f) => f.sourceLayer === 'poi' && f.properties?.name)
+      const feature = instance.queryRenderedFeatures(event.point).find((f) => f.sourceLayer === 'poi' && f.properties?.name)
       if (!feature) {
         latest.current.onMapClick(clicked, null)
         return
@@ -156,9 +173,7 @@ export default function LibreMapView(props: MapViewProps) {
       const p = feature.properties as Record<string, string | undefined>
       const geometry = feature.geometry
       const at =
-        geometry.type === 'Point'
-          ? { lat: geometry.coordinates[1] ?? clicked.lat, lng: geometry.coordinates[0] ?? clicked.lng }
-          : clicked
+        geometry.type === 'Point' ? { lat: geometry.coordinates[1] ?? clicked.lat, lng: geometry.coordinates[0] ?? clicked.lng } : clicked
       latest.current.onMapClick(at, {
         name: p['name:en'] ?? p.name_en ?? p.name,
         category: OMT_CATEGORY[p.subclass ?? ''] ?? OMT_CATEGORY[p.class ?? ''] ?? 'other',
@@ -205,9 +220,39 @@ export default function LibreMapView(props: MapViewProps) {
     )
   }, [map, user])
 
-  // Camera commands (fly to a place, re-center on me, reset north).
+  // The day route line.
+  useEffect(() => {
+    const source = map?.getSource(ROUTE_SOURCE) as GeoJSONSource | undefined
+    source?.setData(
+      path && path.length > 1
+        ? {
+            type: 'FeatureCollection',
+            features: [
+              {
+                type: 'Feature',
+                properties: {},
+                geometry: { type: 'LineString', coordinates: path.map((point) => [point.lng, point.lat]) },
+              },
+            ],
+          }
+        : EMPTY,
+    )
+  }, [map, path])
+
+  // Camera commands (fit a route, fly to a place, re-center on me, reset north).
   useEffect(() => {
     if (!map || !camera) return
+    if (camera.bounds) {
+      const { west, south, east, north } = camera.bounds
+      map.fitBounds(
+        [
+          [west, south],
+          [east, north],
+        ],
+        { padding: ROUTE_PADDING, maxZoom: toLibreZoom(16), bearing: 0, pitch: 0 },
+      )
+      return
+    }
     map.flyTo({
       ...(camera.center ? { center: [camera.center.lng, camera.center.lat] as [number, number] } : {}),
       ...(camera.zoom != null ? { zoom: toLibreZoom(camera.zoom) } : {}),
@@ -236,14 +281,15 @@ export default function LibreMapView(props: MapViewProps) {
             map={map}
             position={marker.location}
             title={marker.name}
-            zIndex={marker.selected ? 900 : marker.kind === 'saved' ? 500 : 100}
+            zIndex={marker.selected ? 900 : marker.order != null ? 600 : marker.kind === 'saved' ? 500 : 100}
             onClick={() => onMarkerClick(marker)}
           >
             <MarkerPin
               category={marker.category}
               variant={marker.kind}
               selected={marker.selected}
-              label={marker.selected ? marker.name : undefined}
+              order={marker.order}
+              label={marker.selected || marker.order != null ? marker.name : undefined}
             />
           </LibreMarker>
         ))}

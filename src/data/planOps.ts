@@ -1,6 +1,7 @@
 import { newId } from '@/lib/ids'
 import { parseHm } from '@/lib/dates'
-import type { DayPlan, ItineraryItem } from './types'
+import { pathMeters, shortestPathOrder } from '@/lib/travel'
+import type { DayPlan, ItineraryItem, LatLng } from './types'
 
 /**
  * Pure helpers that compute *changes* to the plan: { [date]: newItems }.
@@ -37,7 +38,12 @@ export function setItemTime(plan: DayPlan, date: string, itemId: string, time: s
     ...(current.note ? { note: current.note } : {}),
     ...(time ? { time } : {}),
   }
-  return { [date]: insertByTime(items.filter((item) => item.id !== itemId), updated) }
+  return {
+    [date]: insertByTime(
+      items.filter((item) => item.id !== itemId),
+      updated,
+    ),
+  }
 }
 
 export function removePlaceEverywhere(plan: DayPlan, placeId: string): DayPlan {
@@ -62,4 +68,36 @@ export function sortedDay(items: ItineraryItem[] | undefined): ItineraryItem[] {
       return a.index - b.index
     })
     .map(({ item }) => item)
+}
+
+/**
+ * Reorders a day for the shortest walk between stops. Timed items are appointments: they stay in
+ * time order, and the untimed ones are routed onward from the last of them (or from `start`, e.g.
+ * the hotel). Returns null when there's nothing to reorder or no shorter order exists.
+ */
+export function optimizeDay(
+  items: ItineraryItem[] | undefined,
+  locationOf: (item: ItineraryItem) => LatLng | undefined,
+  start?: LatLng,
+): { items: ItineraryItem[]; savedMeters: number } | null {
+  const day = sortedDay(items).filter((item) => locationOf(item))
+  const timed = day.filter((item) => parseHm(item.time) != null)
+  const untimed = day.filter((item) => parseHm(item.time) == null)
+  if (untimed.length < 2) return null
+
+  const lastTimed = timed[timed.length - 1]
+  const anchor = (lastTimed && locationOf(lastTimed)) ?? start
+  const order = shortestPathOrder(
+    untimed.map((item) => locationOf(item)!),
+    anchor,
+  )
+  const reordered = [...timed, ...order.map((index) => untimed[index]!)]
+  // Items whose place is gone are kept (at the end) rather than silently dropped from the plan.
+  const orphans = sortedDay(items).filter((item) => !locationOf(item))
+
+  const pathOf = (list: ItineraryItem[]) =>
+    pathMeters([...(start && !timed.length ? [start] : []), ...list.map((item) => locationOf(item)!)])
+  const savedMeters = pathOf(day) - pathOf(reordered)
+  if (savedMeters < 50 || reordered.every((item, i) => item.id === day[i]?.id)) return null
+  return { items: [...reordered, ...orphans], savedMeters }
 }

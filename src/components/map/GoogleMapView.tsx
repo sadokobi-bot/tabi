@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { AdvancedMarker, Circle, Map, useMap } from '@vis.gl/react-google-maps'
 import { GOOGLE_MAP_ID } from '@/config/env'
+import type { LatLng } from '@/data/types'
 import type { CameraCommand } from '@/store/ui'
 import { MarkerPin, UserDot } from './MarkerPin'
 import type { MapViewProps } from './types'
@@ -11,6 +12,7 @@ import type { MapViewProps } from './types'
  */
 export default function GoogleMapView({
   markers,
+  path,
   user,
   camera,
   initialCenter,
@@ -60,7 +62,7 @@ export default function GoogleMapView({
           key={marker.id}
           position={marker.location}
           title={marker.name}
-          zIndex={marker.selected ? 900 : marker.kind === 'saved' ? 500 : 100}
+          zIndex={marker.selected ? 900 : marker.order != null ? 600 : marker.kind === 'saved' ? 500 : 100}
           anchorLeft="-50%"
           anchorTop="-50%"
           onClick={() => onMarkerClick(marker)}
@@ -69,7 +71,8 @@ export default function GoogleMapView({
             category={marker.category}
             variant={marker.kind}
             selected={marker.selected}
-            label={marker.selected ? marker.name : undefined}
+            order={marker.order}
+            label={marker.selected || marker.order != null ? marker.name : undefined}
           />
         </AdvancedMarker>
       ))}
@@ -92,6 +95,7 @@ export default function GoogleMapView({
         </>
       )}
 
+      {path && path.length > 1 && <RouteLine path={path} />}
       <CameraSync camera={camera} />
     </Map>
   )
@@ -102,6 +106,14 @@ function CameraSync({ camera }: { camera: CameraCommand | null }) {
 
   useEffect(() => {
     if (!map || !camera) return
+    if (camera.bounds) {
+      map.fitBounds(camera.bounds, ROUTE_PADDING)
+      // Two stops next door would otherwise zoom in to street level.
+      google.maps.event.addListenerOnce(map, 'idle', () => {
+        if ((map.getZoom() ?? 0) > 16) map.setZoom(16)
+      })
+      return
+    }
     if (camera.center) map.panTo(camera.center)
     if (camera.zoom != null) map.setZoom(camera.zoom)
     if (camera.bearing != null) {
@@ -109,6 +121,43 @@ function CameraSync({ camera }: { camera: CameraCommand | null }) {
       map.setTilt(0)
     }
   }, [map, camera])
+
+  return null
+}
+
+/** Room for the search bar above and the tab bar below when fitting a route. */
+const ROUTE_PADDING = { top: 170, bottom: 110, left: 48, right: 48 }
+
+/** The day route: a soft halo under a solid line in the accent color. */
+function RouteLine({ path }: { path: LatLng[] }) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (!map) return
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--app-accent-fill').trim() || '#cc4329'
+    const halo = new google.maps.Polyline({
+      map,
+      path,
+      clickable: false,
+      strokeColor: '#ffffff',
+      strokeOpacity: 0.85,
+      strokeWeight: 8,
+      zIndex: 1,
+    })
+    const line = new google.maps.Polyline({
+      map,
+      path,
+      clickable: false,
+      strokeColor: accent,
+      strokeOpacity: 0.95,
+      strokeWeight: 4,
+      zIndex: 2,
+    })
+    return () => {
+      halo.setMap(null)
+      line.setMap(null)
+    }
+  }, [map, path])
 
   return null
 }

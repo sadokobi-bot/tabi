@@ -10,6 +10,8 @@ export interface MapMarker {
   category: CategoryId
   location: LatLng
   selected: boolean
+  /** Stop number on a day route: the pin shows the number and its name. */
+  order?: number
 }
 
 export interface Viewport {
@@ -30,6 +32,8 @@ export interface MapPoiClick {
 /** Contract shared by the Google Maps and MapLibre (OpenStreetMap) engines. */
 export interface MapViewProps {
   markers: MapMarker[]
+  /** A day route, drawn as a line through these points in order. */
+  path?: LatLng[]
   user: GeoFix | null
   camera: CameraCommand | null
   initialCenter: LatLng

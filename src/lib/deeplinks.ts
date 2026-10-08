@@ -7,13 +7,15 @@ export type TravelMode = 'transit' | 'walking' | 'driving'
  * (Android intent filter / iOS universal link); elsewhere it opens maps.google.com.
  * https://developers.google.com/maps/documentation/urls/get-started#directions-action
  */
-export function directionsUrl(destination: LatLng, options: { placeId?: string; mode?: TravelMode } = {}): string {
+export function directionsUrl(destination: LatLng, options: { placeId?: string; mode?: TravelMode; origin?: LatLng } = {}): string {
   const params = new URLSearchParams({
     api: '1',
     destination: `${destination.lat},${destination.lng}`,
     travelmode: options.mode ?? 'transit',
   })
   if (options.placeId) params.set('destination_place_id', options.placeId)
+  // Without an origin Google starts from the phone's current location.
+  if (options.origin) params.set('origin', `${options.origin.lat},${options.origin.lng}`)
   return `https://www.google.com/maps/dir/?${params.toString()}`
 }
 

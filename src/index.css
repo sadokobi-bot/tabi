@@ -293,6 +293,13 @@ input[type='time']::-webkit-date-and-time-value {
   box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
 }
 
+/* A numbered stop on a day route: one color for the whole route, so it reads as a sequence */
+.marker-pin__dot.is-route {
+  background: var(--app-accent-fill);
+  font: 700 15px/1 var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
 /* System recommendations: translucent outline */
 .marker-pin__dot.is-suggested {
   width: 28px;

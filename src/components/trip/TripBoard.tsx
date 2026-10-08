@@ -14,12 +14,14 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
+import { useNavigate } from 'react-router'
 import { actions } from '@/data/actions'
 import { CITIES, getCity, nearestCity } from '@/data/cities'
 import type { DayPlan, ItineraryItem, Place, Trip } from '@/data/types'
 import { formatDay, tripDates } from '@/lib/dates'
 import { newId } from '@/lib/ids'
 import { stayFor } from '@/data/stays'
+import { ui } from '@/store/ui'
 import { DayCard } from './DayCard'
 import { StayPicker } from './StayPicker'
 import { RowContent, SortableRow } from './SortableRow'
@@ -47,6 +49,7 @@ interface TripBoardProps {
  */
 export function TripBoard({ trip, plan, places, placesById, today }: TripBoardProps) {
   const dates = useMemo(() => tripDates(trip), [trip])
+  const navigate = useNavigate()
 
   // Every scheduled item by id, so drops can rebuild day arrays.
   const itemsById = useMemo(() => {
@@ -66,9 +69,7 @@ export function TripBoard({ trip, plan, places, placesById, today }: TripBoardPr
   // Unscheduled places, grouped by city in trip order, so a long list reads "Tokyo / Kyoto / …".
   const unscheduled = useMemo(() => {
     const scheduled = new Set(dates.flatMap((date) => (plan[date] ?? []).map((item) => item.placeId)))
-    return places
-      .filter((place) => !scheduled.has(place.id))
-      .sort((a, b) => cityRank(cityOf.get(a.id)!) - cityRank(cityOf.get(b.id)!))
+    return places.filter((place) => !scheduled.has(place.id)).sort((a, b) => cityRank(cityOf.get(a.id)!) - cityRank(cityOf.get(b.id)!))
   }, [dates, plan, places, cityOf, cityRank])
 
   const ideaGroups = useMemo(() => {
@@ -208,14 +209,19 @@ export function TripBoard({ trip, plan, places, placesById, today }: TripBoardPr
             )
           }
           emptyLabel={
-            ideasCity !== ALL ? `אין רעיונות ב${cityName(ideasCity)}` : places.length ? 'כל המקומות משובצים' : 'שמרו מקומות מהמפה והם יופיעו כאן'
+            ideasCity !== ALL
+              ? `אין רעיונות ב${cityName(ideasCity)}`
+              : places.length
+                ? 'כל המקומות משובצים'
+                : 'שמרו מקומות מהמפה והם יופיעו כאן'
           }
         >
           {(containers[IDEAS] ?? []).map((id, index, ids) => {
             const place = placeFor(id)
             if (!place) return null
             const city = cityOf.get(place.id) ?? OTHER
-            const startsGroup = ideasCity === ALL && ideaGroups.length > 1 && (index === 0 || cityOf.get(ids[index - 1]!.slice('idea:'.length)) !== city)
+            const startsGroup =
+              ideasCity === ALL && ideaGroups.length > 1 && (index === 0 || cityOf.get(ids[index - 1]!.slice('idea:'.length)) !== city)
             return (
               <Fragment key={id}>
                 {startsGroup && (
@@ -244,6 +250,14 @@ export function TripBoard({ trip, plan, places, placesById, today }: TripBoardPr
               isToday={date === today}
               cityId={city?.id}
               onCityChange={(cityId) => actions.setDayCity(date, cityId)}
+              onShowRoute={
+                ids.length > 1
+                  ? () => {
+                      ui.showRoute(date)
+                      navigate('/map')
+                    }
+                  : undefined
+              }
               extra={
                 <StayPicker
                   date={date}
@@ -264,9 +278,7 @@ export function TripBoard({ trip, plan, places, placesById, today }: TripBoardPr
         })}
       </div>
 
-      <DragOverlay>
-        {activePlace ? <RowContent place={activePlace} item={activeItem} lifted /> : null}
-      </DragOverlay>
+      <DragOverlay>{activePlace ? <RowContent place={activePlace} item={activeItem} lifted /> : null}</DragOverlay>
     </DndContext>
   )
 }

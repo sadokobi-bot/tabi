@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button'
 import type { ItineraryItem, Place } from '@/data/types'
 import { parseHm } from '@/lib/dates'
 import { ui } from '@/store/ui'
+import { TravelLeg } from './TravelLeg'
 
 interface DayTimelineProps {
   /** The day shown (YYYY-MM-DD), for opening-hours warnings. */
@@ -68,39 +69,43 @@ export function DayTimeline({ date, items, placesById, nowMinutes, nextItemId }:
                 const minutes = parseHm(item.time)
                 const past = nowMinutes != null && minutes != null && minutes + 60 < nowMinutes
                 const isNext = item.id === nextItemId
+                // The ride from the previous stop of the day (which may sit in the section before).
+                const previous = items[items.indexOf(item) - 1]
+                const previousPlace = previous && placesById[previous.placeId]
                 return (
                   <Fragment key={item.id}>
-                  {item.id === nowBeforeId && nowLine}
-                  <li className={clsx('relative flex items-center gap-3', past && 'opacity-55')}>
-                    <span className="w-11 shrink-0 text-end text-sm font-semibold tabular-nums" dir="ltr">
-                      {item.time ?? '-'}
-                    </span>
-                    <span
-                      aria-hidden
-                      className={clsx(
-                        'relative z-[1] size-3 shrink-0 rounded-full border-2 border-bg',
-                        isNext ? 'bg-accent-fill ring-4 ring-accent/20' : past ? 'bg-fg/25' : 'bg-fg/45',
-                      )}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => ui.openPlace(place.id)}
-                      className={clsx(
-                        'surface flex min-w-0 flex-1 items-center gap-3 rounded-control p-3 text-start transition active:scale-[0.98]',
-                        isNext && 'ring-2 ring-accent/50',
-                      )}
-                    >
-                      <CategoryIcon category={place.category} />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-semibold">{place.name}</span>
-                        {(item.note || place.notes) && (
-                          <span className="block truncate text-xs text-muted">{item.note || place.notes}</span>
-                        )}
-                        <ClosedNote place={place} date={date} time={item.time} fetch className="mt-0.5" />
+                    {item.id === nowBeforeId && nowLine}
+                    {previous && previousPlace && <TravelLeg from={{ item: previous, place: previousPlace }} to={{ item, place }} />}
+                    <li className={clsx('relative flex items-center gap-3', past && 'opacity-55')}>
+                      <span className="w-11 shrink-0 text-end text-sm font-semibold tabular-nums" dir="ltr">
+                        {item.time ?? '-'}
                       </span>
-                    </button>
-                  </li>
-                  {item.id === nowAfterId && nowLine}
+                      <span
+                        aria-hidden
+                        className={clsx(
+                          'relative z-[1] size-3 shrink-0 rounded-full border-2 border-bg',
+                          isNext ? 'bg-accent-fill ring-4 ring-accent/20' : past ? 'bg-fg/25' : 'bg-fg/45',
+                        )}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => ui.openPlace(place.id)}
+                        className={clsx(
+                          'surface flex min-w-0 flex-1 items-center gap-3 rounded-control p-3 text-start transition active:scale-[0.98]',
+                          isNext && 'ring-2 ring-accent/50',
+                        )}
+                      >
+                        <CategoryIcon category={place.category} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-semibold">{place.name}</span>
+                          {(item.note || place.notes) && (
+                            <span className="block truncate text-xs text-muted">{item.note || place.notes}</span>
+                          )}
+                          <ClosedNote place={place} date={date} time={item.time} fetch className="mt-0.5" />
+                        </span>
+                      </button>
+                    </li>
+                    {item.id === nowAfterId && nowLine}
                   </Fragment>
                 )
               })}

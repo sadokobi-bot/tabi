@@ -35,9 +35,17 @@ export interface Place {
   googlePlaceId?: string
   /** OpenStreetMap element, e.g. "node/123456". */
   osmId?: string
+  /** Needs booking ahead (tickets, popular restaurants): when booking opens, and whether it's done. */
+  booking?: Booking
   createdBy: string
   createdAt: number
   updatedAt: number
+}
+
+export interface Booking {
+  /** The day reservations open (YYYY-MM-DD, Japan calendar); unset = already open. */
+  opensOn?: string
+  booked?: boolean
 }
 
 /** One stop in a day's plan. Times are wall-clock times in Japan ("HH:mm"). */

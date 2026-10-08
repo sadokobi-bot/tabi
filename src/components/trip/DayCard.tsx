@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import clsx from 'clsx'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Route } from 'lucide-react'
 import { CITIES } from '@/data/cities'
 
 interface DayCardProps {
@@ -16,12 +16,26 @@ interface DayCardProps {
   onCityChange?: (cityId: string | null) => void
   /** Extra controls under the header (the night's stay). */
   extra?: ReactNode
+  /** Shows the day's stops as a route on the map. */
+  onShowRoute?: () => void
   emptyLabel: string
   children: ReactNode
 }
 
 /** One droppable list (a trip day, or the "ideas" bucket) on the trip board. */
-export function DayCard({ id, title, subtitle, itemIds, isToday, cityId, onCityChange, extra, emptyLabel, children }: DayCardProps) {
+export function DayCard({
+  id,
+  title,
+  subtitle,
+  itemIds,
+  isToday,
+  cityId,
+  onCityChange,
+  extra,
+  onShowRoute,
+  emptyLabel,
+  children,
+}: DayCardProps) {
   const { setNodeRef, isOver } = useDroppable({ id })
 
   return (
@@ -40,6 +54,16 @@ export function DayCard({ id, title, subtitle, itemIds, isToday, cityId, onCityC
           </h3>
           {subtitle && <p className="text-xs text-muted">{subtitle}</p>}
         </div>
+        {onShowRoute && (
+          <button
+            type="button"
+            aria-label="מסלול היום במפה"
+            onClick={onShowRoute}
+            className="tap-target relative grid size-9 shrink-0 place-items-center rounded-full text-accent hover:bg-accent/10"
+          >
+            <Route aria-hidden className="size-[18px]" />
+          </button>
+        )}
         {onCityChange && (
           <span className="relative shrink-0">
             <select

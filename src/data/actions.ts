@@ -48,6 +48,7 @@ function writePlan(changes: DayPlan, success?: string) {
 export interface PlaceFields extends PlaceDraft {
   notes?: string
   url?: string
+  booking?: Place['booking']
 }
 
 export const actions = {
