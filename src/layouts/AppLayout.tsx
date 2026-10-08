@@ -8,6 +8,9 @@ import { TabPanel } from '@/components/layout/TabPanel'
 import { BottomTabBar } from '@/components/navigation/BottomTabBar'
 import { PlaceSheet } from '@/components/place/PlaceSheet'
 import { TicketViewer } from '@/components/place/TicketViewer'
+import { Tour } from '@/components/tour/Tour'
+import { useCurrentUser } from '@/store/session'
+import { startTour, tourPending } from '@/store/tour'
 import { ProfileSheet } from '@/components/profile/ProfileSheet'
 import { PresenceSync } from '@/app/PresenceSync'
 import TodayScreen from '@/screens/TodayScreen'
@@ -35,6 +38,14 @@ const SCREENS: Record<TabId, ComponentType> = {
  */
 export function AppLayout() {
   const { pathname } = useLocation()
+  const user = useCurrentUser()
+
+  // A new account's first visit: the welcome tour, once the screen has settled.
+  useEffect(() => {
+    if (!tourPending(user.uid)) return
+    const timer = setTimeout(startTour, 900)
+    return () => clearTimeout(timer)
+  }, [user.uid])
   const activeIndex = findTabIndex(pathname)
   const activeTab = TABS[activeIndex]
 
@@ -101,6 +112,7 @@ export function AppLayout() {
       <PlaceSheet />
       <ProfileSheet />
       <TicketViewer />
+      <Tour />
       <PresenceSync />
     </div>
   )

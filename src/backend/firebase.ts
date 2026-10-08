@@ -17,6 +17,7 @@ import {
   deleteField,
   doc,
   getDoc,
+  getDocs,
   initializeFirestore,
   limitToLast,
   onSnapshot,
@@ -347,6 +348,28 @@ export function createFirebaseBackend(): Backend {
     async removeMember(tripId, uid) {
       try {
         await updateDoc(tripRef(tripId), { memberIds: arrayRemove(uid), [`members.${uid}`]: deleteField() })
+      } catch (error) {
+        throw toAppError(error)
+      }
+    },
+
+    async deleteTrip(trip) {
+      if (!navigator.onLine) throw new AppError('network')
+      try {
+        const docsOf = async (name: string) => (await getDocs(collection(db, 'trips', trip.id, name))).docs.map((d) => d.ref)
+        const remove = async (refs: ReturnType<typeof doc>[]) => {
+          for (let i = 0; i < refs.length; i += 400) {
+            const batch = writeBatch(db)
+            refs.slice(i, i + 400).forEach((ref) => batch.delete(ref))
+            await batch.commit()
+          }
+        }
+        // The chat first: deleting messages is the newest rule, so with older rules this stops before
+        // anything is lost. The trip document goes last (the other rules read it).
+        await remove(await docsOf('messages'))
+        if (trip.inviteCode) await remove([doc(db, 'invites', trip.inviteCode)])
+        await remove([...(await docsOf('requests')), ...(await docsOf('places')), ...(await docsOf('meta'))])
+        await deleteDoc(tripRef(trip.id))
       } catch (error) {
         throw toAppError(error)
       }

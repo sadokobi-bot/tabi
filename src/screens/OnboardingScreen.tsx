@@ -13,6 +13,7 @@ import { normalizeInviteCode } from '@/lib/ids'
 import { getBackend, useCurrentUser } from '@/store/session'
 import { recallPendingJoin, rememberPendingJoin, type PendingJoin } from '@/store/joins'
 import { rememberActiveTrip, useTripStore } from '@/store/trip'
+import { markTourPending } from '@/store/tour'
 
 type Step = 'choose' | 'create' | 'join' | 'waiting'
 
@@ -36,6 +37,12 @@ export function OnboardingScreen() {
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // A new account (no trips yet): the welcome tour waits for its first trip.
+  useEffect(() => {
+    if (!hasTrips) markTourPending(user.uid)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const go = (next: Step) => {
     setStep(next)

@@ -117,6 +117,8 @@ export interface Backend {
   /** The owner removes a member from the trip. */
   removeMember(tripId: string, uid: string): Promise<void>
   updateTrip(tripId: string, patch: TripPatch): Promise<void>
+  /** The owner deletes the trip and everything in it (places, plan, chat, tickets, its invite code). */
+  deleteTrip(trip: Trip): Promise<void>
   setDayCity(tripId: string, date: string, cityId: string | null): Promise<void>
   /** placeId starts a stay that night, '' ends one, null removes the entry (the night inherits). */
   setStay(tripId: string, date: string, placeId: string | null): Promise<void>

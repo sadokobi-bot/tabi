@@ -254,6 +254,19 @@ export function createLocalBackend(): Backend {
       })
     },
 
+    async deleteTrip(trip) {
+      const tickets = read<Ticket[]>(ticketsKey(trip.id), [])
+      await Promise.all(tickets.map((ticket) => dropPages(ticket.id)))
+      for (const key of [placesKey, planKey, messagesKey, presenceKey, chatMetaKey, ticketsKey, requestsKey].map((k) => k(trip.id))) {
+        localStorage.removeItem(PREFIX + key)
+        emit(key)
+      }
+      const { [trip.inviteCode]: _invite, ...invites } = read<Record<string, string>>(invitesKey, {})
+      write(invitesKey, invites)
+      const { [trip.id]: _trip, ...trips } = readTrips()
+      write(tripsKey, trips)
+    },
+
     async updateTrip(tripId, patch) {
       updateTripRecord(tripId, (trip) => ({ ...trip, ...patch }))
     },

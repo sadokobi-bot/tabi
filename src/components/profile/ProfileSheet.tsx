@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import clsx from 'clsx'
-import { Check, Cloud, Copy, HardDrive, Lock, LogOut, Map as MapIcon, Pencil, Plus, Share2, X } from 'lucide-react'
+import { Sparkles, Check, Cloud, Copy, HardDrive, Lock, LogOut, Map as MapIcon, Pencil, Plus, Share2, X } from 'lucide-react'
 import { displayName, errorMessage, firstName } from '@/backend'
 import { Avatar } from '@/components/ui/Avatar'
 import { BottomSheet } from '@/components/ui/BottomSheet'
@@ -14,6 +14,8 @@ import { ui, useUi } from '@/store/ui'
 import { byGender } from '@/lib/hebrew'
 import { FlightsEditor } from './FlightsEditor'
 import { JoinRequests } from './JoinRequests'
+import { DeleteTrip } from './DeleteTrip'
+import { startTour } from '@/store/tour'
 import { ProfileFields, validateProfile, type ProfileDraft, type ProfileErrors } from './ProfileFields'
 
 /** Profile & trip settings: invite partners, flights, trip dates, switch trips, sign out. */
@@ -296,6 +298,7 @@ function ProfileBody({ onClose }: { onClose: () => void }) {
             </Button>
           </form>
         )}
+        {isOwner && <DeleteTrip key={trip.id} trip={trip} onDeleted={onClose} />}
       </Section>
 
       <Section title="הטיולים שלי">
@@ -326,6 +329,20 @@ function ProfileBody({ onClose }: { onClose: () => void }) {
             טיול חדש או הצטרפות עם קוד
           </Button>
         </div>
+      </Section>
+
+      <Section title="עזרה">
+        <Button
+          variant="secondary"
+          className="w-full"
+          icon={<Sparkles aria-hidden className="size-4" />}
+          onClick={() => {
+            onClose()
+            startTour()
+          }}
+        >
+          סיור קצר באפליקציה
+        </Button>
       </Section>
 
       <Section title="חיבורים">

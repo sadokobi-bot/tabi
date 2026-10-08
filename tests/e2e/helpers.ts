@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 
 export const PASSWORD = 'tabi-test-123'
 
@@ -44,7 +44,15 @@ export async function signOut(page: Page) {
   await page.evaluate(() => localStorage.removeItem('tabi:v1:session'))
 }
 
-export async function createFirstTrip(page: Page) {
+export async function createFirstTrip(page: Page, { tour = 'skip' }: { tour?: 'skip' | 'keep' } = {}) {
   await page.getByRole('button', { name: /טיול חדש משלי/ }).click()
   await page.getByRole('button', { name: 'יצירת הטיול' }).click()
+  if (tour === 'skip') await skipTour(page)
+}
+
+/** A new account's first visit opens the welcome tour: skip it. */
+export async function skipTour(page: Page) {
+  const tour = page.getByRole('dialog', { name: 'סיור באפליקציה' })
+  await tour.getByRole('button', { name: 'דלגו' }).click({ timeout: 10_000 })
+  await expect(tour).toHaveCount(0)
 }

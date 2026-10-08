@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { createFirstTrip, signIn, signOut, signUp, uniqueName } from './helpers'
+import { createFirstTrip, signIn, signOut, signUp, skipTour, uniqueName } from './helpers'
 
 // Two accounts sign up and in again (each sign-in waits for the launch intro and hashes a password).
 test.setTimeout(120_000)
@@ -46,6 +46,7 @@ test('joining needs the owner: request, approve, then the trip opens; only the o
   await signOut(page)
   await signIn(page, guest)
   await expect(page.getByRole('heading', { level: 1 })).toContainText('נועה')
+  await skipTour(page)
   await page.getByRole('button', { name: 'פרופיל והגדרות הטיול' }).click()
   await expect(page.getByText(/רק קובי כהן יכול לשנות את שם הטיול/)).toBeVisible()
   await expect(page.getByLabel('שם הטיול')).toHaveCount(0)
@@ -122,6 +123,7 @@ test('a member removed from their only trip is offered to join or create one aga
   await signOut(page)
   await signIn(page, guest)
   await expect(page.getByRole('heading', { level: 1 })).toContainText('שירה')
+  await skipTour(page)
   await removeGuest(page, owner)
 
   await signOut(page)
