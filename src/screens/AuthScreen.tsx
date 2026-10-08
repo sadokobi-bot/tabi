@@ -129,7 +129,13 @@ export function AuthScreen() {
       </motion.div>
       <div aria-hidden className="status-blend absolute inset-x-0 top-0 h-24" />
 
-      <header className="relative flex min-h-0 flex-1 flex-col items-center justify-center px-6 pt-[calc(env(safe-area-inset-top)+1rem)] pb-6 text-center">
+      {/* Sign-up keeps the padding tight so the cat can be big. */}
+      <header
+        className={clsx(
+          'relative flex min-h-0 flex-1 flex-col items-center justify-center text-center',
+          signIn ? 'px-6 pt-[calc(env(safe-area-inset-top)+1rem)] pb-6' : 'px-4 pt-[calc(env(safe-area-inset-top)+0.25rem)] pb-2',
+        )}
+      >
         {signIn ? (
           // Shared with the launch screen: the sun glides up into place.
           <motion.div layoutId="sun-gate" transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}>
@@ -143,7 +149,7 @@ export function AuthScreen() {
             transition={{ type: 'spring', stiffness: 260, damping: 20 }}
             className="flex items-end gap-1"
           >
-            <CatMascot mood={catMood} className="size-36 shrink-0 [@media(max-height:760px)]:size-24 [@media(max-height:640px)]:size-16" />
+            <CatMascot mood={catMood} className="size-44 shrink-0 [@media(max-height:760px)]:size-32 [@media(max-height:640px)]:size-20" />
             <AnimatePresence mode="popLayout" initial={false}>
               <motion.p
                 key={catLine}
@@ -153,7 +159,7 @@ export function AuthScreen() {
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ type: 'spring', stiffness: 380, damping: 24 }}
                 style={{ transformOrigin: 'bottom right' }}
-                className="glass relative mb-16 max-w-[11rem] [@media(max-height:760px)]:mb-10 [@media(max-height:640px)]:hidden rounded-2xl rounded-br-md px-3.5 py-2 text-start text-sm font-semibold"
+                className="glass relative mb-20 max-w-[11rem] [@media(max-height:760px)]:mb-14 [@media(max-height:640px)]:hidden rounded-2xl rounded-br-md px-3 py-2 text-start text-sm font-semibold"
               >
                 {catLine}
               </motion.p>
