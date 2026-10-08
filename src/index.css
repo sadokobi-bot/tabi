@@ -366,7 +366,7 @@ input[type='time']::-webkit-date-and-time-value {
   bottom: calc(var(--tabbar-height) + var(--tabbar-bottom) + 0.5rem);
 }
 
-/* ── Sign-in ambience: drifting sakura petals and slow sun rays ─────────── */
+/* ── Sign-in ambience: drifting sakura petals ─────────────────────────────── */
 
 .sakura-petal {
   position: absolute;
@@ -409,28 +409,8 @@ input[type='time']::-webkit-date-and-time-value {
   }
 }
 
-.sun-rays {
-  background: repeating-conic-gradient(
-    from 0deg,
-    color-mix(in oklab, var(--app-accent) 16%, transparent) 0deg 5deg,
-    transparent 5deg 15deg
-  );
-  -webkit-mask: radial-gradient(closest-side, black 25%, transparent 100%);
-  mask: radial-gradient(closest-side, black 25%, transparent 100%);
-  animation: sun-rays-spin 90s linear infinite;
-}
-
-@keyframes sun-rays-spin {
-  to {
-    transform: rotate(1turn);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .sakura {
     display: none;
-  }
-  .sun-rays {
-    animation: none;
   }
 }

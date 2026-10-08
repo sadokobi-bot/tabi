@@ -73,7 +73,8 @@ export function AuthScreen() {
   const signIn = mode === 'signIn'
 
   return (
-    <div className="relative flex min-h-dvh flex-col overflow-x-hidden">
+    // Exactly one screen tall and never scrolls; the header gives up space first on short screens.
+    <div className="relative flex h-dvh flex-col overflow-hidden">
       {/* Warm haze behind the sun, as on the launch screen */}
       <div
         aria-hidden
@@ -90,23 +91,11 @@ export function AuthScreen() {
         <SakuraDrift />
       </motion.div>
 
-      <header className="relative flex flex-1 flex-col items-center justify-center px-6 pt-[calc(env(safe-area-inset-top)+1rem)] pb-6 text-center">
+      <header className="relative flex min-h-0 flex-1 flex-col items-center justify-center px-6 pt-[calc(env(safe-area-inset-top)+1rem)] pb-6 text-center">
         {/* Shared with the launch screen: the sun glides up into place. Sign-up needs the room, so it shrinks there. */}
-        <div className="relative grid place-items-center">
-          {/* Slow light rays turning behind the sun */}
-          <motion.div
-            aria-hidden
-            className="pointer-events-none absolute size-80"
-            initial={{ opacity: 0, scale: 0.6 }}
-            animate={{ opacity: 1, scale: signIn ? 1 : 0.65 }}
-            transition={{ opacity: { delay: 0.6, duration: 1.2 }, scale: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } }}
-          >
-            <div className="sun-rays size-full rounded-full" />
-          </motion.div>
-          <motion.div layoutId="sun-gate" className="relative" transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}>
-            <SunGate className={signIn ? 'size-24' : 'size-16'} />
-          </motion.div>
-        </div>
+        <motion.div layoutId="sun-gate" transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}>
+          <SunGate className={signIn ? 'size-24' : 'size-16'} />
+        </motion.div>
         <AnimatePresence initial={false}>
           {signIn && (
             <motion.div
