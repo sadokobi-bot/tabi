@@ -97,7 +97,7 @@ export function AuthScreen() {
 
   // What the cat does and says follows the form.
   const name = profile.firstName.trim()
-  const catMood: CatMood = !details && passwordFocused ? (showPassword ? 'peek' : 'cover') : 'wave'
+  const catMood: CatMood = details ? 'wave' : passwordFocused ? (showPassword ? 'peek' : 'cover') : 'eat'
   const catLine = details
     ? name
       ? `נעים מאוד, ${name}!`
@@ -106,7 +106,7 @@ export function AuthScreen() {
       ? showPassword
         ? 'טוב, רק הצצה קטנה 👀'
         : 'אני לא מציץ, מבטיח 🙈'
-      : `${name}, עוד רגע מסיימים!`
+      : `${name}, עוד רגע מסיימים! 🍜`
 
   return (
     // Pinned to the screen like the app shell (AppLayout): on iOS home-screen apps 100dvh can exceed
