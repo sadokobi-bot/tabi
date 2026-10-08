@@ -12,7 +12,7 @@ import { PRESENCE_FRESH_MS, usePresence } from '@/store/presence'
 import { useCurrentUser } from '@/store/session'
 import { MapControls } from '@/components/map/MapControls'
 import { MapSearch } from '@/components/map/MapSearch'
-import { NeedsSheet, type NeedResult } from '@/components/map/NeedsSheet'
+import { NeedIcon, NeedsSheet, type NeedResult } from '@/components/map/NeedsSheet'
 import { NEED_BY_ID, type NeedId } from '@/maps/needs'
 import type { Poi } from '@/maps/poi'
 import { PickLocationOverlay } from '@/components/map/PickLocationOverlay'
@@ -186,7 +186,7 @@ export default function MapScreen() {
         category: poi.category,
         location: poi.location,
         selected: selectedId === `poi:${poi.key}`,
-        ...(needResult ? { emoji: NEED_BY_ID[needResult.need].emoji } : {}),
+        ...(needResult ? { icon: NEED_BY_ID[needResult.need].icon, color: NEED_BY_ID[needResult.need].color } : {}),
       }))
 
     return [...suggested, ...saved, ...memberMarkers]
@@ -383,8 +383,8 @@ function NeedBar({ result, onOpen, onClear }: { result: NeedResult; onOpen: () =
   return (
     <div className="pointer-events-auto flex justify-center px-4">
       <div className="glass flex items-center gap-1 rounded-full py-1 ps-1 pe-1">
-        <button type="button" onClick={onOpen} className="flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold">
-          <span aria-hidden>{config.emoji}</span>
+        <button type="button" onClick={onOpen} className="flex items-center gap-2 rounded-full py-0.5 ps-0.5 pe-3 text-sm font-semibold">
+          <NeedIcon need={config} className="size-7 rounded-full" />
           {result.pois.length ? `${config.plural} בסביבה (${result.pois.length}) · לרשימה` : `לא נמצאו ${config.plural} בסביבה`}
         </button>
         <button

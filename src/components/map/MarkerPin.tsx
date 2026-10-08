@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import clsx from 'clsx'
+import type { LucideIcon } from 'lucide-react'
 import { CATEGORIES } from '@/data/categories'
 import type { CategoryId } from '@/data/types'
 
@@ -10,30 +11,23 @@ interface MarkerPinProps {
   label?: string
   /** Stop number on a day route (replaces the category icon). */
   order?: number
-  /** Replaces the category icon (nearby needs). */
-  emoji?: string
+  /** Replace the category's icon and color (nearby needs). */
+  icon?: LucideIcon
+  color?: string
 }
 
 /**
  * Map pin shared by both map engines.
  * Saved places: solid category color with a white ring. Recommendations: translucent outline pins.
  */
-export function MarkerPin({ category, variant, selected = false, label, order, emoji }: MarkerPinProps) {
+export function MarkerPin({ category, variant, selected = false, label, order, icon, color }: MarkerPinProps) {
   const config = CATEGORIES[category]
-  const Icon = config.icon
+  const Icon = icon ?? config.icon
 
   return (
-    <div className={clsx('marker-pin', selected && 'is-selected')} style={{ '--pin': config.color } as CSSProperties}>
+    <div className={clsx('marker-pin', selected && 'is-selected')} style={{ '--pin': color ?? config.color } as CSSProperties}>
       <span className={clsx('marker-pin__dot', variant === 'saved' ? 'is-saved' : 'is-suggested', order != null && 'is-route')}>
-        {order != null ? (
-          order
-        ) : emoji ? (
-          <span aria-hidden className="marker-pin__emoji">
-            {emoji}
-          </span>
-        ) : (
-          <Icon aria-hidden strokeWidth={2.4} />
-        )}
+        {order != null ? order : <Icon aria-hidden strokeWidth={2.4} />}
       </span>
       {label && <span className="marker-pin__label">{label}</span>}
     </div>

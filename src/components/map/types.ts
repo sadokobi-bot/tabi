@@ -1,3 +1,4 @@
+import type { LucideIcon } from 'lucide-react'
 import type { Bounds, CategoryId, LatLng } from '@/data/types'
 import type { GeoFix } from '@/hooks/useGeolocation'
 import type { CameraCommand } from '@/store/ui'
@@ -12,8 +13,9 @@ export interface MapMarker {
   selected: boolean
   /** Stop number on a day route: the pin shows the number and its name. */
   order?: number
-  /** Shown instead of the category icon (nearby needs: 🏧, 🚻…). */
-  emoji?: string
+  /** Replace the category's icon and color (nearby needs: toilets, ATMs…). */
+  icon?: LucideIcon
+  color?: string
   /** A trip member's live position (shown as their initial). */
   member?: { name: string; color: string; ago: string }
 }

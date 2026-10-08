@@ -1,14 +1,16 @@
+import { Banknote, Luggage, Pill, ShieldCheck, Stethoscope, Store, Toilet, TrainFront, WashingMachine, type LucideIcon } from 'lucide-react'
 import type { CategoryId } from '@/data/types'
 
 /** Everyday needs on the street, found around the user ("I need … now"). */
-export type NeedId = 'toilet' | 'atm' | 'konbini' | 'locker' | 'pharmacy'
+export type NeedId = 'toilet' | 'atm' | 'konbini' | 'station' | 'locker' | 'pharmacy' | 'clinic' | 'laundry' | 'police'
 
 export interface NeedConfig {
   id: NeedId
   label: string
   /** "3 כספומטים קרובים" */
   plural: string
-  emoji: string
+  icon: LucideIcon
+  color: string
   /** Name for places the map data leaves unnamed (most public toilets). */
   noun: string
   /** One practical line about this need in Japan. */
@@ -26,9 +28,10 @@ export interface NeedConfig {
 export const NEEDS: NeedConfig[] = [
   {
     id: 'toilet',
+    icon: Toilet,
+    color: '#0ea5e9',
     label: 'שירותים',
     plural: 'שירותים',
-    emoji: '🚻',
     noun: 'שירותים ציבוריים',
     tip: 'כמעט בכל מכולת (7-Eleven, Lawson, FamilyMart), תחנת רכבת וחנות כלבו יש שירותים נקיים שפתוחים לכולם',
     category: 'other',
@@ -38,20 +41,22 @@ export const NEEDS: NeedConfig[] = [
   },
   {
     id: 'atm',
+    icon: Banknote,
+    color: '#16a34a',
     label: 'כספומט',
     plural: 'כספומטים',
-    emoji: '🏧',
     noun: 'כספומט',
-    tip: 'כרטיס ישראלי עובד בדרך כלל בכספומטים של 7-Eleven (Seven Bank) ושל דואר יפן. מסומנים כאן ב-✓',
+    tip: 'כרטיס ישראלי עובד בדרך כלל בכספומטים של 7-Eleven (Seven Bank) ושל דואר יפן. הם מסומנים כאן ב"כרטיס זר"',
     category: 'other',
     googleTypes: ['atm'],
     osmFilters: ['["amenity"="atm"]', '["amenity"="bank"]["atm"="yes"]'],
   },
   {
     id: 'konbini',
+    icon: Store,
+    color: '#e8890c',
     label: 'מכולת',
     plural: 'מכולות',
-    emoji: '🏪',
     noun: 'מכולת',
     tip: 'פתוחות 24/7: אוכל, שתייה, כספומט, שירותים וטעינה לטלפון',
     category: 'shopping',
@@ -59,10 +64,23 @@ export const NEEDS: NeedConfig[] = [
     osmFilters: ['["shop"="convenience"]'],
   },
   {
+    id: 'station',
+    icon: TrainFront,
+    color: '#64748b',
+    label: 'תחנת רכבת',
+    plural: 'תחנות רכבת',
+    noun: 'תחנת רכבת',
+    tip: 'כרטיס Suica או PASMO עובד בכל הרכבות והאוטובוסים בעיר. בתחנות הגדולות שווה לבדוק מראש איזו יציאה (出口) הכי קרובה ליעד',
+    category: 'transport',
+    googleTypes: ['train_station', 'subway_station'],
+    osmFilters: ['["railway"="station"]'],
+  },
+  {
     id: 'locker',
+    icon: Luggage,
+    color: '#4f46e5',
     label: 'לוקרים',
     plural: 'לוקרים',
-    emoji: '🧳',
     noun: 'לוקרים',
     tip: 'בתחנות הגדולות יש לוקרים בכמה גדלים, ורובם מקבלים כרטיס Suica. מזוודה גדולה? חפשו את הלוקרים הגדולים ליד היציאות',
     category: 'transport',
@@ -71,14 +89,52 @@ export const NEEDS: NeedConfig[] = [
   },
   {
     id: 'pharmacy',
+    icon: Pill,
+    color: '#db2777',
     label: 'בית מרקחת',
     plural: 'בתי מרקחת',
-    emoji: '💊',
     noun: 'בית מרקחת',
     tip: 'ב"דראגסטור" (ドラッグストア) יש תרופות ללא מרשם, ובבית מרקחת (薬局) גם רוקח. שווה להראות לרוקח את שם התרופה באנגלית',
     category: 'shopping',
     googleTypes: ['pharmacy', 'drugstore'],
     osmFilters: ['["amenity"="pharmacy"]', '["shop"="chemist"]'],
+  },
+  {
+    id: 'clinic',
+    icon: Stethoscope,
+    color: '#dc2626',
+    label: 'מרפאה',
+    plural: 'מרפאות ובתי חולים',
+    noun: 'מרפאה',
+    tip: 'במצב חירום חייגו 119 (אמבולנס). בבתי החולים הגדולים יש לרוב מי שמדבר אנגלית. קחו איתכם דרכון ואת פוליסת הביטוח',
+    category: 'other',
+    googleTypes: ['hospital', 'doctor'],
+    googleQuery: 'clinic',
+    osmFilters: ['["amenity"~"^(hospital|clinic|doctors)$"]'],
+  },
+  {
+    id: 'laundry',
+    icon: WashingMachine,
+    color: '#0891b2',
+    label: 'מכבסה',
+    plural: 'מכבסות',
+    noun: 'מכבסה בשירות עצמי',
+    tip: 'מכבסות בשירות עצמי (コインランドリー) פתוחות עד מאוחר, ויש בהן מכונות שמכבסות ומייבשות יחד בכ-45 דקות. מטבעות של 100 ין יעזרו',
+    category: 'other',
+    googleQuery: 'coin laundry',
+    osmFilters: ['["shop"="laundry"]'],
+  },
+  {
+    id: 'police',
+    icon: ShieldCheck,
+    color: '#2563eb',
+    label: 'משטרה',
+    plural: 'תחנות משטרה',
+    noun: 'קובאן (עמדת משטרה)',
+    tip: 'בכל שכונה יש "קובאן" (交番), עמדת משטרה קטנה שעוזרת בהכוונה ובחפצים שאבדו. במצב חירום: 110',
+    category: 'other',
+    googleTypes: ['police'],
+    osmFilters: ['["amenity"="police"]'],
   },
 ]
 

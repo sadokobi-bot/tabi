@@ -75,7 +75,8 @@ export default function GoogleMapView({
               variant={marker.kind}
               selected={marker.selected}
               order={marker.order}
-              emoji={marker.emoji}
+              icon={marker.icon}
+              color={marker.color}
               label={marker.selected || marker.order != null ? marker.name : undefined}
             />
           )}

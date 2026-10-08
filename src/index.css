@@ -283,11 +283,6 @@ input[type='time']::-webkit-date-and-time-value {
   height: 55%;
 }
 
-.marker-pin__emoji {
-  font-size: 16px;
-  line-height: 1;
-}
-
 /* Our saved places: solid, colorful */
 .marker-pin__dot.is-saved {
   width: 34px;

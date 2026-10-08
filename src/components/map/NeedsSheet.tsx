@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import clsx from 'clsx'
-import { ChevronRight, Footprints, LoaderCircle } from 'lucide-react'
+import { CircleCheck, ChevronRight, Footprints, Lightbulb, LoaderCircle } from 'lucide-react'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import type { LatLng } from '@/data/types'
 import { directionsUrl } from '@/lib/deeplinks'
 import { distanceMeters, formatDistance } from '@/lib/geo'
 import { haptic } from '@/lib/haptics'
-import { NEED_BY_ID, NEEDS, takesForeignCards, walkMinutes, type NeedId } from '@/maps/needs'
+import { NEED_BY_ID, NEEDS, takesForeignCards, walkMinutes, type NeedConfig, type NeedId } from '@/maps/needs'
 import type { Poi, PoiProvider } from '@/maps/poi'
 
 export interface NeedResult {
@@ -83,11 +83,9 @@ export function NeedsSheet({ open, onClose, provider, origin, fromGps, initialNe
                     haptic()
                     setNeed(item.id)
                   }}
-                  className="surface flex flex-col items-center gap-1.5 rounded-control py-4 text-sm font-semibold transition active:scale-95"
+                  className="surface flex flex-col items-center gap-2 rounded-control px-1 pt-4 pb-3.5 text-sm font-semibold transition active:scale-95"
                 >
-                  <span aria-hidden className="text-3xl leading-none">
-                    {item.emoji}
-                  </span>
+                  <NeedIcon need={item} className="size-12" />
                   {item.label}
                 </button>
               ))}
@@ -109,11 +107,15 @@ export function NeedsSheet({ open, onClose, provider, origin, fromGps, initialNe
               >
                 <ChevronRight aria-hidden className="size-5" />
               </button>
+              <NeedIcon need={config} className="size-9" />
               <h2 className="text-xl font-bold tracking-tight">
-                <span aria-hidden>{config.emoji}</span> {config.plural} {fromGps ? 'בסביבה' : 'ליד מרכז המפה'}
+                {config.plural} {fromGps ? 'בסביבה' : 'ליד מרכז המפה'}
               </h2>
             </div>
-            <p className="mt-2 rounded-control bg-amber-400/12 px-3.5 py-2.5 text-xs leading-relaxed">{config.tip}</p>
+            <p className="mt-3 flex gap-2 rounded-control bg-amber-400/12 px-3.5 py-2.5 text-xs leading-relaxed">
+              <Lightbulb aria-hidden className="mt-px size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              {config.tip}
+            </p>
 
             {status === 'loading' && (
               <div className="grid place-items-center py-10">
@@ -143,9 +145,7 @@ export function NeedsSheet({ open, onClose, provider, origin, fromGps, initialNe
                         onClick={() => onPick(poi)}
                         className="flex min-w-0 flex-1 items-center gap-3 py-3 ps-3.5 text-start"
                       >
-                        <span aria-hidden className="text-2xl leading-none">
-                          {config.emoji}
-                        </span>
+                        <NeedIcon need={config} className="size-10" />
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm font-semibold" dir="auto">
                             {poi.name}
@@ -154,7 +154,12 @@ export function NeedsSheet({ open, onClose, provider, origin, fromGps, initialNe
                             <span>
                               {formatDistance(meters)} · {walkMinutes(meters)} דק׳ הליכה
                             </span>
-                            {foreign && <span className="font-semibold text-emerald-600 dark:text-emerald-400">✓ כרטיס זר</span>}
+                            {foreign && (
+                              <span className="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                                <CircleCheck aria-hidden className="size-3.5" />
+                                כרטיס זר
+                              </span>
+                            )}
                           </span>
                         </span>
                       </button>
@@ -180,5 +185,19 @@ export function NeedsSheet({ open, onClose, provider, origin, fromGps, initialNe
         )}
       </div>
     </BottomSheet>
+  )
+}
+
+/** The need's icon on a soft tint of its color, like the category icons across the app. */
+export function NeedIcon({ need, className }: { need: NeedConfig; className?: string }) {
+  const Icon = need.icon
+  return (
+    <span
+      aria-hidden
+      className={clsx('inline-grid shrink-0 place-items-center rounded-control', className ?? 'size-10')}
+      style={{ background: `color-mix(in oklab, ${need.color} 14%, transparent)`, color: need.color }}
+    >
+      <Icon className="size-[52%]" strokeWidth={2.2} />
+    </span>
   )
 }
