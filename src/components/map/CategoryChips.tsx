@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import clsx from 'clsx'
-import { Bookmark } from 'lucide-react'
+import { Bookmark, LifeBuoy } from 'lucide-react'
 import { motion } from 'motion/react'
 import { CATEGORIES, RECOMMENDABLE } from '@/data/categories'
 import type { CategoryId } from '@/data/types'
@@ -12,15 +12,20 @@ interface CategoryChipsProps {
   onToggleSaved: () => void
   active: CategoryId[]
   onToggle: (category: CategoryId) => void
+  /** Opens "I need … now" (toilets, ATMs…). */
+  onNeeds: () => void
 }
 
 /**
  * Floating, horizontally scrolling filter chips.
  * "Saved" toggles our own pins; each category toggles Google/OSM recommendations in the visible area.
  */
-export function CategoryChips({ showSaved, savedCount, onToggleSaved, active, onToggle }: CategoryChipsProps) {
+export function CategoryChips({ showSaved, savedCount, onToggleSaved, active, onToggle, onNeeds }: CategoryChipsProps) {
   return (
     <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 py-1">
+      <Chip pressed={false} color="var(--app-accent)" onClick={onNeeds} icon={LifeBuoy}>
+        צריך עכשיו
+      </Chip>
       <Chip pressed={showSaved} color="var(--app-accent)" onClick={onToggleSaved} icon={Bookmark}>
         שמורים · {savedCount}
       </Chip>

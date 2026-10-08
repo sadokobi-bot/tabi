@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type ComponentType } from 'react'
-import { LoaderCircle } from 'lucide-react'
+import { LoaderCircle, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useTabActive } from '@/app/tabActive'
 import { Assistant } from '@/components/map/Assistant'
@@ -12,6 +12,9 @@ import { PRESENCE_FRESH_MS, usePresence } from '@/store/presence'
 import { useCurrentUser } from '@/store/session'
 import { MapControls } from '@/components/map/MapControls'
 import { MapSearch } from '@/components/map/MapSearch'
+import { NeedsSheet, type NeedResult } from '@/components/map/NeedsSheet'
+import { NEED_BY_ID, type NeedId } from '@/maps/needs'
+import type { Poi } from '@/maps/poi'
 import { PickLocationOverlay } from '@/components/map/PickLocationOverlay'
 import type { MapMarker, MapPoiClick, MapViewProps, Viewport } from '@/components/map/types'
 import { hasFirebase, hasGoogleMaps } from '@/config/env'
@@ -47,14 +50,36 @@ export default function MapScreen() {
   const presence = usePresence((state) => state.byUid)
   const now = useNow(30_000).getTime()
   const [peopleOpen, setPeopleOpen] = useState(false)
+  const [needsOpen, setNeedsOpen] = useState(false)
+  const [needResult, setNeedResult] = useState<NeedResult | null>(null)
+  const [reopenNeed, setReopenNeed] = useState<NeedId | null>(null)
 
   const [showSaved, setShowSaved] = useState(true)
   const [categories, setCategories] = useState<CategoryId[]>([])
   const [viewport, setViewport] = useState<Viewport | null>(null)
   const [following, setFollowing] = useState(false)
   const geo = useGeolocation(isActive)
-  // No recommendations while a day route is shown (and none of their billed lookups).
-  const recommendations = useAreaRecommendations(provider, route ? null : viewport, categories)
+  // No recommendations while a day route or nearby needs are shown (and none of their billed lookups).
+  const recommendations = useAreaRecommendations(provider, route || needResult ? null : viewport, categories)
+  const needOrigin = geo.fix?.location ?? viewport?.center ?? null
+
+  // Frame the results together with where they were searched from.
+  const showNeedResult = (result: NeedResult | null) => {
+    setNeedResult(result)
+    if (!result?.pois.length || !needOrigin) return
+    setFollowing(false)
+    const points = [needOrigin, ...result.pois.slice(0, 5).map((poi) => poi.location)]
+    const lats = points.map((point) => point.lat)
+    const lngs = points.map((point) => point.lng)
+    ui.moveCamera({ bounds: { north: Math.max(...lats), south: Math.min(...lats), east: Math.max(...lngs), west: Math.min(...lngs) } })
+  }
+
+  const pickNeed = (poi: Poi) => {
+    setNeedsOpen(false)
+    setFollowing(false)
+    ui.moveCamera({ center: poi.location, zoom: 17 })
+    ui.openPoi(poi)
+  }
 
   // Start where the trip is today: the day's city, else its first stop, else Tokyo.
   const [initialCenter] = useState<LatLng>(() => {
@@ -148,7 +173,7 @@ export default function MapScreen() {
         }))
       : []
 
-    const suggestions = [...recommendations.pois]
+    const suggestions = needResult ? [...needResult.pois] : [...recommendations.pois]
     // Keep an opened search result / tapped POI visible even if it isn't a recommendation.
     if (selection?.kind === 'poi' && !suggestions.some((poi) => poi.key === selection.poi.key)) suggestions.push(selection.poi)
 
@@ -161,10 +186,11 @@ export default function MapScreen() {
         category: poi.category,
         location: poi.location,
         selected: selectedId === `poi:${poi.key}`,
+        ...(needResult ? { emoji: NEED_BY_ID[needResult.need].emoji } : {}),
       }))
 
     return [...suggested, ...saved, ...memberMarkers]
-  }, [route, memberMarkers, places, showSaved, recommendations.pois, selection, selectedId])
+  }, [route, memberMarkers, places, showSaved, recommendations.pois, needResult, selection, selectedId])
 
   const handleMarkerClick = (marker: MapMarker) => {
     if (marker.member) {
@@ -180,7 +206,10 @@ export default function MapScreen() {
       return
     }
     const key = marker.id.slice('poi:'.length)
-    const poi = recommendations.pois.find((p) => p.key === key) ?? (selection?.kind === 'poi' ? selection.poi : undefined)
+    const poi =
+      recommendations.pois.find((p) => p.key === key) ??
+      needResult?.pois.find((p) => p.key === key) ??
+      (selection?.kind === 'poi' ? selection.poi : undefined)
     if (poi) ui.openPoi(poi)
   }
 
@@ -247,10 +276,23 @@ export default function MapScreen() {
           <div className="pointer-events-auto">
             <DayRouteBar route={route} />
           </div>
+        ) : needResult && !needsOpen ? (
+          <NeedBar
+            result={needResult}
+            onOpen={() => {
+              setReopenNeed(needResult.need)
+              setNeedsOpen(true)
+            }}
+            onClear={() => setNeedResult(null)}
+          />
         ) : (
           <>
             <div className="pointer-events-auto">
               <CategoryChips
+                onNeeds={() => {
+                  setReopenNeed(null)
+                  setNeedsOpen(true)
+                }}
                 showSaved={showSaved}
                 savedCount={places.length}
                 onToggleSaved={() => setShowSaved((value) => !value)}
@@ -280,6 +322,16 @@ export default function MapScreen() {
       {!picking && hasFirebase && <Assistant provider={provider} near={viewport?.center ?? null} />}
 
       <PeopleSheet open={peopleOpen} onClose={() => setPeopleOpen(false)} />
+      <NeedsSheet
+        open={needsOpen}
+        onClose={() => setNeedsOpen(false)}
+        provider={provider}
+        origin={needOrigin}
+        fromGps={Boolean(geo.fix)}
+        initialNeed={reopenNeed}
+        onResult={showNeedResult}
+        onPick={pickNeed}
+      />
 
       {picking && (
         <PickLocationOverlay
@@ -321,6 +373,29 @@ function AreaStatus({ status, count }: { status: string; count: number }) {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  )
+}
+
+/** While nearby needs are on the map: what's shown, back to the list, or clear. */
+function NeedBar({ result, onOpen, onClear }: { result: NeedResult; onOpen: () => void; onClear: () => void }) {
+  const config = NEED_BY_ID[result.need]
+  return (
+    <div className="pointer-events-auto flex justify-center px-4">
+      <div className="glass flex items-center gap-1 rounded-full py-1 ps-1 pe-1">
+        <button type="button" onClick={onOpen} className="flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold">
+          <span aria-hidden>{config.emoji}</span>
+          {result.pois.length ? `${config.plural} בסביבה (${result.pois.length}) · לרשימה` : `לא נמצאו ${config.plural} בסביבה`}
+        </button>
+        <button
+          type="button"
+          aria-label="הסתרה מהמפה"
+          onClick={onClear}
+          className="tap-target relative grid size-8 place-items-center rounded-full bg-fg/8"
+        >
+          <X aria-hidden className="size-4" />
+        </button>
+      </div>
     </div>
   )
 }

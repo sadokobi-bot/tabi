@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Bounds, CategoryId, LatLng } from '@/data/types'
+import type { Bounds, CategoryId, LatLng, Ticket } from '@/data/types'
 import type { Poi } from '@/maps/poi'
 
 /** Fields of a place that is about to be created (from the map, a search result or by hand). */
@@ -44,6 +44,8 @@ interface UiState {
   composing: boolean
   /** The map shows this day's stops in order, joined by a line (YYYY-MM-DD). */
   routeDate: string | null
+  /** The entry ticket shown full screen. */
+  ticket: Ticket | null
 }
 
 export const useUi = create<UiState>(() => ({
@@ -54,6 +56,7 @@ export const useUi = create<UiState>(() => ({
   toast: null,
   composing: false,
   routeDate: null,
+  ticket: null,
 }))
 
 let nonce = 0
@@ -69,5 +72,6 @@ export const ui = {
   setComposing: (composing: boolean) => useUi.setState({ composing }),
   showRoute: (routeDate: string) => useUi.setState({ routeDate, selection: null, pickingLocation: false }),
   clearRoute: () => useUi.setState({ routeDate: null }),
+  openTicket: (ticket: Ticket | null) => useUi.setState({ ticket }),
   toast: (message: string, tone: Toast['tone'] = 'info') => useUi.setState({ toast: { id: ++nonce, message, tone } }),
 }

@@ -1,4 +1,4 @@
-import type { ChatMessage, DayPlan, Gender, JoinRequest, Place, Presence, Trip } from '@/data/types'
+import type { ChatMessage, DayPlan, Gender, JoinRequest, Place, Presence, Ticket, Trip } from '@/data/types'
 
 export type Unsubscribe = () => void
 
@@ -142,4 +142,16 @@ export interface Backend {
   watchPresence(tripId: string, callback: (byUid: Record<string, Presence>) => void, onError: (error: AppError) => void): Unsubscribe
   /** Publishes (or with null, withdraws) this member's position. */
   setPresence(tripId: string, uid: string, presence: Presence | null): Promise<void>
+
+  /** The trip's saved entry tickets (without their pages), newest first. */
+  watchTickets(tripId: string, callback: (tickets: Ticket[]) => void, onError: (error: AppError) => void): Unsubscribe
+  /** Saves a ticket and its pages (JPEG base64, each under TICKET_PAGE_MAX_CHARS). */
+  addTicket(tripId: string, ticket: Ticket, pages: string[]): Promise<void>
+  /** The ticket's page images (JPEG base64). */
+  ticketPages(tripId: string, ticket: Ticket): Promise<string[]>
+  deleteTicket(tripId: string, ticket: Ticket): Promise<void>
 }
+
+/** One page per Firestore document, which holds at most 1 MiB. */
+export const TICKET_PAGE_MAX_CHARS = 900_000
+export const TICKET_MAX_PAGES = 8

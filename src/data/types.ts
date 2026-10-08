@@ -145,3 +145,17 @@ export interface ChatMessage {
   /** Written on this device but not yet delivered to the server (no connection). */
   pending?: boolean
 }
+
+/**
+ * An entry ticket saved ahead for a place (QR / barcode), shared with the whole trip. Stored as page
+ * images (a PDF is rendered page by page when it's added), so it opens anywhere, also offline.
+ */
+export interface Ticket {
+  id: string
+  placeId: string
+  name: string
+  pages: number
+  /** Who added it (display name). */
+  addedBy: string
+  at: number
+}

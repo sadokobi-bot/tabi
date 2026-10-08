@@ -30,7 +30,7 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { firebaseConfig } from '@/config/env'
-import type { ChatMessage, DayPlan, Gender, JoinRequest, Place, Presence, Trip } from '@/data/types'
+import type { ChatMessage, DayPlan, Gender, JoinRequest, Place, Presence, Ticket, Trip } from '@/data/types'
 import { newInviteCode, normalizeInviteCode } from '@/lib/ids'
 import { AppError, displayName, memberOf, type Backend, type ErrorCode, type Profile, type SessionUser } from './types'
 import { checkUsername, emailToUsername, usernameToEmail } from './username'
@@ -45,6 +45,8 @@ import { checkUsername, emailToUsername, usernameToEmail } from './username'
  *   trips/{tripId}/places/{placeId} Place
  *   trips/{tripId}/meta/plan        { days: DayPlan }
  *   trips/{tripId}/messages/{id}    ChatMessage (members only; create-only)
+ *   trips/{tripId}/meta/tickets     { [ticketId]: Ticket }
+ *   trips/{tripId}/meta/ticket-{id}-{n}  { data }: page n of a ticket (JPEG base64)
  *   invites/{code}                  { tripId, tripName, ownerName }  (get by code only, never listable)
  */
 
@@ -107,6 +109,9 @@ export function createFirebaseBackend(): Backend {
   // One small doc per trip: members may write meta docs (see firestore.rules), so no rule change is needed.
   const presenceRef = (tripId: string) => doc(db, 'trips', tripId, 'meta', 'presence')
   const placeRef = (tripId: string, placeId: string) => doc(db, 'trips', tripId, 'places', placeId)
+  // Tickets live in meta docs too (members read and write them): an index, and one doc per page.
+  const ticketsRef = (tripId: string) => doc(db, 'trips', tripId, 'meta', 'tickets')
+  const ticketPageRef = (tripId: string, ticketId: string, page: number) => doc(db, 'trips', tripId, 'meta', `ticket-${ticketId}-${page}`)
 
   const normalizeTrip = (id: string, data: Record<string, unknown>): Trip => ({
     id,
@@ -443,6 +448,48 @@ export function createFirebaseBackend(): Backend {
     async setPresence(tripId, uid, presence) {
       try {
         await setDoc(presenceRef(tripId), { [uid]: presence ?? deleteField() }, { merge: true })
+      } catch (error) {
+        throw toAppError(error)
+      }
+    },
+
+    watchTickets(tripId, callback, onError) {
+      return onSnapshot(
+        ticketsRef(tripId),
+        (snapshot) => callback(Object.values((snapshot.data() as Record<string, Ticket> | undefined) ?? {}).sort((a, b) => b.at - a.at)),
+        (error) => onError(toAppError(error)),
+      )
+    },
+
+    async addTicket(tripId, ticket, pages) {
+      try {
+        // Pages first, the index last: nobody sees a ticket whose pages aren't there yet.
+        const batch = writeBatch(db)
+        pages.forEach((data, page) => batch.set(ticketPageRef(tripId, ticket.id, page), { data }))
+        batch.set(ticketsRef(tripId), { [ticket.id]: ticket }, { merge: true })
+        await batch.commit()
+      } catch (error) {
+        throw toAppError(error)
+      }
+    },
+
+    async ticketPages(tripId, ticket) {
+      try {
+        const snapshots = await Promise.all(
+          Array.from({ length: ticket.pages }, (_, page) => getDoc(ticketPageRef(tripId, ticket.id, page))),
+        )
+        return snapshots.map((snapshot) => String(snapshot.data()?.data ?? ''))
+      } catch (error) {
+        throw toAppError(error)
+      }
+    },
+
+    async deleteTicket(tripId, ticket) {
+      try {
+        const batch = writeBatch(db)
+        batch.set(ticketsRef(tripId), { [ticket.id]: deleteField() }, { merge: true })
+        for (let page = 0; page < ticket.pages; page++) batch.delete(ticketPageRef(tripId, ticket.id, page))
+        await batch.commit()
       } catch (error) {
         throw toAppError(error)
       }

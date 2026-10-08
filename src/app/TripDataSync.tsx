@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
 import { AppError, errorMessage, type Backend } from '@/backend'
 import { removePlaceEverywhere } from '@/data/planOps'
+import { prefetchTickets } from '@/data/tickets'
+import { useOnline } from '@/hooks/useOnline'
 import { useSession } from '@/store/session'
 import { recallActiveTrip, setPlaces, useTripStore } from '@/store/trip'
 
@@ -137,6 +139,26 @@ export function TripDataSync() {
       (error) => console.warn('[trip] join requests unavailable', error),
     )
   }, [backend, activeTripId, ownsTrip])
+
+  // Entry tickets: the list, and every ticket's pages kept on this device for the gate (no signal there).
+  const tickets = useTripStore((state) => state.tickets)
+  const online = useOnline()
+  useEffect(() => {
+    useTripStore.setState({ tickets: [] })
+    if (!backend || !activeTripId) return
+    return resubscribing(
+      (onError) => backend.watchTickets(activeTripId, (tickets) => useTripStore.setState({ tickets }), onError),
+      (error) => console.warn('[trip] tickets unavailable', error),
+    )
+  }, [backend, activeTripId])
+  useEffect(() => {
+    if (!online || tickets.length === 0) return
+    const signal = { cancelled: false }
+    void prefetchTickets(tickets, signal)
+    return () => {
+      signal.cancelled = true
+    }
+  }, [tickets, online])
 
   // The chat stays subscribed on every tab, so the tab bar can show unread messages.
   useEffect(() => {

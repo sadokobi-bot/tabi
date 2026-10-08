@@ -1,5 +1,6 @@
 import type { Bounds, CategoryId } from '@/data/types'
-import { boundsKey, boundsToCircle } from '@/lib/geo'
+import { boundsKey, boundsToCircle, distanceMeters } from '@/lib/geo'
+import { NEED_BY_ID, NEED_LIMIT, NEED_RADIUS_M } from './needs'
 import { dedupePois, type Poi, type PoiProvider, type Suggestion } from './poi'
 
 /**
@@ -224,6 +225,43 @@ export const osmProvider: PoiProvider = {
 
   async details() {
     return null
+  },
+
+  async nearby(need, near, signal) {
+    const config = NEED_BY_ID[need]
+    const around = `(around:${NEED_RADIUS_M},${near.lat},${near.lng})`
+    const statements = config.osmFilters.map((filter) => `nwr${filter}${around};`)
+    const json = await fetchOverpass(`[out:json][timeout:15];(${statements.join('')});out center 80;`, signal)
+
+    return (
+      (json.elements ?? [])
+        .flatMap((element): Poi[] => {
+          const tags = element.tags ?? {}
+          const lat = element.lat ?? element.center?.lat
+          const lng = element.lon ?? element.center?.lon
+          if (lat == null || lng == null) return []
+          const osmId = `${element.type}/${element.id}`
+          return [
+            {
+              key: `osm:${osmId}`,
+              source: 'osm',
+              // Toilets and lockers rarely have a name; ATMs often only name their bank.
+              name: osmDisplayName(tags) ?? tags.brand ?? tags.operator ?? config.noun,
+              category: config.category,
+              location: { lat, lng },
+              osmId,
+              extras: { openingHours: tags.opening_hours },
+            },
+          ]
+        })
+        .sort((a, b) => distanceMeters(near, a.location) - distanceMeters(near, b.location))
+        // The same ATM / toilet is sometimes mapped twice (a point and a building outline).
+        .filter(
+          (poi, index, all) =>
+            !all.slice(0, index).some((other) => other.name === poi.name && distanceMeters(other.location, poi.location) < 40),
+        )
+        .slice(0, NEED_LIMIT)
+    )
   },
 
   async searchText(query, near, signal) {

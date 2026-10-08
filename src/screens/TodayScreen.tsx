@@ -10,6 +10,7 @@ import { CurrencyCard } from '@/components/today/CurrencyCard'
 import { DayTimeline } from '@/components/today/DayTimeline'
 import { FlightCountdown } from '@/components/today/FlightCountdown'
 import { NextUpCard } from '@/components/today/NextUpCard'
+import { TicketsTodayCard } from '@/components/today/TicketsTodayCard'
 import { TodayHero } from '@/components/today/TodayHero'
 import { TranslateSheet } from '@/components/today/TranslateSheet'
 import { PlanDaySheet } from '@/components/trip/PlanDaySheet'
@@ -136,6 +137,10 @@ export default function TodayScreen() {
           />
         </motion.div>
       )}
+
+      <motion.div variants={RISE} className="mt-3 empty:hidden">
+        <TicketsTodayCard items={items} placesById={placesById} />
+      </motion.div>
 
       {checkingOut && (
         <motion.div variants={RISE} className="mt-3">

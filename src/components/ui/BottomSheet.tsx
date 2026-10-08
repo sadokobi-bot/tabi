@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { AnimatePresence, motion, useDragControls } from 'motion/react'
 import { useLatest } from '@/hooks/useLatest'
 
@@ -52,7 +53,8 @@ export function BottomSheet({ open, onClose, label, children }: BottomSheetProps
     }
   }, [open, onCloseRef])
 
-  return (
+  // On the page itself: a sheet opened inside a tab's screen would otherwise sit under the tab bar.
+  return createPortal(
     <AnimatePresence>
       {open && (
         <>
@@ -96,6 +98,7 @@ export function BottomSheet({ open, onClose, label, children }: BottomSheetProps
           </motion.section>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   )
 }

@@ -7,6 +7,7 @@ import { ScreenLoader } from '@/components/layout/ScreenLoader'
 import { TabPanel } from '@/components/layout/TabPanel'
 import { BottomTabBar } from '@/components/navigation/BottomTabBar'
 import { PlaceSheet } from '@/components/place/PlaceSheet'
+import { TicketViewer } from '@/components/place/TicketViewer'
 import { ProfileSheet } from '@/components/profile/ProfileSheet'
 import { PresenceSync } from '@/app/PresenceSync'
 import TodayScreen from '@/screens/TodayScreen'
@@ -99,6 +100,7 @@ export function AppLayout() {
       {/* Global overlays: place details (from the map, timeline, board) and profile / trip settings. */}
       <PlaceSheet />
       <ProfileSheet />
+      <TicketViewer />
       <PresenceSync />
     </div>
   )

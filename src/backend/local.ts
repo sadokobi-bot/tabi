@@ -1,4 +1,5 @@
-import type { ChatMessage, DayPlan, JoinRequest, Place, Presence, Trip } from '@/data/types'
+import type { ChatMessage, DayPlan, JoinRequest, Place, Presence, Ticket, Trip } from '@/data/types'
+import { cachedPages, cachePages, dropPages } from '@/lib/ticketCache'
 import { newId, newInviteCode, normalizeInviteCode } from '@/lib/ids'
 import { AppError, memberOf, type Backend, type Profile, type SessionUser } from './types'
 import { checkUsername } from './username'
@@ -72,6 +73,8 @@ const placesKey = (tripId: string) => `places:${tripId}`
 const planKey = (tripId: string) => `plan:${tripId}`
 const messagesKey = (tripId: string) => `messages:${tripId}`
 const presenceKey = (tripId: string) => `presence:${tripId}`
+// The list here; the pages (too big for localStorage) in IndexedDB.
+const ticketsKey = (tripId: string) => `tickets:${tripId}`
 const requestsKey = (tripId: string) => `requests:${tripId}`
 /** Keeps localStorage small: only the latest messages are stored. */
 const MESSAGE_LIMIT = 300
@@ -312,6 +315,29 @@ export function createLocalBackend(): Backend {
     async setPresence(tripId, uid, presence) {
       const { [uid]: _previous, ...others } = read<Record<string, Presence>>(presenceKey(tripId), {})
       write(presenceKey(tripId), presence ? { ...others, [uid]: presence } : others)
+    },
+
+    watchTickets(tripId, callback) {
+      const notify = () => callback([...read<Ticket[]>(ticketsKey(tripId), [])].sort((a, b) => b.at - a.at))
+      notify()
+      return subscribe(ticketsKey(tripId), notify)
+    },
+
+    async addTicket(tripId, ticket, pages) {
+      await cachePages(ticket.id, pages)
+      write(ticketsKey(tripId), [...read<Ticket[]>(ticketsKey(tripId), []), ticket])
+    },
+
+    async ticketPages(_tripId, ticket) {
+      return (await cachedPages(ticket.id)) ?? []
+    },
+
+    async deleteTicket(tripId, ticket) {
+      write(
+        ticketsKey(tripId),
+        read<Ticket[]>(ticketsKey(tripId), []).filter((t) => t.id !== ticket.id),
+      )
+      await dropPages(ticket.id)
     },
   }
 }

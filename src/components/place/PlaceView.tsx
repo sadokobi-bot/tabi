@@ -34,6 +34,7 @@ import { HotelSection } from './HotelSection'
 import { NavigateBar } from './NavigateBar'
 import { VisitSection } from './VisitSection'
 import { PlaceHero } from './PlaceHero'
+import { TicketSection } from './TicketSection'
 
 export interface PlaceSubject {
   name: string
@@ -189,6 +190,7 @@ export function PlaceView({ subject, onEdit, onSchedule }: PlaceViewProps) {
         )}
         {saved && <VisitSection key={`visit-${saved.id}`} place={saved} />}
         {saved && !saved.visit && <BookingSection key={saved.id} place={saved} />}
+        {saved && saved.category !== 'hotel' && <TicketSection key={`tickets-${saved.id}`} place={saved} />}
 
         {schedule.length > 0 && (
           <div className="mt-4">

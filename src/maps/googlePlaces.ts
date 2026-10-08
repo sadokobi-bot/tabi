@@ -2,6 +2,7 @@ import { CATEGORIES, categoryFromGoogleTypes } from '@/data/categories'
 import type { CategoryId } from '@/data/types'
 import { safeHttpUrl } from '@/lib/deeplinks'
 import { boundsKey, boundsToCircle, distanceMeters } from '@/lib/geo'
+import { NEED_BY_ID, NEED_LIMIT, NEED_RADIUS_M } from './needs'
 import { dedupePois, type Poi, type PoiDetails, type PoiProvider, type Suggestion } from './poi'
 
 /** Above this search radius the viewport is too large for meaningful "nearby" recommendations. */
@@ -197,6 +198,55 @@ export function createGoogleProvider(places: google.maps.PlacesLibrary): PoiProv
         const poi = toPoi(place)
         return poi ? [{ ...poi, rating: place.rating ?? undefined, ratingCount: place.userRatingCount ?? undefined }] : []
       })
+    },
+
+    async nearby(need, near, signal) {
+      const config = NEED_BY_ID[need]
+      // English names: they say "Seven Bank" / "Japan Post", which tells which ATMs take foreign cards.
+      const byType = async () =>
+        config.googleTypes
+          ? (
+              await Place.searchNearby({
+                fields: BASIC_FIELDS,
+                locationRestriction: { center: near, radius: NEED_RADIUS_M },
+                includedTypes: config.googleTypes,
+                maxResultCount: NEED_LIMIT,
+                rankPreference: 'DISTANCE',
+                language: 'en',
+                region: 'jp',
+              })
+            ).places
+          : []
+      const byText = async () =>
+        config.googleQuery
+          ? (
+              await Place.searchByText({
+                textQuery: config.googleQuery,
+                fields: BASIC_FIELDS,
+                locationBias: { center: near, radius: NEED_RADIUS_M },
+                maxResultCount: NEED_LIMIT,
+                rankPreference: 'DISTANCE',
+                language: 'en',
+                region: 'jp',
+              })
+            ).places
+          : []
+
+      let found: google.maps.places.Place[] = []
+      try {
+        found = await byType()
+      } catch (error) {
+        if (!config.googleQuery) throw error
+      }
+      if (found.length === 0) found = await byText()
+      if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
+      return found
+        .flatMap((place) => {
+          const poi = toPoi(place)
+          return poi ? [{ ...poi, category: config.category, name: poi.name || config.noun }] : []
+        })
+        .filter((poi) => distanceMeters(near, poi.location) <= NEED_RADIUS_M * 1.5)
+        .sort((a, b) => distanceMeters(near, a.location) - distanceMeters(near, b.location))
     },
 
     async matchGoogle(name, location) {

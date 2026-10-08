@@ -10,20 +10,30 @@ interface MarkerPinProps {
   label?: string
   /** Stop number on a day route (replaces the category icon). */
   order?: number
+  /** Replaces the category icon (nearby needs). */
+  emoji?: string
 }
 
 /**
  * Map pin shared by both map engines.
  * Saved places: solid category color with a white ring. Recommendations: translucent outline pins.
  */
-export function MarkerPin({ category, variant, selected = false, label, order }: MarkerPinProps) {
+export function MarkerPin({ category, variant, selected = false, label, order, emoji }: MarkerPinProps) {
   const config = CATEGORIES[category]
   const Icon = config.icon
 
   return (
     <div className={clsx('marker-pin', selected && 'is-selected')} style={{ '--pin': config.color } as CSSProperties}>
       <span className={clsx('marker-pin__dot', variant === 'saved' ? 'is-saved' : 'is-suggested', order != null && 'is-route')}>
-        {order != null ? order : <Icon aria-hidden strokeWidth={2.4} />}
+        {order != null ? (
+          order
+        ) : emoji ? (
+          <span aria-hidden className="marker-pin__emoji">
+            {emoji}
+          </span>
+        ) : (
+          <Icon aria-hidden strokeWidth={2.4} />
+        )}
       </span>
       {label && <span className="marker-pin__label">{label}</span>}
     </div>
