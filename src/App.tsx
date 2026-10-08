@@ -35,7 +35,7 @@ function SessionGate() {
   const status = useSession((state) => state.status)
 
   if (status === 'loading') return <SplashScreen />
-  if (status === 'error') return <SplashScreen message="לא הצלחנו לטעון את האפליקציה. בדקו את החיבור ונסו לרענן." />
+  if (status === 'error') return <SplashScreen failed message="לא הצלחנו לטעון את האפליקציה. בדקו את החיבור ונסו לרענן." />
   if (status === 'signedOut') return <AuthScreen />
   return (
     <>
@@ -56,11 +56,11 @@ function SignedInApp() {
   const trip = useActiveTrip()
   const firstTripFailed = useFirstTrip(needsFirstTrip)
 
-  if (!tripsLoaded) return <SplashScreen message={syncError ?? undefined} />
+  if (!tripsLoaded) return <SplashScreen failed={!!syncError} message={syncError ?? undefined} />
   // New trips are otherwise created from the trip settings ("הטיולים שלי"); this is only a fallback.
   if (creatingTrip || (!trip && firstTripFailed)) return <OnboardingScreen />
-  if (!trip) return <SplashScreen message={syncError ?? 'מכינים את הטיול שלכם…'} />
-  if (!dataLoaded) return <SplashScreen message={syncError ?? undefined} />
+  if (!trip) return <SplashScreen failed={!!syncError} message={syncError ?? 'מכינים את הטיול שלכם…'} />
+  if (!dataLoaded) return <SplashScreen failed={!!syncError} message={syncError ?? undefined} />
 
   return (
     <MapsProvider>
