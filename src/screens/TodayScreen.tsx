@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react'
-import { Route } from 'lucide-react'
+import { Languages, Route } from 'lucide-react'
 import { motion, type Variants } from 'motion/react'
 import { useNavigate } from 'react-router'
 import { BookingsCard } from '@/components/today/BookingsCard'
+import { BriefingCard } from '@/components/today/BriefingCard'
 import { CurrencyCard } from '@/components/today/CurrencyCard'
 import { DayTimeline } from '@/components/today/DayTimeline'
 import { FlightCountdown } from '@/components/today/FlightCountdown'
 import { NextUpCard } from '@/components/today/NextUpCard'
 import { TodayHero } from '@/components/today/TodayHero'
+import { TranslateSheet } from '@/components/today/TranslateSheet'
 import { PlanDaySheet } from '@/components/trip/PlanDaySheet'
 import { hasFirebase } from '@/config/env'
 import { CheckoutRow, TonightRow } from '@/components/today/TonightRow'
@@ -36,6 +38,7 @@ export default function TodayScreen() {
   const places = useTripStore((state) => state.places)
   const navigate = useNavigate()
   const [planning, setPlanning] = useState(false)
+  const [translating, setTranslating] = useState(false)
 
   const timeline = tripTimeline(trip, now)
   const { phase, focusDate, dayNumber } = timeline
@@ -73,19 +76,45 @@ export default function TodayScreen() {
           </h1>
           <p className="mt-1 text-sm text-muted">{formatDay(timeline.today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
         </div>
-        <button
-          type="button"
-          onClick={() => ui.setProfileOpen(true)}
-          aria-label="פרופיל והגדרות הטיול"
-          className="tap-target relative rounded-full transition active:scale-90"
-        >
-          <Avatar name={user.username} className="size-11 text-lg" />
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          {/* Photo translation runs on Gemini through Firebase, so it needs cloud mode. */}
+          {hasFirebase && (
+            <button
+              type="button"
+              onClick={() => setTranslating(true)}
+              aria-label="תרגום תפריט או שלט מתמונה"
+              className="glass grid size-11 place-items-center rounded-full text-accent transition active:scale-90"
+            >
+              <Languages aria-hidden className="size-5" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => ui.setProfileOpen(true)}
+            aria-label="פרופיל והגדרות הטיול"
+            className="tap-target relative rounded-full transition active:scale-90"
+          >
+            <Avatar name={user.username} className="size-11 text-lg" />
+          </button>
+        </div>
       </motion.header>
+      <TranslateSheet open={translating} onClose={() => setTranslating(false)} />
 
       <motion.div variants={RISE} className="mt-5">
         <TodayHero trip={trip} timeline={timeline} now={now} placeName={placeName} location={weatherLocation} />
       </motion.div>
+
+      {phase !== 'after' && (
+        <motion.div variants={RISE} className="mt-3 empty:hidden">
+          <BriefingCard
+            date={focusDate}
+            items={items}
+            placesById={placesById}
+            location={weatherLocation}
+            start={lastNightId ? placesById[lastNightId] : undefined}
+          />
+        </motion.div>
+      )}
 
       {next && nextPlace && (
         <motion.div variants={RISE} className="mt-3">

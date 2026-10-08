@@ -5,6 +5,11 @@ import { useTabActive } from '@/app/tabActive'
 import { Assistant } from '@/components/map/Assistant'
 import { CategoryChips } from '@/components/map/CategoryChips'
 import { DayRouteBar, useDayRoute } from '@/components/map/DayRoute'
+import { agoLabel, PeopleSheet } from '@/components/map/PeopleSheet'
+import { colorFor } from '@/components/ui/Avatar'
+import { useNow } from '@/hooks/useNow'
+import { PRESENCE_FRESH_MS, usePresence } from '@/store/presence'
+import { useCurrentUser } from '@/store/session'
 import { MapControls } from '@/components/map/MapControls'
 import { MapSearch } from '@/components/map/MapSearch'
 import { PickLocationOverlay } from '@/components/map/PickLocationOverlay'
@@ -38,6 +43,10 @@ export default function MapScreen() {
   const picking = useUi((state) => state.pickingLocation)
   const routeDate = useUi((state) => state.routeDate)
   const route = useDayRoute(routeDate)
+  const me = useCurrentUser()
+  const presence = usePresence((state) => state.byUid)
+  const now = useNow(30_000).getTime()
+  const [peopleOpen, setPeopleOpen] = useState(false)
 
   const [showSaved, setShowSaved] = useState(true)
   const [categories, setCategories] = useState<CategoryId[]>([])
@@ -100,8 +109,29 @@ export default function MapScreen() {
   const selectedId =
     selection?.kind === 'place' ? `place:${selection.placeId}` : selection?.kind === 'poi' ? `poi:${selection.poi.key}` : null
 
+  // Trip members sharing their location (not us: we're the blue dot).
+  const memberMarkers = useMemo<MapMarker[]>(
+    () =>
+      Object.entries(presence).flatMap(([uid, p]) =>
+        uid === me.uid || now - p.at > PRESENCE_FRESH_MS
+          ? []
+          : [
+              {
+                id: `member:${uid}`,
+                kind: 'saved' as const,
+                name: p.name,
+                category: 'other' as const,
+                location: p.location,
+                selected: false,
+                member: { name: p.name, color: colorFor(p.name), ago: agoLabel(p.at, now) },
+              },
+            ],
+      ),
+    [presence, me.uid, now],
+  )
+
   const markers = useMemo<MapMarker[]>(() => {
-    if (route) return route.markers
+    if (route) return [...route.markers, ...memberMarkers]
     const savedGoogle = new Set(places.flatMap((p) => (p.googlePlaceId ? [p.googlePlaceId] : [])))
     const savedOsm = new Set(places.flatMap((p) => (p.osmId ? [p.osmId] : [])))
     const isSaved = (poi: { googlePlaceId?: string; osmId?: string }) =>
@@ -133,10 +163,14 @@ export default function MapScreen() {
         selected: selectedId === `poi:${poi.key}`,
       }))
 
-    return [...suggested, ...saved]
-  }, [route, places, showSaved, recommendations.pois, selection, selectedId])
+    return [...suggested, ...saved, ...memberMarkers]
+  }, [route, memberMarkers, places, showSaved, recommendations.pois, selection, selectedId])
 
   const handleMarkerClick = (marker: MapMarker) => {
+    if (marker.member) {
+      setPeopleOpen(true)
+      return
+    }
     if (marker.id.startsWith('stop:')) {
       ui.openPlace(marker.id.split(':')[1]!)
       return
@@ -237,11 +271,15 @@ export default function MapScreen() {
           onLocate={locate}
           onResetNorth={() => ui.moveCamera({ bearing: 0 })}
           onAdd={() => ui.setPicking(true)}
+          onPeople={hasFirebase ? () => setPeopleOpen(true) : undefined}
+          liveCount={memberMarkers.length}
         />
       )}
 
       {/* The AI helper runs on Gemini through Firebase, so it needs cloud mode. */}
       {!picking && hasFirebase && <Assistant provider={provider} near={viewport?.center ?? null} />}
+
+      <PeopleSheet open={peopleOpen} onClose={() => setPeopleOpen(false)} />
 
       {picking && (
         <PickLocationOverlay

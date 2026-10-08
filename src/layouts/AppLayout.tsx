@@ -8,6 +8,7 @@ import { TabPanel } from '@/components/layout/TabPanel'
 import { BottomTabBar } from '@/components/navigation/BottomTabBar'
 import { PlaceSheet } from '@/components/place/PlaceSheet'
 import { ProfileSheet } from '@/components/profile/ProfileSheet'
+import { PresenceSync } from '@/app/PresenceSync'
 import TodayScreen from '@/screens/TodayScreen'
 
 // "Today" is the landing screen, so it ships in the main bundle.
@@ -98,6 +99,7 @@ export function AppLayout() {
       {/* Global overlays: place details (from the map, timeline, board) and profile / trip settings. */}
       <PlaceSheet />
       <ProfileSheet />
+      <PresenceSync />
     </div>
   )
 }

@@ -30,6 +30,18 @@ export function MarkerPin({ category, variant, selected = false, label, order }:
   )
 }
 
+/** A trip member sharing their location: their initial in their color, with name and freshness. */
+export function MemberPin({ name, color, ago }: { name: string; color: string; ago: string }) {
+  return (
+    <div className="member-pin" style={{ '--member': color } as CSSProperties}>
+      <span className="member-pin__dot">{name.trim().charAt(0).toUpperCase() || '?'}</span>
+      <span className="marker-pin__label">
+        {name} · {ago}
+      </span>
+    </div>
+  )
+}
+
 /** The live "blue dot" with a pulsing halo. */
 export function UserDot() {
   return <div className="user-dot" aria-label="המיקום שלך" />

@@ -3,7 +3,7 @@ import { AdvancedMarker, Circle, Map, useMap } from '@vis.gl/react-google-maps'
 import { GOOGLE_MAP_ID } from '@/config/env'
 import type { LatLng } from '@/data/types'
 import type { CameraCommand } from '@/store/ui'
-import { MarkerPin, UserDot } from './MarkerPin'
+import { MarkerPin, MemberPin, UserDot } from './MarkerPin'
 import type { MapViewProps } from './types'
 
 /**
@@ -62,18 +62,22 @@ export default function GoogleMapView({
           key={marker.id}
           position={marker.location}
           title={marker.name}
-          zIndex={marker.selected ? 900 : marker.order != null ? 600 : marker.kind === 'saved' ? 500 : 100}
+          zIndex={marker.selected ? 900 : marker.member ? 800 : marker.order != null ? 600 : marker.kind === 'saved' ? 500 : 100}
           anchorLeft="-50%"
           anchorTop="-50%"
           onClick={() => onMarkerClick(marker)}
         >
-          <MarkerPin
-            category={marker.category}
-            variant={marker.kind}
-            selected={marker.selected}
-            order={marker.order}
-            label={marker.selected || marker.order != null ? marker.name : undefined}
-          />
+          {marker.member ? (
+            <MemberPin {...marker.member} />
+          ) : (
+            <MarkerPin
+              category={marker.category}
+              variant={marker.kind}
+              selected={marker.selected}
+              order={marker.order}
+              label={marker.selected || marker.order != null ? marker.name : undefined}
+            />
+          )}
         </AdvancedMarker>
       ))}
 

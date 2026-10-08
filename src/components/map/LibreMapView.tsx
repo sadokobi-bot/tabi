@@ -7,7 +7,7 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import type { CategoryId, LatLng } from '@/data/types'
 import { useLatest } from '@/hooks/useLatest'
 import { circlePolygon } from '@/lib/geo'
-import { MarkerPin, UserDot } from './MarkerPin'
+import { MarkerPin, MemberPin, UserDot } from './MarkerPin'
 import type { MapViewProps } from './types'
 
 /**
@@ -281,16 +281,20 @@ export default function LibreMapView(props: MapViewProps) {
             map={map}
             position={marker.location}
             title={marker.name}
-            zIndex={marker.selected ? 900 : marker.order != null ? 600 : marker.kind === 'saved' ? 500 : 100}
+            zIndex={marker.selected ? 900 : marker.member ? 800 : marker.order != null ? 600 : marker.kind === 'saved' ? 500 : 100}
             onClick={() => onMarkerClick(marker)}
           >
-            <MarkerPin
-              category={marker.category}
-              variant={marker.kind}
-              selected={marker.selected}
-              order={marker.order}
-              label={marker.selected || marker.order != null ? marker.name : undefined}
-            />
+            {marker.member ? (
+              <MemberPin {...marker.member} />
+            ) : (
+              <MarkerPin
+                category={marker.category}
+                variant={marker.kind}
+                selected={marker.selected}
+                order={marker.order}
+                label={marker.selected || marker.order != null ? marker.name : undefined}
+              />
+            )}
           </LibreMarker>
         ))}
       {map && user && (

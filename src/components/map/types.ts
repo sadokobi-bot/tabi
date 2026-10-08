@@ -12,6 +12,8 @@ export interface MapMarker {
   selected: boolean
   /** Stop number on a day route: the pin shows the number and its name. */
   order?: number
+  /** A trip member's live position (shown as their initial). */
+  member?: { name: string; color: string; ago: string }
 }
 
 export interface Viewport {

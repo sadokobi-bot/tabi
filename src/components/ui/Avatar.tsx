@@ -3,7 +3,7 @@ import clsx from 'clsx'
 /** Mid-tone hues that read on light and dark surfaces and stay clear of the app's vermilion accent. */
 const PALETTE = ['#6366f1', '#0d9488', '#db2777', '#8b5cf6', '#0284c7', '#d97706', '#059669']
 
-function colorFor(name: string) {
+export function colorFor(name: string) {
   let hash = 0
   for (const char of name) hash = (hash * 31 + char.charCodeAt(0)) >>> 0
   return PALETTE[hash % PALETTE.length]!

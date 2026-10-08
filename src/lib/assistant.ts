@@ -78,7 +78,47 @@ Build a realistic, enjoyable day from about 09:00 to about 21:00 with 4-7 stops,
 For every stop: "time" as HH:mm (24h); "name" in Hebrew as Israelis would write it; "searchName" = the official English (romaji) name as on maps; "city" in English; approximate "lat"/"lng"; a category; "why" = one short Hebrew sentence (what to do or eat there).
 "reply" is one short Hebrew sentence with the idea of the day. Plain text, no markdown. Write Hebrew text in Hebrew letters only (no other scripts mixed into words).`
 
-type ModelKind = 'ask' | 'import' | 'plan'
+const TRANSLATE_SYSTEM = `You help Israeli travellers in Japan read what's in front of them, for "Tabi", a Hebrew app.
+You get a photo: usually a restaurant menu, sometimes a sign, a ticket machine, a notice or a product label. Mostly Japanese.
+- "kind": menu, sign, product (packaging / label) or other.
+- "title": one short Hebrew line saying what this is ("תפריט של מסעדת ראמן", "שלט הוראות בכניסה למקדש").
+- "summary": 1-2 short Hebrew sentences with what matters most (for a sign: what it asks or warns; for a menu: what the place serves and anything notable, like a set-meal deal or how to order).
+- "items": for a menu, every dish or drink you can read, in order (at most 40); for other images, the important lines. For each: "original" = the text as printed; "hebrew" = a natural Hebrew name (for dishes, what it is, not a literal translation); "note" = one short Hebrew sentence on what it is or tastes like, or "" when obvious; "price" = as printed (e.g. "¥980") or ""; "tags" = only what you can tell with confidence about a food item: spicy, pork, beef, chicken, seafood, raw, vegetarian, alcohol, sweet. "vegetarian" only when the dish is clearly free of meat and fish, broth included (ramen and dashi-based soups usually are not); when a typical recipe has hidden pork, beef or fish (broth, bonito flakes, lard), tag it. No tags for non-food items.
+Write Hebrew text in Hebrew letters only. Never invent items that aren't in the photo; if the photo is unreadable, say so in "summary" and return no items.`
+
+type ModelKind = 'ask' | 'import' | 'plan' | 'translate'
+
+/** What a dish is, as far as a menu photo tells (for allergies, kosher and taste). */
+export const FOOD_TAGS = ['spicy', 'pork', 'beef', 'chicken', 'seafood', 'raw', 'vegetarian', 'alcohol', 'sweet'] as const
+export type FoodTag = (typeof FOOD_TAGS)[number]
+
+export interface Translation {
+  kind: 'menu' | 'sign' | 'product' | 'other'
+  title: string
+  summary: string
+  items: { original: string; hebrew: string; note: string; price: string; tags: FoodTag[] }[]
+}
+
+/** Reads a photo (menu, sign, label) and explains it in Hebrew. */
+export async function translateImage(image: PromptImage, question: string): Promise<Translation> {
+  const prompt = question.trim()
+    ? `Translate and explain this photo. The traveller also asks: ${question.trim()}`
+    : 'Translate and explain this photo.'
+  const result = await generate('translate', [prompt, { inlineData: image }])
+  const json = JSON.parse(result.response.text()) as Partial<Translation>
+  return {
+    kind: json.kind ?? 'other',
+    title: json.title ?? '',
+    summary: json.summary ?? '',
+    items: (json.items ?? []).slice(0, 40).map((item) => ({
+      original: item.original ?? '',
+      hebrew: item.hebrew ?? '',
+      note: item.note ?? '',
+      price: item.price ?? '',
+      tags: (item.tags ?? []).filter((tag): tag is FoodTag => (FOOD_TAGS as readonly string[]).includes(tag)),
+    })),
+  }
+}
 const modelsByKind = new Map<ModelKind, Promise<import('firebase/ai').GenerativeModel[]>>()
 
 function getModels(kind: ModelKind) {
@@ -103,18 +143,39 @@ function getModels(kind: ModelKind) {
               : { ...common, address: Schema.string(), note: Schema.string() },
       })
       const instance = ai.getAI(getApp(), { backend: new ai.GoogleAIBackend() })
-      const responseSchema = Schema.object({
-        properties: {
-          reply: Schema.string(),
-          places: Schema.array({ items: place }),
-          ...(kind === 'ask' ? { googleQuery: Schema.string(), areaLat: Schema.number(), areaLng: Schema.number() } : {}),
-        },
-      })
-      const list = kind === 'import' ? IMPORT_MODELS : MODELS.map((model) => ({ model, fast: false }))
+      const responseSchema =
+        kind === 'translate'
+          ? Schema.object({
+              properties: {
+                kind: Schema.enumString({ enum: ['menu', 'sign', 'product', 'other'] }),
+                title: Schema.string(),
+                summary: Schema.string(),
+                items: Schema.array({
+                  items: Schema.object({
+                    properties: {
+                      original: Schema.string(),
+                      hebrew: Schema.string(),
+                      note: Schema.string(),
+                      price: Schema.string(),
+                      tags: Schema.array({ items: Schema.enumString({ enum: [...FOOD_TAGS] }) }),
+                    },
+                  }),
+                }),
+              },
+            })
+          : Schema.object({
+              properties: {
+                reply: Schema.string(),
+                places: Schema.array({ items: place }),
+                ...(kind === 'ask' ? { googleQuery: Schema.string(), areaLat: Schema.number(), areaLng: Schema.number() } : {}),
+              },
+            })
+      // Reading text off an image is transcription first: the fast models handle it in seconds.
+      const list = kind === 'import' || kind === 'translate' ? IMPORT_MODELS : MODELS.map((model) => ({ model, fast: false }))
       return list.map(({ model, fast }) =>
         ai.getGenerativeModel(instance, {
           model,
-          systemInstruction: kind === 'ask' ? SYSTEM : kind === 'plan' ? PLAN_SYSTEM : IMPORT_SYSTEM,
+          systemInstruction: { ask: SYSTEM, plan: PLAN_SYSTEM, import: IMPORT_SYSTEM, translate: TRANSLATE_SYSTEM }[kind],
           generationConfig: {
             responseMimeType: 'application/json',
             responseSchema,

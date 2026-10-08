@@ -336,6 +336,29 @@ input[type='time']::-webkit-date-and-time-value {
   }
 }
 
+/* A trip member's shared position */
+.member-pin {
+  position: relative;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.member-pin__dot {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 9999px;
+  background: var(--member);
+  color: #fff;
+  font: 700 16px/1 var(--font-sans);
+  border: 3px solid #fff;
+  box-shadow:
+    0 0 0 6px color-mix(in oklab, var(--member) 22%, transparent),
+    0 4px 12px rgb(0 0 0 / 0.3);
+}
+
 /* The live "blue dot" */
 .user-dot {
   position: relative;

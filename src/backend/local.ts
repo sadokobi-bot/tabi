@@ -1,4 +1,4 @@
-import type { ChatMessage, DayPlan, Place, Trip } from '@/data/types'
+import type { ChatMessage, DayPlan, Place, Presence, Trip } from '@/data/types'
 import { newId, newInviteCode, normalizeInviteCode } from '@/lib/ids'
 import { AppError, type Backend, type SessionUser } from './types'
 import { checkUsername } from './username'
@@ -70,6 +70,7 @@ const invitesKey = 'invites'
 const placesKey = (tripId: string) => `places:${tripId}`
 const planKey = (tripId: string) => `plan:${tripId}`
 const messagesKey = (tripId: string) => `messages:${tripId}`
+const presenceKey = (tripId: string) => `presence:${tripId}`
 /** Keeps localStorage small: only the latest messages are stored. */
 const MESSAGE_LIMIT = 300
 
@@ -236,6 +237,17 @@ export function createLocalBackend(): Backend {
     async sendMessage(tripId, message) {
       const messages = [...read<ChatMessage[]>(messagesKey(tripId), []), message].sort((a, b) => a.createdAt - b.createdAt)
       write(messagesKey(tripId), messages.slice(-MESSAGE_LIMIT))
+    },
+
+    watchPresence(tripId, callback) {
+      const notify = () => callback(read<Record<string, Presence>>(presenceKey(tripId), {}))
+      notify()
+      return subscribe(presenceKey(tripId), notify)
+    },
+
+    async setPresence(tripId, uid, presence) {
+      const { [uid]: _previous, ...others } = read<Record<string, Presence>>(presenceKey(tripId), {})
+      write(presenceKey(tripId), presence ? { ...others, [uid]: presence } : others)
     },
   }
 }

@@ -1,4 +1,4 @@
-import type { ChatMessage, DayPlan, Place, Trip } from '@/data/types'
+import type { ChatMessage, DayPlan, Place, Presence, Trip } from '@/data/types'
 
 export type Unsubscribe = () => void
 
@@ -96,4 +96,9 @@ export interface Backend {
    * server has it, so callers shouldn't wait on it; it rejects if the server refuses the message.
    */
   sendMessage(tripId: string, message: Omit<ChatMessage, 'pending'>): Promise<void>
+
+  /** Live positions of the members who share theirs, by uid. */
+  watchPresence(tripId: string, callback: (byUid: Record<string, Presence>) => void, onError: (error: AppError) => void): Unsubscribe
+  /** Publishes (or with null, withdraws) this member's position. */
+  setPresence(tripId: string, uid: string, presence: Presence | null): Promise<void>
 }

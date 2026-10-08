@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { Compass, LocateFixed, LocateOff, Plus } from 'lucide-react'
+import { Compass, LocateFixed, LocateOff, Plus, Users } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import type { GeoStatus } from '@/hooks/useGeolocation'
 
@@ -10,10 +10,14 @@ interface MapControlsProps {
   onLocate: () => void
   onResetNorth: () => void
   onAdd: () => void
+  /** Who's where (live locations); hidden when there's no one to share with. */
+  onPeople?: () => void
+  /** Members sharing their location right now. */
+  liveCount?: number
 }
 
 /** Floating action buttons above the tab bar (inline-end side). */
-export function MapControls({ bearing, geoStatus, following, onLocate, onResetNorth, onAdd }: MapControlsProps) {
+export function MapControls({ bearing, geoStatus, following, onLocate, onResetNorth, onAdd, onPeople, liveCount = 0 }: MapControlsProps) {
   const rotated = Math.abs(bearing) > 1
 
   return (
@@ -34,6 +38,23 @@ export function MapControls({ bearing, geoStatus, following, onLocate, onResetNo
           </motion.button>
         )}
       </AnimatePresence>
+
+      {onPeople && (
+        <motion.button
+          type="button"
+          aria-label={liveCount ? `איפה כולם, ${liveCount} משתפים מיקום` : 'איפה כולם'}
+          whileTap={{ scale: 0.9 }}
+          onClick={onPeople}
+          className="glass relative grid size-12 place-items-center rounded-full"
+        >
+          <Users aria-hidden className="size-5" />
+          {liveCount > 0 && (
+            <span className="absolute -top-1 -end-1 grid size-5 place-items-center rounded-full bg-emerald-500 text-[11px] font-bold text-white ring-2 ring-bg">
+              {liveCount}
+            </span>
+          )}
+        </motion.button>
+      )}
 
       <motion.button
         type="button"

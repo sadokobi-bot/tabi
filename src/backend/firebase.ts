@@ -28,7 +28,7 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { firebaseConfig } from '@/config/env'
-import type { ChatMessage, DayPlan, Place, Trip } from '@/data/types'
+import type { ChatMessage, DayPlan, Place, Presence, Trip } from '@/data/types'
 import { newInviteCode, normalizeInviteCode } from '@/lib/ids'
 import { AppError, type Backend, type ErrorCode, type SessionUser } from './types'
 import { checkUsername, emailToUsername, usernameToEmail } from './username'
@@ -90,6 +90,8 @@ export function createFirebaseBackend(): Backend {
 
   const tripRef = (tripId: string) => doc(db, 'trips', tripId)
   const planRef = (tripId: string) => doc(db, 'trips', tripId, 'meta', 'plan')
+  // One small doc per trip: members may write meta docs (see firestore.rules), so no rule change is needed.
+  const presenceRef = (tripId: string) => doc(db, 'trips', tripId, 'meta', 'presence')
   const placeRef = (tripId: string, placeId: string) => doc(db, 'trips', tripId, 'places', placeId)
 
   const normalizeTrip = (id: string, data: Record<string, unknown>): Trip => ({
@@ -150,7 +152,11 @@ export function createFirebaseBackend(): Backend {
       const q = query(collection(db, 'trips'), where('memberIds', 'array-contains', uid))
       return onSnapshot(
         q,
-        (snapshot) => callback(snapshot.docs.map((d) => normalizeTrip(d.id, d.data())), !snapshot.metadata.fromCache),
+        (snapshot) =>
+          callback(
+            snapshot.docs.map((d) => normalizeTrip(d.id, d.data())),
+            !snapshot.metadata.fromCache,
+          ),
         (error) => onError(toAppError(error)),
       )
     },
@@ -287,6 +293,22 @@ export function createFirebaseBackend(): Backend {
     async sendMessage(tripId, { id, ...message }) {
       try {
         await setDoc(doc(db, 'trips', tripId, 'messages', id), message)
+      } catch (error) {
+        throw toAppError(error)
+      }
+    },
+
+    watchPresence(tripId, callback, onError) {
+      return onSnapshot(
+        presenceRef(tripId),
+        (snapshot) => callback((snapshot.data() as Record<string, Presence> | undefined) ?? {}),
+        (error) => onError(toAppError(error)),
+      )
+    },
+
+    async setPresence(tripId, uid, presence) {
+      try {
+        await setDoc(presenceRef(tripId), { [uid]: presence ?? deleteField() }, { merge: true })
       } catch (error) {
         throw toAppError(error)
       }

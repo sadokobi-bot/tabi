@@ -110,6 +110,16 @@ export interface Trip {
   createdAt: number
 }
 
+/** A member's live position, shared while the app is open and they opted in. */
+export interface Presence {
+  name: string
+  location: LatLng
+  /** Accuracy radius in meters. */
+  accuracy: number
+  /** When the position was taken (ms). */
+  at: number
+}
+
 /** One message in the trip's group chat. */
 export interface ChatMessage {
   id: string

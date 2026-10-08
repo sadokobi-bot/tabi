@@ -19,6 +19,7 @@ import {
   type PromptImage,
 } from '@/lib/assistant'
 import { haptic } from '@/lib/haptics'
+import { prepareImage } from '@/lib/image'
 import type { Poi, PoiProvider } from '@/maps/poi'
 import { useTripStore } from '@/store/trip'
 import { ui } from '@/store/ui'
@@ -38,19 +39,6 @@ interface ImportItem {
   selected: boolean
   state: 'locating' | 'found' | 'approx' | 'saved'
   poi?: Poi
-}
-
-/** Shrinks a screenshot to a size Gemini reads well (and the free tier handles quickly). */
-async function prepareImage(file: File): Promise<PromptImage & { preview: string }> {
-  const bitmap = await createImageBitmap(file)
-  const scale = Math.min(1, 2000 / Math.max(bitmap.width, bitmap.height))
-  const canvas = document.createElement('canvas')
-  canvas.width = Math.round(bitmap.width * scale)
-  canvas.height = Math.round(bitmap.height * scale)
-  canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-  bitmap.close()
-  const preview = canvas.toDataURL('image/jpeg', 0.85)
-  return { data: preview.slice(preview.indexOf(',') + 1), mimeType: 'image/jpeg', preview }
 }
 
 const isSaved = (poi: Poi, name: string) =>
