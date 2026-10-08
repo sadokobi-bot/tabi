@@ -38,8 +38,17 @@ export function MessageRow(props: MessageRowProps) {
   const mine = message.authorId === uid
   const card = !message.deleted && message.kind && message.kind !== 'text'
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const emojiBar = useRef<HTMLDivElement>(null)
+  const actionsBar = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    if (!reacting) setConfirmDelete(false)
+    if (!reacting) {
+      setConfirmDelete(false)
+      return
+    }
+    // The menus open above and below the bubble: scroll the chat so neither hides behind the header or
+    // the message box (the actions win when both can't fit).
+    emojiBar.current?.scrollIntoView({ block: 'nearest' })
+    actionsBar.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, [reacting])
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const start = useRef<{ x: number; y: number } | null>(null)
@@ -85,10 +94,11 @@ export function MessageRow(props: MessageRowProps) {
           <>
             <div aria-hidden className="fixed inset-0 z-30" onPointerDown={() => onReacting(false)} />
             <div
+              ref={emojiBar}
               role="toolbar"
               aria-label="תגובה להודעה"
               className={clsx(
-                'glass absolute bottom-full z-40 mb-1.5 flex items-center gap-0.5 rounded-full p-1 shadow-lg',
+                'glass absolute bottom-full z-40 mb-1.5 flex scroll-my-3 items-center gap-0.5 rounded-full p-1 shadow-lg',
                 mine ? 'end-0' : 'start-0',
               )}
             >
@@ -195,9 +205,10 @@ export function MessageRow(props: MessageRowProps) {
 
         {reacting && (
           <div
+            ref={actionsBar}
             role="toolbar"
             aria-label="פעולות על ההודעה"
-            className="glass relative z-40 mt-1.5 flex items-center gap-0.5 rounded-full p-1 text-sm font-medium shadow-lg"
+            className="glass relative z-40 mt-1.5 flex scroll-my-3 items-center gap-0.5 rounded-full p-1 text-sm font-medium shadow-lg"
           >
             {confirmDelete ? (
               <>

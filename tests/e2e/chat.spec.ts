@@ -108,3 +108,26 @@ test('chat: places, meeting point, poll, reactions, read and typing', async ({ p
   await page.getByRole('link', { name: 'היום' }).click()
   await expect(page.getByRole('region', { name: 'נקודת מפגש' })).toBeVisible()
 })
+
+test('a full chat: after the keyboard closes the last message stays in view, and its menu opens above the message box', async ({
+  page,
+}) => {
+  await signUp(page, uniqueName('menu'))
+  await createFirstTrip(page)
+  await page.getByRole('link', { name: /צ׳אט/ }).click()
+  for (const text of [...Array.from({ length: 12 }, (_, i) => `הודעה מספר ${i + 1}`), 'מעולה, נפגשים בלובי']) {
+    await page.getByLabel('הודעה חדשה').fill(text)
+    await page.getByRole('button', { name: 'שליחה' }).click()
+  }
+  await page.getByLabel('הודעה חדשה').blur()
+  const above = async (locator: ReturnType<Page['getByText']>) => {
+    const item = (await locator.boundingBox())!
+    const box = (await page.getByLabel('הודעה חדשה').boundingBox())!
+    expect(item.y + item.height).toBeLessThanOrEqual(box.y)
+  }
+  await expect(() => above(page.getByText('מעולה, נפגשים בלובי', { exact: true }))).toPass()
+  await longPress(page, 'מעולה, נפגשים בלובי')
+  const actions = page.getByRole('toolbar', { name: 'פעולות על ההודעה' })
+  await expect(actions).toBeVisible()
+  await expect(() => above(actions)).toPass()
+})

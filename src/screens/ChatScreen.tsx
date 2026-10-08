@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type Keyb
 import { firstName } from '@/backend'
 import { MessageCircle, Plus, Reply, SendHorizontal, WifiOff, X } from 'lucide-react'
 import { useTabActive } from '@/app/tabActive'
+import chatPattern from '@/assets/chat-pattern.svg?url'
 import { AttachSheet } from '@/components/chat/AttachSheet'
 import { PinnedMeet, TypingIndicator } from '@/components/chat/ChatStatus'
 import { MessageRow } from '@/components/chat/MessageRow'
@@ -70,6 +71,19 @@ export default function ChatScreen() {
   useLayoutEffect(() => {
     if (stickToBottom.current || lastMessage?.authorId === user.uid) scrollToBottom()
   }, [lastMessage?.id, lastMessage?.authorId, user.uid])
+
+  // The list changes size when the keyboard opens or closes (the tab bar comes back), a reply or place
+  // bar appears, someone starts typing, or a message grows (reactions, a menu): stay on the newest.
+  useEffect(() => {
+    const list = listRef.current
+    if (!list) return
+    const observer = new ResizeObserver(() => {
+      if (stickToBottom.current) scrollToBottom()
+    })
+    observer.observe(list)
+    if (list.firstElementChild) observer.observe(list.firstElementChild)
+    return () => observer.disconnect()
+  }, [])
 
   // Opening the tab jumps to the latest message and marks everything as read.
   useLayoutEffect(() => {
@@ -190,7 +204,18 @@ export default function ChatScreen() {
         : `נקרא ע״י ${readers.map((uid) => (trip.members[uid]?.name ?? '').split(' ')[0]).join(', ')}`
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative isolate flex h-full flex-col">
+      {/* A faint pattern of Japanese doodles (torii, sakura, Fuji, onigiri, ramen…), like a chat wallpaper. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 bg-fg opacity-[0.045] dark:opacity-[0.07]"
+        style={{
+          maskImage: `url("${chatPattern}")`,
+          WebkitMaskImage: `url("${chatPattern}")`,
+          maskSize: '260px 260px',
+          WebkitMaskSize: '260px 260px',
+        }}
+      />
       <header className="pt-screen mx-auto w-full max-w-md px-5 pb-3">
         <h1 className="text-[1.6rem] leading-tight font-bold">צ׳אט הטיול</h1>
         <p className="mt-0.5 truncate text-sm text-muted">
