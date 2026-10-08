@@ -11,9 +11,13 @@ import { DayTimeline } from '@/components/today/DayTimeline'
 import { FlightCountdown } from '@/components/today/FlightCountdown'
 import { NextUpCard } from '@/components/today/NextUpCard'
 import { TicketsTodayCard } from '@/components/today/TicketsTodayCard'
+import { LuggageRow } from '@/components/today/LuggageRow'
+import { LuggageSheet } from '@/components/place/LuggageSheet'
+import { moveOn, type HotelMove } from '@/data/luggage'
 import { TodayHero } from '@/components/today/TodayHero'
 import { TranslateSheet } from '@/components/today/TranslateSheet'
 import { PlanDaySheet } from '@/components/trip/PlanDaySheet'
+import { RainPlanSheet } from '@/components/trip/RainPlan'
 import { hasFirebase } from '@/config/env'
 import { CheckoutRow, TonightRow } from '@/components/today/TonightRow'
 import { Avatar } from '@/components/ui/Avatar'
@@ -42,6 +46,8 @@ export default function TodayScreen() {
   const navigate = useNavigate()
   const [planning, setPlanning] = useState(false)
   const [translating, setTranslating] = useState(false)
+  const [luggage, setLuggage] = useState<HotelMove | null>(null)
+  const [rainPlanning, setRainPlanning] = useState(false)
 
   const timeline = tripTimeline(trip, now)
   const { phase, focusDate, dayNumber } = timeline
@@ -64,6 +70,10 @@ export default function TodayScreen() {
   // Hotel changes today: check out of last night's, check in to tonight's.
   const lastNightId = stayFor(trip.stays, addDays(focusDate, -1))
   const checkingOut = lastNightId && lastNightId !== stayId ? placesById[lastNightId] : undefined
+
+  // Hotel changes: tomorrow's (send the suitcases tonight) and today's.
+  const moveTomorrow = moveOn(trip, placesById, addDays(focusDate, 1))
+  const moveToday = phase === 'during' ? moveOn(trip, placesById, focusDate) : null
 
   const city = getCity(trip.dayCities[focusDate])
   const firstPlace = items[0] ? placesById[items[0].placeId] : undefined
@@ -122,6 +132,7 @@ export default function TodayScreen() {
             placesById={placesById}
             location={weatherLocation}
             start={lastNightId ? placesById[lastNightId] : undefined}
+            onRainPlan={hasFirebase ? () => setRainPlanning(true) : undefined}
           />
         </motion.div>
       )}
@@ -142,6 +153,12 @@ export default function TodayScreen() {
         <TicketsTodayCard items={items} placesById={placesById} />
       </motion.div>
 
+      {moveToday && (
+        <motion.div variants={RISE} className="mt-3">
+          <LuggageRow move={moveToday} when="today" onOpen={() => setLuggage(moveToday)} />
+        </motion.div>
+      )}
+
       {checkingOut && (
         <motion.div variants={RISE} className="mt-3">
           <CheckoutRow place={checkingOut} />
@@ -153,6 +170,13 @@ export default function TodayScreen() {
           <TonightRow place={stay} checkInToday={stayId !== lastNightId} />
         </motion.div>
       )}
+
+      {moveTomorrow && (
+        <motion.div variants={RISE} className="mt-3">
+          <LuggageRow move={moveTomorrow} when="tonight" onOpen={() => setLuggage(moveTomorrow)} />
+        </motion.div>
+      )}
+      <LuggageSheet move={luggage} onClose={() => setLuggage(null)} />
 
       <motion.div variants={RISE} className="mt-3 empty:hidden">
         <FlightCountdown flights={trip.flights} />
@@ -194,6 +218,7 @@ export default function TodayScreen() {
         />
       </motion.section>
       <PlanDaySheet date={planning ? focusDate : null} onClose={() => setPlanning(false)} />
+      <RainPlanSheet date={rainPlanning ? focusDate : null} onClose={() => setRainPlanning(false)} />
     </motion.div>
   )
 }

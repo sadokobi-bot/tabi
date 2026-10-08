@@ -6,7 +6,7 @@ import type { Place } from '@/data/types'
 import { usePoiProvider } from '@/maps/usePoiProvider'
 
 /** Live Japanese name and address from Google (session cache, never stored). */
-function useLocalNames(googlePlaceId: string | undefined, enabled: boolean) {
+export function useLocalNames(googlePlaceId: string | undefined, enabled: boolean) {
   const provider = usePoiProvider()
   const [names, setNames] = useState<{ name?: string; address?: string } | null>(null)
 

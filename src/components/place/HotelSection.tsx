@@ -1,11 +1,14 @@
 import { useState, type ReactNode } from 'react'
-import { BedDouble, Copy, Pencil, Phone } from 'lucide-react'
+import { BedDouble, ChevronLeft, Copy, Luggage, Pencil, Phone } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
 import { actions } from '@/data/actions'
 import type { HotelInfo, Place } from '@/data/types'
 import { ui } from '@/store/ui'
 import { DriverCard } from './DriverCard'
+import { LuggageSheet } from './LuggageSheet'
+import { luggageSent, moveInto } from '@/data/luggage'
+import { useTrip, useTripStore } from '@/store/trip'
 
 const EMPTY: HotelInfo = {}
 
@@ -15,6 +18,11 @@ export function HotelSection({ place }: { place: Place }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<HotelInfo>(info)
   const [driver, setDriver] = useState(false)
+  const [luggageOpen, setLuggageOpen] = useState(false)
+  const trip = useTrip()
+  const placesById = useTripStore((state) => state.placesById)
+  // Arriving here from another hotel: the suitcases can be sent ahead.
+  const move = moveInto(trip, placesById, place.id)
   const hasInfo = Object.values(info).some(Boolean)
 
   const set = (patch: Partial<HotelInfo>) => setDraft((current) => ({ ...current, ...patch }))
@@ -130,7 +138,28 @@ export function HotelSection({ place }: { place: Place }) {
       <Button variant="secondary" className="mt-3 w-full" onClick={() => setDriver(true)}>
         להראות לנהג המונית (ביפנית)
       </Button>
+      {move && (
+        <button
+          type="button"
+          onClick={() => setLuggageOpen(true)}
+          className="mt-2 flex w-full items-center gap-2.5 rounded-control bg-fg/5 px-3.5 py-3 text-start text-sm"
+        >
+          <Luggage aria-hidden className="size-4.5 shrink-0 text-accent" />
+          <span className="min-w-0 flex-1 truncate">
+            {luggageSent(move) ? (
+              <span className="font-semibold text-emerald-700 dark:text-emerald-400">המזוודות בדרך לכאן</span>
+            ) : (
+              <>
+                <span className="font-semibold">שליחת מזוודות לכאן</span>
+                <span className="text-muted"> · מהמלון {move.from.name}</span>
+              </>
+            )}
+          </span>
+          <ChevronLeft aria-hidden className="size-4 shrink-0 text-muted" />
+        </button>
+      )}
       {driverCard}
+      <LuggageSheet move={luggageOpen ? move : null} onClose={() => setLuggageOpen(false)} />
     </div>
   )
 }

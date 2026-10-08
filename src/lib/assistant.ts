@@ -86,7 +86,16 @@ You get a photo: usually a restaurant menu, sometimes a sign, a ticket machine, 
 - "items": for a menu, every dish or drink you can read, in order (at most 40); for other images, the important lines. For each: "original" = the text as printed; "hebrew" = a natural Hebrew name (for dishes, what it is, not a literal translation); "note" = one short Hebrew sentence on what it is or tastes like, or "" when obvious; "price" = as printed (e.g. "¥980") or ""; "tags" = only what you can tell with confidence about a food item: spicy, pork, beef, chicken, seafood, raw, vegetarian, alcohol, sweet. "vegetarian" only when the dish is clearly free of meat and fish, broth included (ramen and dashi-based soups usually are not); when a typical recipe has hidden pork, beef or fish (broth, bonito flakes, lard), tag it. No tags for non-food items.
 Write Hebrew text in Hebrew letters only. Never invent items that aren't in the photo; if the photo is unreadable, say so in "summary" and return no items.`
 
-type ModelKind = 'ask' | 'import' | 'plan' | 'translate'
+const RAIN_SYSTEM = `You adapt one day of a trip in Japan to rain, for "Tabi", a Hebrew app for a group trip.
+You get the area, the date, when rain is expected, the day's stops (id, time, name, category), the places the travellers saved nearby (id, name, category) and where they sleep.
+- Decide for each stop whether it is mostly outdoors: parks and gardens, shrine and temple grounds (Fushimi Inari, Meiji Jingu, Kiyomizu-dera…), viewpoints and observation decks open to the sky, walking streets and districts, open-air markets, zoos, hiking, boat rides, mostly-outdoor theme parks. Museums, aquariums, malls, department stores, covered shopping arcades, restaurants, cafes, indoor attractions (teamLab, arcades), onsen and observatories with indoor decks are fine in rain.
+- For every outdoor stop at a rainy time (or with no time, when it rains most of the day), suggest ONE indoor alternative close to it (same neighbourhood, ideally within 2 km) that fits the same time slot and the spirit of the day. Put the replaced stop's id in "replaceId".
+- Prefer a place they saved when one fits (its id in "savedId"); otherwise real, existing, well-known places only ("savedId" = ""). Never invent places, never suggest a place listed as already planned on other days, and never suggest a stop already in the day.
+- Keep indoor stops as they are: return only replacements. If nothing needs changing, return no places.
+For every replacement: "replaceId"; "time" = the replaced stop's time as HH:mm (or a sensible time when it had none); "name" in Hebrew as Israelis would write it; "searchName" = the official English (romaji) name as on maps; "city" in English; approximate "lat"/"lng"; a category; "why" = one short Hebrew sentence on why it is great on a rainy day.
+"reply" is one short Hebrew sentence summing up the rainy-day plan. Plain text, no markdown. Write Hebrew text in Hebrew letters only.`
+
+type ModelKind = 'ask' | 'import' | 'plan' | 'translate' | 'rain'
 
 /** What a dish is, as far as a menu photo tells (for allergies, kosher and taste). */
 export const FOOD_TAGS = ['spicy', 'pork', 'beef', 'chicken', 'seafood', 'raw', 'vegetarian', 'alcohol', 'sweet'] as const
@@ -140,7 +149,9 @@ function getModels(kind: ModelKind) {
             ? { ...common, why: Schema.string() }
             : kind === 'plan'
               ? { ...common, why: Schema.string(), time: Schema.string(), savedId: Schema.string() }
-              : { ...common, address: Schema.string(), note: Schema.string() },
+              : kind === 'rain'
+                ? { ...common, why: Schema.string(), time: Schema.string(), savedId: Schema.string(), replaceId: Schema.string() }
+                : { ...common, address: Schema.string(), note: Schema.string() },
       })
       const instance = ai.getAI(getApp(), { backend: new ai.GoogleAIBackend() })
       const responseSchema =
@@ -175,11 +186,13 @@ function getModels(kind: ModelKind) {
       return list.map(({ model, fast }) =>
         ai.getGenerativeModel(instance, {
           model,
-          systemInstruction: { ask: SYSTEM, plan: PLAN_SYSTEM, import: IMPORT_SYSTEM, translate: TRANSLATE_SYSTEM }[kind],
+          systemInstruction: { ask: SYSTEM, plan: PLAN_SYSTEM, import: IMPORT_SYSTEM, translate: TRANSLATE_SYSTEM, rain: RAIN_SYSTEM }[
+            kind
+          ],
           generationConfig: {
             responseMimeType: 'application/json',
             responseSchema,
-            temperature: kind === 'plan' ? 0.7 : kind === 'ask' ? 0.4 : 0.2,
+            temperature: kind === 'plan' ? 0.7 : kind === 'rain' ? 0.5 : kind === 'ask' ? 0.4 : 0.2,
             ...(fast ? { thinkingConfig: { thinkingLevel: ai.ThinkingLevel.MINIMAL } } : {}),
           },
         }),
@@ -364,6 +377,73 @@ export async function planDayWithAi(request: DayPlanRequest): Promise<{ reply: s
         ...(p.savedId && savedIds.has(p.savedId) ? { savedId: p.savedId } : {}),
       }))
       .sort((a, b) => a.time.localeCompare(b.time)),
+  }
+}
+
+/** An indoor alternative for one of the day's stops, at the same time. */
+export interface RainSwap extends PlannedStop {
+  /** The itinerary item it replaces. */
+  replaceId: string
+}
+
+export interface RainPlanRequest {
+  area: string
+  dateLabel: string
+  /** e.g. "13:00-17:00" or "most of the day (no hourly forecast yet)". */
+  rain: string
+  /** The day's stops, by itinerary item id. */
+  stops: { id: string; time?: string; name: string; category: CategoryId }[]
+  saved: { id: string; name: string; category: CategoryId }[]
+  elsewhere: string[]
+  hotel?: string
+}
+
+/** Indoor alternatives for the day's outdoor stops at rainy hours. */
+export async function rainPlanWithAi(request: RainPlanRequest): Promise<{ reply: string; swaps: RainSwap[] }> {
+  const lines = [
+    `Area: ${request.area || 'infer it from the stops'}`,
+    `Date: ${request.dateLabel}`,
+    `Rain expected: ${request.rain}`,
+    request.hotel ? `They sleep at: ${request.hotel}` : '',
+    `The day's stops: ${request.stops.map((stop) => `[${stop.id}] ${stop.time ?? 'any time'} ${stop.name} (${stop.category})`).join('; ')}`,
+    `Saved places nearby: ${request.saved.length ? request.saved.map((place) => `[${place.id}] ${place.name} (${place.category})`).join('; ') : 'none'}`,
+    request.elsewhere.length ? `Already planned on other days (don't suggest): ${request.elsewhere.join('; ')}` : '',
+  ]
+  const result = await generate('rain', lines.filter(Boolean).join('\n'))
+  const json = JSON.parse(result.response.text()) as {
+    reply?: string
+    places?: {
+      name: string
+      searchName: string
+      city: string
+      lat: number
+      lng: number
+      category: string
+      why: string
+      time: string
+      savedId?: string
+      replaceId: string
+    }[]
+  }
+  const stopIds = new Set(request.stops.map((stop) => stop.id))
+  const savedIds = new Set(request.saved.map((place) => place.id))
+  const replaced = new Set<string>()
+  return {
+    reply: json.reply ?? '',
+    swaps: (json.places ?? [])
+      // One alternative per stop, for stops that are really in the day.
+      .filter((p) => stopIds.has(p.replaceId) && !replaced.has(p.replaceId) && replaced.add(p.replaceId))
+      .map((p) => ({
+        name: p.name,
+        searchName: p.searchName,
+        city: p.city,
+        category: CATEGORY_IDS.includes(p.category as CategoryId) ? (p.category as CategoryId) : 'other',
+        location: { lat: p.lat, lng: p.lng },
+        why: p.why,
+        time: /^\d{1,2}:\d{2}$/.test(p.time) ? p.time.padStart(5, '0') : '',
+        replaceId: p.replaceId,
+        ...(p.savedId && savedIds.has(p.savedId) ? { savedId: p.savedId } : {}),
+      })),
   }
 }
 

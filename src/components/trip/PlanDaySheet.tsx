@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import clsx from 'clsx'
-import { BookmarkCheck, CalendarCheck, LoaderCircle, MapPin, RefreshCw, Sparkles } from 'lucide-react'
+import { BookmarkCheck, CalendarCheck, LoaderCircle, MapPin, RefreshCw, Sparkles, Umbrella } from 'lucide-react'
 import { motion } from 'motion/react'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { Button } from '@/components/ui/Button'
@@ -20,6 +20,7 @@ import type { Poi } from '@/maps/poi'
 import { usePoiProvider } from '@/maps/usePoiProvider'
 import { useTrip, useTripStore } from '@/store/trip'
 import { ui } from '@/store/ui'
+import { RainPlan } from './RainPlan'
 
 const INTERESTS = [
   'מקדשים ותרבות',
@@ -70,6 +71,8 @@ function PlanDay({ date, onClose }: { date: string; onClose: () => void }) {
   const [wishes, setWishes] = useState('')
   const [relaxed, setRelaxed] = useState(false)
   const [phase, setPhase] = useState<Phase>({ name: 'form' })
+  const [rain, setRain] = useState(false)
+  const hasStops = useTripStore((state) => (state.plan[date]?.length ?? 0) > 0)
   const [located, setLocated] = useState<Record<number, Located>>({})
   const abortRef = useRef<AbortController | null>(null)
 
@@ -166,6 +169,9 @@ function PlanDay({ date, onClose }: { date: string; onClose: () => void }) {
   }
 
   const stillLocating = Object.values(located).some((entry) => entry.status === 'locating')
+
+  // The same sheet, for the rainy-day version of a day that's already planned.
+  if (rain) return <RainPlan date={date} onDone={onClose} />
 
   const save = (stops: PlannedStop[]) => {
     const { plan } = useTripStore.getState()
@@ -271,6 +277,16 @@ function PlanDay({ date, onClose }: { date: string; onClose: () => void }) {
             תכננו לי את היום
           </Button>
           <p className="text-center text-xs text-muted">המקומות ששמרתם בעיר מקבלים עדיפות, ופעילויות שכבר בלו״ז נשארות במקומן</p>
+          {hasStops && (
+            <button
+              type="button"
+              onClick={() => setRain(true)}
+              className="flex w-full items-center justify-center gap-1.5 rounded-control bg-sky-500/10 py-3 text-sm font-semibold text-sky-700 dark:text-sky-300"
+            >
+              <Umbrella aria-hidden className="size-4" />
+              יום גשום? התאימו את היום לגשם
+            </button>
+          )}
         </div>
       )}
 

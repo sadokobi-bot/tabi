@@ -23,13 +23,15 @@ interface BriefingCardProps {
   location: LatLng
   /** Where the day starts (last night's hotel). */
   start?: Place
+  /** Opens the rainy-day plan (shown when rain is expected and the day has stops). */
+  onRainPlan?: () => void
 }
 
 /**
  * Morning briefing: the day in a few lines. How many stops and how far, rain hours (and which
  * outdoor stop they hit), the temperature range and sunset. Only what's worth knowing.
  */
-export function BriefingCard({ date, items, placesById, location, start }: BriefingCardProps) {
+export function BriefingCard({ date, items, placesById, location, start, onRainPlan }: BriefingCardProps) {
   const [forecast, setForecast] = useState<DayForecast | null>(null)
   const { lat, lng } = location
 
@@ -46,6 +48,7 @@ export function BriefingCard({ date, items, placesById, location, start }: Brief
   if (stops.length === 0 && !forecast) return null
 
   const lines: { icon: ReactNode; text: string; tone?: 'warn' }[] = []
+  let rainy = false
 
   if (stops.length > 0) {
     const points = [...(start ? [start.location] : []), ...stops.map(({ place }) => place.location)]
@@ -67,6 +70,7 @@ export function BriefingCard({ date, items, placesById, location, start }: Brief
   if (forecast) {
     const windows = rainWindows(forecast)
     if (windows.length > 0) {
+      rainy = true
       const ranges = windows.map(([from, to]) => `${hourLabel(from)}–${hourLabel(to)}`).join(', ')
       const wet = stops.find(({ item, place }) => {
         const minutes = parseHm(item.time)
@@ -111,6 +115,16 @@ export function BriefingCard({ date, items, placesById, location, start }: Brief
           </li>
         ))}
       </ul>
+      {rainy && stops.length > 0 && onRainPlan && (
+        <button
+          type="button"
+          onClick={onRainPlan}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-sky-500/12 px-3.5 py-2 text-sm font-semibold text-sky-700 transition active:scale-95 dark:text-sky-300"
+        >
+          <Umbrella aria-hidden className="size-4" />
+          תוכנית ליום גשום
+        </button>
+      )}
     </section>
   )
 }

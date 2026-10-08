@@ -32,9 +32,19 @@ export interface Place {
   visit?: Visit
   /** Hotel details we type in ourselves (Google's own data is fetched live, never stored). */
   hotel?: HotelInfo
+  /** Luggage forwarded here from the previous hotel (takkyubin). */
+  luggage?: LuggageInfo
   createdBy: string
   createdAt: number
   updatedAt: number
+}
+
+export interface LuggageInfo {
+  /** The day it was handed in (YYYY-MM-DD, Japan calendar). */
+  sentOn: string
+  /** The hotel it was sent from. */
+  fromId: string
+  tracking?: string
 }
 
 export interface HotelInfo {
