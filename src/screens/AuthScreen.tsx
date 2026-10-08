@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { AppError, errorMessage } from '@/backend'
 import { checkUsername } from '@/backend/username'
 import { SakuraDrift } from '@/components/brand/SakuraDrift'
+import { LuckyCat, type CatMood } from '@/components/brand/LuckyCat'
 import { SunGate } from '@/components/brand/SunGate'
 import { ProfileFields, validateProfile, type ProfileDraft, type ProfileErrors } from '@/components/profile/ProfileFields'
 import { Button } from '@/components/ui/Button'
@@ -24,6 +25,7 @@ export function AuthScreen() {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [passwordFocused, setPasswordFocused] = useState(false)
   const [busy, setBusy] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [suggestSignUp, setSuggestSignUp] = useState(false)
@@ -92,6 +94,19 @@ export function AuthScreen() {
   const signIn = mode === 'signIn'
   const details = !signIn && step === 1
 
+  // What the cat does and says follows the form.
+  const name = profile.firstName.trim()
+  const catMood: CatMood = !details && passwordFocused ? (showPassword ? 'peek' : 'cover') : 'wave'
+  const catLine = details
+    ? name
+      ? `נעים מאוד, ${name}!`
+      : 'היי! בואו נכיר 👋'
+    : passwordFocused
+      ? showPassword
+        ? 'טוב, רק הצצה קטנה 👀'
+        : 'אני לא מציץ, מבטיח 🙈'
+      : `${name}, עוד רגע מסיימים!`
+
   return (
     // Pinned to the screen like the app shell (AppLayout): on iOS home-screen apps 100dvh can exceed
     // the visible area, which leaves the page a little room to scroll. The header gives up space first.
@@ -114,10 +129,36 @@ export function AuthScreen() {
       <div aria-hidden className="status-blend absolute inset-x-0 top-0 h-24" />
 
       <header className="relative flex min-h-0 flex-1 flex-col items-center justify-center px-6 pt-[calc(env(safe-area-inset-top)+1rem)] pb-6 text-center">
-        {/* Shared with the launch screen: the sun glides up into place. Sign-up needs the room, so it shrinks there. */}
-        <motion.div layoutId="sun-gate" transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}>
-          <SunGate className={signIn ? 'size-24' : 'size-16'} />
-        </motion.div>
+        {signIn ? (
+          // Shared with the launch screen: the sun glides up into place.
+          <motion.div layoutId="sun-gate" transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}>
+            <SunGate className="size-24" />
+          </motion.div>
+        ) : (
+          // Sign-up has a guide: a lucky cat that waves hello and looks away from passwords.
+          <motion.div
+            initial={{ opacity: 0, scale: 0.85, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+            className="flex items-end gap-1"
+          >
+            <LuckyCat mood={catMood} className="size-28 shrink-0 [@media(max-height:760px)]:size-20 [@media(max-height:640px)]:size-14" />
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.p
+                key={catLine}
+                role="status"
+                initial={{ opacity: 0, scale: 0.8, y: 6 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ type: 'spring', stiffness: 380, damping: 24 }}
+                style={{ transformOrigin: 'bottom right' }}
+                className="glass relative mb-16 max-w-[11rem] [@media(max-height:760px)]:mb-10 [@media(max-height:640px)]:hidden rounded-2xl rounded-br-md px-3.5 py-2 text-start text-sm font-semibold"
+              >
+                {catLine}
+              </motion.p>
+            </AnimatePresence>
+          </motion.div>
+        )}
         <AnimatePresence initial={false}>
           {signIn && (
             <motion.div
@@ -194,6 +235,8 @@ export function AuthScreen() {
               />
               <TextField
                 label="סיסמה"
+                onFocus={() => setPasswordFocused(true)}
+                onBlur={() => setPasswordFocused(false)}
                 leading={<Lock className="size-[18px]" />}
                 type={showPassword ? 'text' : 'password'}
                 value={password}
@@ -205,6 +248,8 @@ export function AuthScreen() {
                   <button
                     type="button"
                     aria-label={showPassword ? 'הסתרת הסיסמה' : 'הצגת הסיסמה'}
+                    // Keep the focus (and the keyboard) in the password field while toggling.
+                    onMouseDown={(event) => event.preventDefault()}
                     onClick={() => setShowPassword((value) => !value)}
                     className="tap-target relative grid size-9 place-items-center rounded-inner text-muted hover:bg-fg/6"
                   >
@@ -224,6 +269,8 @@ export function AuthScreen() {
                   >
                     <TextField
                       label="אימות סיסמה"
+                      onFocus={() => setPasswordFocused(true)}
+                      onBlur={() => setPasswordFocused(false)}
                       leading={<LockKeyhole className="size-[18px]" />}
                       type={showPassword ? 'text' : 'password'}
                       value={confirm}
