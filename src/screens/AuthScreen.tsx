@@ -79,31 +79,40 @@ export function AuthScreen() {
         className="pointer-events-none absolute top-0 left-1/2 size-[36rem] -translate-x-1/2 -translate-y-1/3 rounded-full bg-accent/14 blur-3xl"
       />
 
-      <header className="relative flex flex-1 flex-col items-center justify-center px-6 pt-[max(env(safe-area-inset-top),2.5rem)] pb-8 text-center">
-        {/* Shared with the launch screen: the sun glides up into place. */}
-        <motion.div layoutId="sun-gate" transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}>
-          <SunGate className="size-28" />
+      <header className="relative flex flex-1 flex-col items-center justify-center px-6 pt-[calc(env(safe-area-inset-top)+1rem)] pb-6 text-center">
+        {/* Shared with the launch screen: the sun glides up into place. Sign-up needs the room, so it shrinks there. */}
+        <motion.div layoutId="sun-gate" transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}>
+          <SunGate className={signIn ? 'size-24' : 'size-16'} />
         </motion.div>
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25, duration: 0.5 }}>
-          <p className="mt-5 text-[1.75rem] leading-none font-bold tracking-tight">
-            Tabi <span className="font-medium text-accent">旅</span>
-          </p>
-          <p className="mt-2 text-sm text-muted">הטיול שלנו ליפן, במקום אחד</p>
-        </motion.div>
+        <AnimatePresence initial={false}>
+          {signIn && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto', transition: { delay: 0.1 } }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <p className="mt-4 text-[1.75rem] leading-none font-bold tracking-tight">
+                Tabi <span className="font-medium text-accent">旅</span>
+              </p>
+              <p className="mt-2 text-sm text-muted">הטיול שלנו ליפן, במקום אחד</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
 
       <motion.main
         initial={{ opacity: 0, y: 48 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="relative mx-auto w-full max-w-md rounded-t-[2rem] border-t border-line bg-card px-6 pt-7 pb-[max(env(safe-area-inset-bottom),1.75rem)] shadow-[0_-16px_48px_-24px_rgb(0_0_0/0.3)] sm:mb-10 sm:rounded-[2rem] sm:border"
+        className="relative mx-auto w-full max-w-md rounded-t-[2rem] border-t border-line bg-card px-6 pt-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] shadow-[0_-16px_48px_-24px_rgb(0_0_0/0.3)] sm:mb-10 sm:rounded-[2rem] sm:border"
       >
         <motion.div
           key={mode}
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25 }}
-          className="mb-6"
+          className="mb-5"
         >
           <h1 className="text-2xl font-bold tracking-tight">{signIn ? 'שמחים לראות אתכם שוב' : 'יוצאים לדרך'}</h1>
           <p className="mt-1.5 text-sm text-muted">
@@ -186,7 +195,7 @@ export function AuthScreen() {
           </Button>
         </form>
 
-        <p className="mt-5 text-center text-sm text-muted">
+        <p className="mt-4 text-center text-sm text-muted">
           {signIn ? 'עוד אין לכם חשבון?' : 'כבר יש לכם חשבון?'}{' '}
           <button
             type="button"
