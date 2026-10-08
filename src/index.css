@@ -365,3 +365,72 @@ input[type='time']::-webkit-date-and-time-value {
 .maplibregl-ctrl-bottom-right {
   bottom: calc(var(--tabbar-height) + var(--tabbar-bottom) + 0.5rem);
 }
+
+/* ── Sign-in ambience: drifting sakura petals and slow sun rays ─────────── */
+
+.sakura-petal {
+  position: absolute;
+  top: -24px;
+  opacity: 0;
+  animation: petal-fall var(--fall) linear var(--delay) infinite;
+  will-change: transform, opacity;
+}
+
+.sakura-flutter {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: #f4a3b6;
+  animation: petal-flutter var(--sway) ease-in-out infinite alternate;
+}
+
+@keyframes petal-fall {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+    opacity: 0;
+  }
+  8%,
+  80% {
+    opacity: var(--alpha);
+  }
+  100% {
+    transform: translate3d(var(--dx), 100dvh, 0) rotate(var(--spin));
+    opacity: 0;
+  }
+}
+
+/* Sways side to side and tilts toward the viewer, like a petal catching the air. */
+@keyframes petal-flutter {
+  from {
+    transform: translateX(-14px) rotateX(0deg) rotateZ(-12deg);
+  }
+  to {
+    transform: translateX(14px) rotateX(65deg) rotateZ(18deg);
+  }
+}
+
+.sun-rays {
+  background: repeating-conic-gradient(
+    from 0deg,
+    color-mix(in oklab, var(--app-accent) 16%, transparent) 0deg 5deg,
+    transparent 5deg 15deg
+  );
+  -webkit-mask: radial-gradient(closest-side, black 25%, transparent 100%);
+  mask: radial-gradient(closest-side, black 25%, transparent 100%);
+  animation: sun-rays-spin 90s linear infinite;
+}
+
+@keyframes sun-rays-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sakura {
+    display: none;
+  }
+  .sun-rays {
+    animation: none;
+  }
+}

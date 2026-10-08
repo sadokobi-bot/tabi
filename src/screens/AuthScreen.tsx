@@ -3,6 +3,7 @@ import { Eye, EyeOff, HardDrive, Lock, LockKeyhole, User } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { AppError, errorMessage } from '@/backend'
 import { checkUsername } from '@/backend/username'
+import { SakuraDrift } from '@/components/brand/SakuraDrift'
 import { SunGate } from '@/components/brand/SunGate'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
@@ -78,12 +79,34 @@ export function AuthScreen() {
         aria-hidden
         className="pointer-events-none absolute top-0 left-1/2 size-[36rem] -translate-x-1/2 -translate-y-1/3 rounded-full bg-accent/14 blur-3xl"
       />
+      {/* Petals start once the intro has settled. */}
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.8, duration: 1 }}
+      >
+        <SakuraDrift />
+      </motion.div>
 
       <header className="relative flex flex-1 flex-col items-center justify-center px-6 pt-[calc(env(safe-area-inset-top)+1rem)] pb-6 text-center">
         {/* Shared with the launch screen: the sun glides up into place. Sign-up needs the room, so it shrinks there. */}
-        <motion.div layoutId="sun-gate" transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}>
-          <SunGate className={signIn ? 'size-24' : 'size-16'} />
-        </motion.div>
+        <div className="relative grid place-items-center">
+          {/* Slow light rays turning behind the sun */}
+          <motion.div
+            aria-hidden
+            className="pointer-events-none absolute size-80"
+            initial={{ opacity: 0, scale: 0.6 }}
+            animate={{ opacity: 1, scale: signIn ? 1 : 0.65 }}
+            transition={{ opacity: { delay: 0.6, duration: 1.2 }, scale: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } }}
+          >
+            <div className="sun-rays size-full rounded-full" />
+          </motion.div>
+          <motion.div layoutId="sun-gate" className="relative" transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}>
+            <SunGate className={signIn ? 'size-24' : 'size-16'} />
+          </motion.div>
+        </div>
         <AnimatePresence initial={false}>
           {signIn && (
             <motion.div
