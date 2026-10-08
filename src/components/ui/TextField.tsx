@@ -10,11 +10,12 @@ interface FieldShellProps {
   label: string
   hint?: string
   error?: string | null
+  leading?: ReactNode
   trailing?: ReactNode
   children: ReactNode
 }
 
-function FieldShell({ id, label, hint, error, trailing, children }: FieldShellProps) {
+function FieldShell({ id, label, hint, error, leading, trailing, children }: FieldShellProps) {
   return (
     <div className="min-w-0">
       <label htmlFor={id} className="mb-1.5 block text-sm font-medium">
@@ -22,6 +23,11 @@ function FieldShell({ id, label, hint, error, trailing, children }: FieldShellPr
       </label>
       <div className="relative">
         {children}
+        {leading && (
+          <div aria-hidden className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-muted">
+            {leading}
+          </div>
+        )}
         {trailing && <div className="absolute inset-y-0 left-2 flex items-center">{trailing}</div>}
       </div>
       {error ? (
@@ -46,19 +52,21 @@ interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string
   hint?: string
   error?: string | null
+  /** Icon at the start (right) of the field. */
+  leading?: ReactNode
   trailing?: ReactNode
 }
 
-export function TextField({ label, hint, error, trailing, className, id, ...rest }: TextFieldProps) {
+export function TextField({ label, hint, error, leading, trailing, className, id, ...rest }: TextFieldProps) {
   const autoId = useId()
   const inputId = id ?? autoId
   return (
-    <FieldShell id={inputId} label={label} hint={hint} error={error} trailing={trailing}>
+    <FieldShell id={inputId} label={label} hint={hint} error={error} leading={leading} trailing={trailing}>
       <input
         id={inputId}
         aria-invalid={error ? true : undefined}
         aria-describedby={noteId(inputId, hint, error)}
-        className={clsx(CONTROL, 'h-12', trailing && 'pl-12', className)}
+        className={clsx(CONTROL, 'h-12', leading && 'pr-11', trailing && 'pl-12', className)}
         {...rest}
       />
     </FieldShell>

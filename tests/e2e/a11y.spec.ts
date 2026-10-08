@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 test('field hints and errors are announced with their field', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('tab', { name: 'הרשמה' }).click()
+  await page.getByRole('button', { name: 'הרשמה', exact: true }).click()
 
   const username = page.getByLabel('שם משתמש')
   await expect(username).toHaveAccessibleDescription('עברית או אנגלית, 2-16 תווים')
@@ -15,7 +15,7 @@ test('field hints and errors are announced with their field', async ({ page }) =
 
 test('a sheet keeps Tab inside and returns focus to its opener', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('tab', { name: 'הרשמה' }).click()
+  await page.getByRole('button', { name: 'הרשמה', exact: true }).click()
   await page.getByLabel('שם משתמש').fill(`sheet${Date.now().toString(36).slice(-5)}`)
   await page.getByLabel('סיסמה', { exact: true }).fill('tabi-test-123')
   await page.getByLabel('אימות סיסמה').fill('tabi-test-123')

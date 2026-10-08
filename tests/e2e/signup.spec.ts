@@ -7,7 +7,7 @@ const uniqueName = (prefix: string) => `${prefix}${Date.now().toString(36).slice
 
 async function openSignUp(page: Page) {
   await page.goto('/')
-  await page.getByRole('tab', { name: 'הרשמה' }).click()
+  await page.getByRole('button', { name: 'הרשמה', exact: true }).click()
 }
 
 async function fillSignUp(page: Page, username: string, password: string, confirm = password) {
