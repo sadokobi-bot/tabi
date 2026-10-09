@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check'
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check'
 import {
   EmailAuthProvider,
   createUserWithEmailAndPassword,
@@ -95,9 +95,9 @@ function toAppError(error: unknown): AppError {
 
 export function createFirebaseBackend(): Backend {
   const app = initializeApp(firebaseConfig)
-  // App Check: only this app (on its own site) may use the project's AI and data. Off until a key is set.
+  // App Check (reCAPTCHA Enterprise / Fraud Defense): only this app, on its own site, may use the project's AI and data. Off until a key is set.
   if (RECAPTCHA_SITE_KEY) {
-    initializeAppCheck(app, { provider: new ReCaptchaV3Provider(RECAPTCHA_SITE_KEY), isTokenAutoRefreshEnabled: true })
+    initializeAppCheck(app, { provider: new ReCaptchaEnterpriseProvider(RECAPTCHA_SITE_KEY), isTokenAutoRefreshEnabled: true })
   }
   const auth = getAuth(app)
   // Persistent cache: the trip keeps working offline (subway, flights) and syncs when back online.

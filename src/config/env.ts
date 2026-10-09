@@ -14,7 +14,7 @@ export const GOOGLE_MAP_ID = clean(env.VITE_GOOGLE_MAP_ID) || 'DEMO_MAP_ID'
 export const hasGoogleMaps = GOOGLE_MAPS_API_KEY.length > 0
 
 /* ── Firebase (accounts + shared cloud sync) ── */
-/** reCAPTCHA v3 site key for Firebase App Check (public by design). Without it App Check is off. */
+/** reCAPTCHA Enterprise site key for Firebase App Check (public by design). Without it App Check is off. */
 export const RECAPTCHA_SITE_KEY = clean(env.VITE_RECAPTCHA_SITE_KEY)
 
 export const firebaseConfig = {
