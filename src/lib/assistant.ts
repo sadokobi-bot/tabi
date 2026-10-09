@@ -68,19 +68,21 @@ For each place: "name" exactly as the post writes it; "searchName" = the officia
 "reply" is one short Hebrew sentence saying how many places were found. Plain text, no markdown.`
 
 const PLAN_SYSTEM = `You plan one day of a trip in Japan for "Tabi", a Hebrew app for a group trip.
-You get the area, the date, what the travellers feel like (Hebrew, may be empty), the places they already saved nearby (id, name, category), the stops already fixed that day, and where they sleep.
-Build a realistic, enjoyable day from about 09:00 to about 21:00 with 5-7 stops (3-5 when the pace is relaxed), counting the two meals:
+You get the area, the date, what the travellers feel like (Hebrew, may be empty), the places they already saved nearby (id, name, category), the stops already fixed that day, where they sleep, and real places found on the map nearby: restaurants and sights.
+Build a realistic, enjoyable day from about 09:00 until about 21:30. Evenings in Japan are great, so the day doesn't end at dinner:
+- A full day has 6-7 stops: a morning sight, lunch, one or two afternoon stops, dinner around 19:00-20:00, and one evening stop after dinner (a night view, an illuminated area, a lively street or izakaya alley, a night market). A relaxed day has 4-5 stops with longer visits, and still ends after dinner.
 - Order the stops geographically so the day flows with little back-and-forth, starting near where they sleep when given.
-- Prefer their saved places when they fit (put the place's id in "savedId"); otherwise suggest real, existing, well-known places only ("savedId" = ""). Never invent places.
-- Meals, cafes and bars: choose ONLY from "Real restaurants nearby" (put its id in "restaurantId") or from their saved places. Never name a restaurant that is not in those lists, even a famous-sounding one. If the list is empty, plan the day without meal stops and say so in "reply".
+- Prefer their saved places when they fit (put the place's id in "savedId").
+- Sights: prefer "Real sights nearby" (put its id in "mapId"). Any other sight must be a world-famous, existing place, with its official English name in "searchName". Never invent places.
+- Meals, cafes and bars: choose ONLY from "Real restaurants nearby" (its id in "mapId") or from their saved places. Never name a restaurant that is not in those lists, even a famous-sounding one. If the list is empty, plan the day without meal stops.
 - Food wishes (kosher, vegetarian, vegan…) apply to EVERY meal of the day. Only a list entry that clearly fits counts (for kosher: its name says kosher or Chabad, or it is known to be kosher). Kosher places are rare in Japan: when the list has one, use it for at least one meal (dinner if possible) even if it is a train ride away, and plan the day's route around it. If they asked for kosher and no entry is kosher, every meal must be a vegetarian or vegan entry; each such stop's "why" says what to order there. Don't write about kosher or food wishes in "reply" (it describes the sights): the app tells them itself.
-- Exactly two meals, lunch and dinner (unless fixed stops already cover one), plus at most one cafe or snack stop. Food wishes only shape the meals: still plan a full day of sights around them.
+- Exactly two meals, lunch and dinner (unless fixed stops already cover one), plus at most one cafe or snack stop.
 - Include every fixed stop in your list, at its time (or where it fits best when it has none), with its id in "savedId", and plan around them.
 - Never suggest a place listed as already planned on other days, and never list the same place twice.
 - Respect typical opening hours (shrines and markets in the morning, viewpoints at sunset, bars at night) and leave realistic travel time.
-- A relaxed pace means fewer stops and longer visits.
+- When a "Current plan" and a "Change request" are given, return the whole revised day: do exactly what the change request asks, keep every other stop as it is (same place, same ids, same time unless the change needs it), and keep the day going until the evening.
 For every stop: "time" as HH:mm (24h); "name" in Hebrew as Israelis would write it; "searchName" = the official English (romaji) name as on maps; "city" in English; approximate "lat"/"lng"; a category; "why" = one short Hebrew sentence (what to do or eat there).
-"reply" is one short Hebrew sentence with the idea of the day. Plain text, no markdown. Write Hebrew text in Hebrew letters only (no other scripts mixed into words).`
+"reply" is one short Hebrew sentence with the idea of the day. Plain text, no markdown. Write Hebrew text in Hebrew letters only: never Arabic or any other script inside a Hebrew word.`
 
 const TRANSLATE_SYSTEM = `You help Israeli travellers in Japan read what's in front of them, for "Tabi", a Hebrew app.
 You get a photo: usually a restaurant menu, sometimes a sign, a ticket machine, a notice or a product label. Mostly Japanese.
@@ -121,12 +123,12 @@ export async function translateImage(image: PromptImage, question: string): Prom
   const json = JSON.parse(result.response.text()) as Partial<Translation>
   return {
     kind: json.kind ?? 'other',
-    title: json.title ?? '',
-    summary: json.summary ?? '',
+    title: cleanText(json.title),
+    summary: cleanText(json.summary),
     items: (json.items ?? []).slice(0, 40).map((item) => ({
       original: item.original ?? '',
-      hebrew: item.hebrew ?? '',
-      note: item.note ?? '',
+      hebrew: cleanText(item.hebrew, item.original ?? ''),
+      note: cleanText(item.note),
       price: item.price ?? '',
       tags: (item.tags ?? []).filter((tag): tag is FoodTag => (FOOD_TAGS as readonly string[]).includes(tag)),
     })),
@@ -152,7 +154,7 @@ function getModels(kind: ModelKind) {
           kind === 'ask'
             ? { ...common, why: Schema.string() }
             : kind === 'plan'
-              ? { ...common, why: Schema.string(), time: Schema.string(), savedId: Schema.string(), restaurantId: Schema.string() }
+              ? { ...common, why: Schema.string(), time: Schema.string(), savedId: Schema.string(), mapId: Schema.string() }
               : kind === 'rain'
                 ? { ...common, why: Schema.string(), time: Schema.string(), savedId: Schema.string(), replaceId: Schema.string() }
                 : { ...common, address: Schema.string(), note: Schema.string() },
@@ -261,16 +263,16 @@ export async function askAssistant(text: string, near: LatLng | null): Promise<A
     areaLng?: number
   }
   return {
-    reply: json.reply ?? '',
+    reply: cleanText(json.reply),
     ...(json.googleQuery?.trim() ? { googleQuery: json.googleQuery.trim() } : {}),
     ...(json.areaLat && json.areaLng ? { area: { lat: json.areaLat, lng: json.areaLng } } : {}),
     places: (json.places ?? []).slice(0, 3).map((p) => ({
-      name: p.name,
+      name: cleanText(p.name, p.searchName),
       searchName: p.searchName,
       city: p.city,
       category: CATEGORY_IDS.includes(p.category as CategoryId) ? (p.category as CategoryId) : 'other',
       location: { lat: p.lat, lng: p.lng },
-      why: p.why,
+      why: cleanText(p.why),
     })),
   }
 }
@@ -302,14 +304,14 @@ ${text.trim()}`
     }[]
   }
   return {
-    reply: json.reply ?? '',
+    reply: cleanText(json.reply),
     places: (json.places ?? []).slice(0, 15).map((p) => ({
-      name: p.name,
+      name: cleanText(p.name, p.searchName),
       searchName: p.searchName,
       city: p.city,
       category: CATEGORY_IDS.includes(p.category as CategoryId) ? (p.category as CategoryId) : 'other',
       location: { lat: p.lat, lng: p.lng },
-      why: p.note ?? '',
+      why: cleanText(p.note),
       ...(p.address?.trim() ? { address: p.address.trim() } : {}),
     })),
   }
@@ -319,17 +321,17 @@ ${text.trim()}`
 export interface PlannedStop extends AssistantPlace {
   time: string
   savedId?: string
-  /** One of the real restaurants it was given (by id). */
-  restaurantId?: string
+  /** One of the real places it was given (by id). */
+  mapId?: string
 }
 
-/** A real restaurant found on the map near the day's area, offered to the planner. */
-export interface RestaurantOption {
+/** A real place found on the map near the day's area, offered to the planner. */
+export interface MapOption {
   id: string
   name: string
   rating?: number
   address?: string
-  /** Which search found it ("kosher restaurant", "vegan restaurant"…). */
+  /** Which search found it ("kosher restaurant", "night view"…). */
   foundBy: string
 }
 
@@ -348,10 +350,30 @@ export interface DayPlanRequest {
   /** Where they sleep the night before (start of the day). */
   hotel?: string
   /** Real restaurants nearby: meals are chosen from these only. */
-  restaurants: RestaurantOption[]
+  restaurants: MapOption[]
+  /** Real sights nearby (sights, night views…). */
+  sights: MapOption[]
+  /** Revising a plan: the plan as it is, and what to change. */
+  current?: PlannedStop[]
+  change?: string
 }
 
-/** A full day, built around what's already fixed and the places the group saved. */
+const optionLine = (option: MapOption) =>
+  `[${option.id}] ${option.name}${option.rating ? ` (rating ${option.rating.toFixed(1)})` : ''} (found by "${option.foundBy}")${option.address ? ` — ${option.address}` : ''}`
+
+/**
+ * Letters of scripts that don't belong in the app's Hebrew: the model sometimes slips Arabic, Thai or
+ * Cyrillic letters into a Hebrew word. (Hebrew, Latin and Japanese are fine.)
+ */
+const FOREIGN_SCRIPT = /[Ͱ-ϿЀ-ԯ؀-ۿݐ-ݿࢠ-ࣿऀ-෿฀-໿Ⴀ-ჿ가-힯ﭐ-﷿ﹰ-﻿]/
+
+/** The model's text, or `fallback` when it's empty or has letters of another script mixed in. */
+export function cleanText(text: string | undefined | null, fallback = ''): string {
+  const value = (text ?? '').trim()
+  return value && !FOREIGN_SCRIPT.test(value) ? value : fallback
+}
+
+/** A full day, built around what's already fixed and the places the group saved (or a plan revised). */
 export async function planDayWithAi(request: DayPlanRequest): Promise<{ reply: string; stops: PlannedStop[] }> {
   const lines = [
     `Area: ${request.area || 'not chosen yet: infer it from the wishes and the saved places'}`,
@@ -362,7 +384,17 @@ export async function planDayWithAi(request: DayPlanRequest): Promise<{ reply: s
     `Fixed stops: ${request.fixed.length ? request.fixed.map((stop) => `[${stop.id}] ${stop.time ?? 'any time'} ${stop.name}`).join('; ') : 'none'}`,
     `Saved places nearby: ${request.saved.length ? request.saved.map((place) => `[${place.id}] ${place.name} (${place.category})`).join('; ') : 'none'}`,
     request.elsewhere.length ? `Already planned on other days (don't suggest): ${request.elsewhere.join('; ')}` : '',
-    `Real restaurants nearby: ${request.restaurants.length ? request.restaurants.map((r) => `[${r.id}] ${r.name}${r.rating ? ` (rating ${r.rating.toFixed(1)})` : ''} (found by "${r.foundBy}")${r.address ? ` — ${r.address}` : ''}`).join('; ') : 'none (no map results)'}`,
+    `Real restaurants nearby: ${request.restaurants.length ? request.restaurants.map(optionLine).join('; ') : 'none (no map results)'}`,
+    `Real sights nearby: ${request.sights.length ? request.sights.map(optionLine).join('; ') : 'none (no map results)'}`,
+    request.current?.length
+      ? `Current plan: ${request.current
+          .map(
+            (stop) =>
+              `${stop.time} ${stop.searchName} [${stop.savedId ? `savedId ${stop.savedId}` : stop.mapId ? `mapId ${stop.mapId}` : 'new'}]`,
+          )
+          .join('; ')}`
+      : '',
+    request.change ? `Change request: ${request.change}` : '',
   ]
   const result = await generate('plan', lines.filter(Boolean).join('\n'))
   const json = JSON.parse(result.response.text()) as {
@@ -377,26 +409,27 @@ export async function planDayWithAi(request: DayPlanRequest): Promise<{ reply: s
       why: string
       time: string
       savedId?: string
-      restaurantId?: string
+      mapId?: string
     }[]
   }
   const savedIds = new Set([...request.saved, ...request.fixed].map((place) => place.id))
-  const restaurantIds = new Set(request.restaurants.map((r) => r.id))
+  for (const stop of request.current ?? []) if (stop.savedId) savedIds.add(stop.savedId)
+  const mapIds = new Set([...request.restaurants, ...request.sights].map((option) => option.id))
   return {
-    reply: json.reply ?? '',
+    reply: cleanText(json.reply),
     stops: (json.places ?? [])
       .filter((p) => /^\d{1,2}:\d{2}$/.test(p.time))
-      .slice(0, 8)
+      .slice(0, 9)
       .map((p) => ({
-        name: p.name,
+        name: cleanText(p.name, p.searchName),
         searchName: p.searchName,
         city: p.city,
         category: CATEGORY_IDS.includes(p.category as CategoryId) ? (p.category as CategoryId) : 'other',
         location: { lat: p.lat, lng: p.lng },
-        why: p.why,
+        why: cleanText(p.why),
         time: p.time.padStart(5, '0'),
         ...(p.savedId && savedIds.has(p.savedId) ? { savedId: p.savedId } : {}),
-        ...(p.restaurantId && restaurantIds.has(p.restaurantId) ? { restaurantId: p.restaurantId } : {}),
+        ...(p.mapId && mapIds.has(p.mapId) ? { mapId: p.mapId } : {}),
       }))
       .sort((a, b) => a.time.localeCompare(b.time)),
   }
@@ -451,17 +484,17 @@ export async function rainPlanWithAi(request: RainPlanRequest): Promise<{ reply:
   const savedIds = new Set(request.saved.map((place) => place.id))
   const replaced = new Set<string>()
   return {
-    reply: json.reply ?? '',
+    reply: cleanText(json.reply),
     swaps: (json.places ?? [])
       // One alternative per stop, for stops that are really in the day.
       .filter((p) => stopIds.has(p.replaceId) && !replaced.has(p.replaceId) && replaced.add(p.replaceId))
       .map((p) => ({
-        name: p.name,
+        name: cleanText(p.name, p.searchName),
         searchName: p.searchName,
         city: p.city,
         category: CATEGORY_IDS.includes(p.category as CategoryId) ? (p.category as CategoryId) : 'other',
         location: { lat: p.lat, lng: p.lng },
-        why: p.why,
+        why: cleanText(p.why),
         time: /^\d{1,2}:\d{2}$/.test(p.time) ? p.time.padStart(5, '0') : '',
         replaceId: p.replaceId,
         ...(p.savedId && savedIds.has(p.savedId) ? { savedId: p.savedId } : {}),

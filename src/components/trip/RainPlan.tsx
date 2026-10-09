@@ -49,7 +49,7 @@ type Checked = RainSwap & { poi?: Poi }
 type Phase =
   | { name: 'intro' }
   | { name: 'loading' }
-  | { name: 'result'; reply: string; swaps: Checked[]; removed: number }
+  | { name: 'result'; reply: string; swaps: Checked[] }
   | { name: 'error'; failure: AssistantFailure }
 
 export function RainPlanSheet({ date, onClose }: { date: string | null; onClose: () => void }) {
@@ -136,7 +136,7 @@ export function RainPlan({ date, onDone }: { date: string; onDone: () => void })
       )
       if (controller.signal.aborted) return
       const real = checked.filter((swap): swap is Checked => swap !== null)
-      setPhase({ name: 'result', reply: answer.reply, swaps: real, removed: answer.swaps.length - real.length })
+      setPhase({ name: 'result', reply: answer.reply, swaps: real })
     } catch (error) {
       console.error('[rain] failed', error)
       setPhase({ name: 'error', failure: failureOf(error) })
@@ -257,11 +257,7 @@ export function RainPlan({ date, onDone }: { date: string; onDone: () => void })
       {phase.name === 'result' && (
         <div className="mt-4">
           {phase.reply && <p className="rounded-control bg-sky-500/[0.08] px-4 py-3 text-sm leading-relaxed">{phase.reply}</p>}
-          {phase.removed > 0 && (
-            <p className="mt-2 rounded-control bg-amber-400/12 px-4 py-2.5 text-xs leading-relaxed">
-              {phase.removed === 1 ? 'הסרנו הצעה אחת' : `הסרנו ${phase.removed} הצעות`} שלא מצאנו במפה, כדי שלא תגיעו למקום שלא קיים.
-            </p>
-          )}
+
           {phase.swaps.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted">כל העצירות של היום מקורות, אז הגשם לא משנה כלום 🙂</p>
           ) : (

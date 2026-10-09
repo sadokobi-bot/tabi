@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import clsx from 'clsx'
-import { BookmarkCheck, CalendarCheck, MapPin, RefreshCw, ShieldCheck, Sparkles, Umbrella } from 'lucide-react'
+import { BookmarkCheck, CalendarCheck, MapPin, RefreshCw, Sparkles, Umbrella } from 'lucide-react'
 import { motion } from 'motion/react'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { Button } from '@/components/ui/Button'
@@ -12,13 +12,22 @@ import { getCity, nearestCity } from '@/data/cities'
 import { insertByTime, sortedDay } from '@/data/planOps'
 import { stayFor } from '@/data/stays'
 import type { ItineraryItem } from '@/data/types'
-import { FAILURE_TEXT, failureOf, nameMatch, planDayWithAi, resolveOnMap, type AssistantFailure, type PlannedStop } from '@/lib/assistant'
+import {
+  FAILURE_TEXT,
+  failureOf,
+  nameMatch,
+  planDayWithAi,
+  resolveOnMap,
+  type AssistantFailure,
+  type DayPlanRequest,
+  type PlannedStop,
+} from '@/lib/assistant'
 import { distanceMeters } from '@/lib/geo'
 import { addDays, formatDay, tripDates } from '@/lib/dates'
 import { newId } from '@/lib/ids'
 import type { Poi } from '@/maps/poi'
 import { usePoiProvider } from '@/maps/usePoiProvider'
-import { dietOf, findRestaurants } from '@/lib/mealOptions'
+import { dietOf, findRestaurants, findSights, type MapOptions } from '@/lib/mealOptions'
 import { useTrip, useTripStore } from '@/store/trip'
 import { ui } from '@/store/ui'
 import { RainPlan } from './RainPlan'
@@ -37,8 +46,23 @@ const INTERESTS = [
 
 const LOCATE_TIMEOUT_MS = 10_000
 
+/** One tap fills the change box with a common tweak. */
+const CHANGE_IDEAS = ['תוסיפו עוד משהו בערב', 'יום רגוע יותר', 'תחליפו את המקדש בקניות', 'מסעדה אחרת לערב']
+
 /** A stop the AI suggested, checked on the map: its real map entry (none for saved places). */
 type Checked = PlannedStop & { poi?: Poi }
+
+/** The facts a plan is built from, and the real places around the day (kept for revisions). */
+interface PlanContext {
+  request: Omit<DayPlanRequest, 'restaurants' | 'sights' | 'current' | 'change'>
+  restaurants: MapOptions
+  sights: MapOptions
+  inDay: Set<string>
+}
+
+/** Sent back to the planner when the checked plan came out short. */
+const FILL_REQUEST =
+  'Some places could not be found on the map and were taken out, or the day ends too early. Keep the current stops and add other real places so the day runs until about 21:30, with dinner and one evening stop after it.'
 
 /** What the plan does about a kosher wish: written by the app from the plan itself, not by the AI. */
 type DietNote = { tone: 'ok' | 'warn'; text: string }
@@ -46,7 +70,7 @@ type DietNote = { tone: 'ok' | 'warn'; text: string }
 type Phase =
   | { name: 'form' }
   | { name: 'loading'; step: string }
-  | { name: 'result'; reply: string; stops: Checked[]; inDay: Set<string>; removed: number; dietNote?: DietNote }
+  | { name: 'result'; reply: string; stops: Checked[]; inDay: Set<string>; dietNote?: DietNote }
   | { name: 'error'; failure: AssistantFailure }
 
 /** "Plan my day": Gemini builds the day around what's fixed, from saved places and real recommendations. */
@@ -68,6 +92,7 @@ function PlanDay({ date, onClose }: { date: string; onClose: () => void }) {
   const [relaxed, setRelaxed] = useState(false)
   const [phase, setPhase] = useState<Phase>({ name: 'form' })
   const [rain, setRain] = useState(false)
+  const [change, setChange] = useState('')
   const hasStops = useTripStore((state) => (state.plan[date]?.length ?? 0) > 0)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -76,11 +101,97 @@ function PlanDay({ date, onClose }: { date: string; onClose: () => void }) {
   const dayNumber = tripDates(trip).indexOf(date) + 1
   const hotelId = stayFor(trip.stays, addDays(date, -1))
 
+  /** What a plan is built from: the day's facts and the real places around it (kept for revisions). */
+  const contextRef = useRef<PlanContext | null>(null)
+
+  /** Checks every new place on the map; the ones that aren't really there are left out. */
+  const check = async (stops: PlannedStop[], context: PlanContext, signal: AbortSignal): Promise<Checked[]> => {
+    const { places } = useTripStore.getState()
+    // A "new" suggestion that is really one of our saved places (named a little differently) links to it.
+    const linked = stops.map((stop) => {
+      if (stop.savedId || stop.mapId) return stop
+      const match = places.find(
+        (place) =>
+          (nameMatch(stop.name, place.name) >= 0.5 || nameMatch(stop.searchName, place.name) >= 0.5) &&
+          distanceMeters(stop.location, place.location) <= 1500,
+      )
+      return match ? { ...stop, savedId: match.id } : stop
+    })
+    // Never the same place twice in one day.
+    const seen = new Set<string>()
+    const unique = linked.filter((stop) => {
+      const key = stop.savedId ?? stop.mapId
+      return !key || (!seen.has(key) && seen.add(key))
+    })
+    const checked = await Promise.all(
+      unique.map(async (stop): Promise<Checked | null> => {
+        if (stop.savedId) return stop
+        const restaurant = stop.mapId ? context.restaurants.pois[stop.mapId] : undefined
+        // A restaurant keeps its real map name (the AI's Hebrew rendering can be wrong: "Chabad" → "חברון").
+        if (restaurant) return { ...stop, name: restaurant.name, poi: restaurant }
+        const sight = stop.mapId ? context.sights.pois[stop.mapId] : undefined
+        if (sight) return { ...stop, poi: sight }
+        try {
+          const poi = await Promise.race([
+            resolveOnMap(stop, provider, signal),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), LOCATE_TIMEOUT_MS)),
+          ])
+          return poi && !poi.key.startsWith('ai:') ? { ...stop, poi } : null
+        } catch {
+          return null
+        }
+      }),
+    )
+    return checked.filter((stop): stop is Checked => stop !== null)
+  }
+
+  /** A day that stops early (or lost places on the check) gets one more, quiet round to fill it. */
+  const tooShort = (stops: Checked[]) => {
+    const last = stops.at(-1)?.time ?? '00:00'
+    return relaxed ? stops.length < 3 || last < '18:30' : stops.length < 5 || last < '19:00'
+  }
+
+  /** Plans (or revises) the day, checks it, and fills it if it came out short. */
+  const run = async (context: PlanContext, signal: AbortSignal, current?: Checked[], change?: string) => {
+    const ask = (base?: Checked[], request?: string) =>
+      planDayWithAi({
+        ...context.request,
+        restaurants: context.restaurants.options,
+        sights: context.sights.options,
+        ...(base?.length ? { current: base, change: request } : {}),
+      })
+    const answer = await ask(current, change)
+    if (signal.aborted) return null
+    let stops = await check(answer.stops, context, signal)
+    if (signal.aborted) return null
+    if (stops.length < answer.stops.length || tooShort(stops)) {
+      setPhase({ name: 'loading', step: 'משלימים את היום…' })
+      const filled = await ask(stops, FILL_REQUEST).catch(() => null)
+      if (signal.aborted) return null
+      const more = filled ? await check(filled.stops, context, signal) : []
+      if (more.length >= stops.length) stops = more
+    }
+    return { reply: answer.reply, stops }
+  }
+
+  /** Kosher only counts when the place says so in its name (and was found looking for kosher food). */
+  const dietNoteFor = (stops: Checked[], context: PlanContext): DietNote | undefined => {
+    if (dietOf(context.request.wishes) !== 'kosher') return undefined
+    const kosherStop = stops.find((stop) => {
+      const option = context.restaurants.options.find((o) => o.id === stop.mapId)
+      return option?.foundBy === 'kosher restaurant' && /kosher|chabad|כשר/i.test(option.name)
+    })
+    return kosherStop
+      ? { tone: 'ok', text: `כולל מסעדה כשרה: ${kosherStop.name}` }
+      : { tone: 'warn', text: 'לא מצאנו מסעדה כשרה באזור, אז הארוחות הן במסעדות צמחוניות או טבעוניות.' }
+  }
+
   const generate = async () => {
     abortRef.current?.abort()
     const controller = new AbortController()
     abortRef.current = controller
-    setPhase({ name: 'loading', step: 'מחפשים מסעדות אמיתיות באזור…' })
+    setChange('')
+    setPhase({ name: 'loading', step: 'מחפשים מקומות אמיתיים באזור…' })
     const { plan, places, placesById } = useTripStore.getState()
     const hotel = hotelId ? placesById[hotelId] : undefined
     const city = getCity(trip.dayCities[date]) ?? (hotel ? nearestCity(hotel.location) : undefined)
@@ -101,80 +212,66 @@ function PlanDay({ date, onClose }: { date: string; onClose: () => void }) {
     const center = city?.location ?? hotel?.location ?? firstFixed?.location ?? null
 
     try {
-      // Meals come only from restaurants that are really on the map (the AI used to invent some).
-      const restaurants = await findRestaurants(provider, center, wishText)
+      // Meals come only from restaurants that are really on the map, and sights mostly too (the AI used to invent some).
+      const [restaurants, sights] = await Promise.all([findRestaurants(provider, center, wishText), findSights(provider, center, wishText)])
       if (controller.signal.aborted) return
+      const context: PlanContext = {
+        request: {
+          area: city?.en ?? '',
+          dateLabel: new Date(`${date}T00:00:00Z`).toLocaleDateString('en-US', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            timeZone: 'UTC',
+          }),
+          wishes: wishText,
+          relaxed,
+          saved: saved.slice(0, 60).map(({ id, name, category }) => ({ id, name, category })),
+          fixed,
+          elsewhere: elsewhere.slice(0, 40).map((place) => place.name),
+          ...(hotel ? { hotel: hotel.name } : {}),
+        },
+        restaurants,
+        sights,
+        inDay,
+      }
+      contextRef.current = context
       setPhase({ name: 'loading', step: 'מתכננים לכם יום…' })
-      const answer = await planDayWithAi({
-        area: city?.en ?? '',
-        dateLabel: new Date(`${date}T00:00:00Z`).toLocaleDateString('en-US', {
-          weekday: 'long',
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric',
-          timeZone: 'UTC',
-        }),
-        wishes: wishText,
-        relaxed,
-        saved: saved.slice(0, 60).map(({ id, name, category }) => ({ id, name, category })),
-        fixed,
-        elsewhere: elsewhere.slice(0, 40).map((place) => place.name),
-        ...(hotel ? { hotel: hotel.name } : {}),
-        restaurants: restaurants.options,
-      })
-      if (controller.signal.aborted) return
-      // A "new" suggestion that is really one of our saved places (named a little differently) links to it.
-      const stops = answer.stops.map((stop) => {
-        if (stop.savedId) return stop
-        const match = places.find(
-          (place) =>
-            (nameMatch(stop.name, place.name) >= 0.5 || nameMatch(stop.searchName, place.name) >= 0.5) &&
-            distanceMeters(stop.location, place.location) <= 1500,
-        )
-        return match ? { ...stop, savedId: match.id } : stop
-      })
-      // Never the same place twice in one day.
-      const seen = new Set<string>()
-      const unique = stops.filter((stop) => !stop.savedId || (!seen.has(stop.savedId) && seen.add(stop.savedId)))
-      // Every new place is checked on the map before it's shown: one that isn't there is dropped.
-      setPhase({ name: 'loading', step: 'בודקים שכל המקומות באמת קיימים…' })
-      const checked = await Promise.all(
-        unique.map(async (stop): Promise<Checked | null> => {
-          if (stop.savedId) return stop
-          // A restaurant from the map: its real name (the AI's Hebrew rendering can be wrong: "Chabad" → "חברון").
-          const restaurant = stop.restaurantId ? restaurants.pois[stop.restaurantId] : undefined
-          if (restaurant) return { ...stop, name: restaurant.name, poi: restaurant }
-          try {
-            const poi = await Promise.race([
-              resolveOnMap(stop, provider, controller.signal),
-              new Promise<null>((resolve) => setTimeout(() => resolve(null), LOCATE_TIMEOUT_MS)),
-            ])
-            return poi && !poi.key.startsWith('ai:') ? { ...stop, poi } : null
-          } catch {
-            return null
-          }
-        }),
-      )
-      if (controller.signal.aborted) return
-      const real = checked.filter((stop): stop is Checked => stop !== null)
-      if (real.length === 0) {
+      const result = await run(context, controller.signal)
+      if (!result || controller.signal.aborted) return
+      if (result.stops.length === 0) {
         setPhase({ name: 'error', failure: 'other' })
         return
       }
-      // Kosher only counts when the place says so in its name (and was found looking for kosher food).
-      const kosher = dietOf(wishText) === 'kosher'
-      const kosherStop = real.find((stop) => {
-        const option = restaurants.options.find((o) => o.id === stop.restaurantId)
-        return option?.foundBy === 'kosher restaurant' && /kosher|chabad|כשר/i.test(option.name)
-      })
-      const dietNote: DietNote | undefined = !kosher
-        ? undefined
-        : kosherStop
-          ? { tone: 'ok', text: `כולל מסעדה כשרה: ${kosherStop.name}` }
-          : { tone: 'warn', text: 'לא מצאנו מסעדה כשרה באזור, אז הארוחות הן במסעדות צמחוניות או טבעוניות.' }
-      setPhase({ name: 'result', reply: answer.reply, stops: real, inDay, removed: unique.length - real.length, dietNote })
+      setPhase({ name: 'result', reply: result.reply, stops: result.stops, inDay, dietNote: dietNoteFor(result.stops, context) })
     } catch (error) {
       console.error('[plan] failed', error)
+      setPhase({ name: 'error', failure: failureOf(error) })
+    }
+  }
+
+  /** "Add a dinner place", "swap the shrine for shopping": the plan revised, the rest kept. */
+  const revise = async (request: string, stops: Checked[], previousReply: string) => {
+    const context = contextRef.current
+    if (!context || !request.trim()) return
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+    setPhase({ name: 'loading', step: 'מעדכנים את התוכנית…' })
+    try {
+      const result = await run(context, controller.signal, stops, request.trim())
+      if (!result || controller.signal.aborted) return
+      setChange('')
+      setPhase({
+        name: 'result',
+        reply: result.reply || previousReply,
+        stops: result.stops.length ? result.stops : stops,
+        inDay: context.inDay,
+        dietNote: dietNoteFor(result.stops.length ? result.stops : stops, context),
+      })
+    } catch (error) {
+      console.error('[plan] revise failed', error)
       setPhase({ name: 'error', failure: failureOf(error) })
     }
   }
@@ -341,12 +438,7 @@ function PlanDay({ date, onClose }: { date: string; onClose: () => void }) {
               <bdi>{phase.dietNote.text}</bdi>
             </p>
           )}
-          {phase.removed > 0 && (
-            <p className="mt-2 flex items-start gap-2 rounded-control bg-amber-400/12 px-4 py-2.5 text-xs leading-relaxed">
-              <ShieldCheck aria-hidden className="mt-px size-4 shrink-0 text-amber-700 dark:text-amber-400" />
-              {phase.removed === 1 ? 'הסרנו הצעה אחת' : `הסרנו ${phase.removed} הצעות`} שלא מצאנו במפה, כדי שלא תגיעו למקום שלא קיים.
-            </p>
-          )}
+
           <ol className="relative mt-4 space-y-3 before:absolute before:inset-y-4 before:start-[2.6rem] before:w-px before:bg-line">
             {phase.stops.map((stop, index) => {
               return (
@@ -385,7 +477,44 @@ function PlanDay({ date, onClose }: { date: string; onClose: () => void }) {
               )
             })}
           </ol>
-          <div className="mt-5 flex gap-2">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              void revise(change, phase.stops, phase.reply)
+            }}
+            className="mt-5 rounded-control bg-fg/[0.04] p-3"
+          >
+            <p className="text-sm font-semibold">רוצים לשנות משהו?</p>
+            <div className="no-scrollbar -mx-3 mt-2 flex gap-2 overflow-x-auto px-3">
+              {CHANGE_IDEAS.map((idea) => (
+                <button
+                  key={idea}
+                  type="button"
+                  onClick={() => setChange(idea)}
+                  className="h-8 shrink-0 rounded-full bg-fg/6 px-3 text-xs font-medium transition active:scale-95"
+                >
+                  {idea}
+                </button>
+              ))}
+            </div>
+            <div className="mt-2.5 flex items-end gap-2">
+              <div className="min-w-0 flex-1">
+                <TextAreaField
+                  label="מה לשנות?"
+                  value={change}
+                  onChange={(event) => setChange(event.target.value)}
+                  placeholder="למשל: תוסיפו מסעדה בערב, או תחליפו את המקדש בקניות"
+                  maxLength={300}
+                  rows={2}
+                  dir={change ? 'auto' : 'rtl'}
+                />
+              </div>
+              <Button type="submit" disabled={!change.trim()} icon={<Sparkles aria-hidden className="size-4" />}>
+                עדכון
+              </Button>
+            </div>
+          </form>
+          <div className="mt-4 flex gap-2">
             <Button size="lg" className="flex-1" onClick={() => save(phase.stops)}>
               שמירה ביום {dayNumber}
             </Button>
