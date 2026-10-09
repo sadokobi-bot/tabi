@@ -1,6 +1,7 @@
 import type { CategoryId, LatLng } from '@/data/types'
 import type { Poi, PoiProvider } from '@/maps/poi'
 import { distanceMeters } from '@/lib/geo'
+import { nameMatch } from './names'
 
 /** A place the assistant thinks the user means. Coordinates are approximate until resolved on the map. */
 export interface AssistantPlace {
@@ -68,9 +69,12 @@ For each place: "name" exactly as the post writes it; "searchName" = the officia
 
 const PLAN_SYSTEM = `You plan one day of a trip in Japan for "Tabi", a Hebrew app for a group trip.
 You get the area, the date, what the travellers feel like (Hebrew, may be empty), the places they already saved nearby (id, name, category), the stops already fixed that day, and where they sleep.
-Build a realistic, enjoyable day from about 09:00 to about 21:00 with 4-7 stops, including lunch and dinner at real, well-reviewed restaurants:
+Build a realistic, enjoyable day from about 09:00 to about 21:00 with 5-7 stops (3-5 when the pace is relaxed), counting the two meals:
 - Order the stops geographically so the day flows with little back-and-forth, starting near where they sleep when given.
 - Prefer their saved places when they fit (put the place's id in "savedId"); otherwise suggest real, existing, well-known places only ("savedId" = ""). Never invent places.
+- Meals, cafes and bars: choose ONLY from "Real restaurants nearby" (put its id in "restaurantId") or from their saved places. Never name a restaurant that is not in those lists, even a famous-sounding one. If the list is empty, plan the day without meal stops and say so in "reply".
+- Food wishes (kosher, vegetarian, vegan…) apply to EVERY meal of the day. Only a list entry that clearly fits counts (for kosher: its name says kosher or Chabad, or it is known to be kosher). Kosher places are rare in Japan: when the list has one, use it for at least one meal (dinner if possible) even if it is a train ride away, and plan the day's route around it. If they asked for kosher and no entry is kosher, every meal must be a vegetarian or vegan entry; each such stop's "why" says what to order there. Don't write about kosher or food wishes in "reply" (it describes the sights): the app tells them itself.
+- Exactly two meals, lunch and dinner (unless fixed stops already cover one), plus at most one cafe or snack stop. Food wishes only shape the meals: still plan a full day of sights around them.
 - Include every fixed stop in your list, at its time (or where it fits best when it has none), with its id in "savedId", and plan around them.
 - Never suggest a place listed as already planned on other days, and never list the same place twice.
 - Respect typical opening hours (shrines and markets in the morning, viewpoints at sunset, bars at night) and leave realistic travel time.
@@ -148,7 +152,7 @@ function getModels(kind: ModelKind) {
           kind === 'ask'
             ? { ...common, why: Schema.string() }
             : kind === 'plan'
-              ? { ...common, why: Schema.string(), time: Schema.string(), savedId: Schema.string() }
+              ? { ...common, why: Schema.string(), time: Schema.string(), savedId: Schema.string(), restaurantId: Schema.string() }
               : kind === 'rain'
                 ? { ...common, why: Schema.string(), time: Schema.string(), savedId: Schema.string(), replaceId: Schema.string() }
                 : { ...common, address: Schema.string(), note: Schema.string() },
@@ -315,6 +319,18 @@ ${text.trim()}`
 export interface PlannedStop extends AssistantPlace {
   time: string
   savedId?: string
+  /** One of the real restaurants it was given (by id). */
+  restaurantId?: string
+}
+
+/** A real restaurant found on the map near the day's area, offered to the planner. */
+export interface RestaurantOption {
+  id: string
+  name: string
+  rating?: number
+  address?: string
+  /** Which search found it ("kosher restaurant", "vegan restaurant"…). */
+  foundBy: string
 }
 
 export interface DayPlanRequest {
@@ -331,6 +347,8 @@ export interface DayPlanRequest {
   elsewhere: string[]
   /** Where they sleep the night before (start of the day). */
   hotel?: string
+  /** Real restaurants nearby: meals are chosen from these only. */
+  restaurants: RestaurantOption[]
 }
 
 /** A full day, built around what's already fixed and the places the group saved. */
@@ -344,6 +362,7 @@ export async function planDayWithAi(request: DayPlanRequest): Promise<{ reply: s
     `Fixed stops: ${request.fixed.length ? request.fixed.map((stop) => `[${stop.id}] ${stop.time ?? 'any time'} ${stop.name}`).join('; ') : 'none'}`,
     `Saved places nearby: ${request.saved.length ? request.saved.map((place) => `[${place.id}] ${place.name} (${place.category})`).join('; ') : 'none'}`,
     request.elsewhere.length ? `Already planned on other days (don't suggest): ${request.elsewhere.join('; ')}` : '',
+    `Real restaurants nearby: ${request.restaurants.length ? request.restaurants.map((r) => `[${r.id}] ${r.name}${r.rating ? ` (rating ${r.rating.toFixed(1)})` : ''} (found by "${r.foundBy}")${r.address ? ` — ${r.address}` : ''}`).join('; ') : 'none (no map results)'}`,
   ]
   const result = await generate('plan', lines.filter(Boolean).join('\n'))
   const json = JSON.parse(result.response.text()) as {
@@ -358,9 +377,11 @@ export async function planDayWithAi(request: DayPlanRequest): Promise<{ reply: s
       why: string
       time: string
       savedId?: string
+      restaurantId?: string
     }[]
   }
   const savedIds = new Set([...request.saved, ...request.fixed].map((place) => place.id))
+  const restaurantIds = new Set(request.restaurants.map((r) => r.id))
   return {
     reply: json.reply ?? '',
     stops: (json.places ?? [])
@@ -375,6 +396,7 @@ export async function planDayWithAi(request: DayPlanRequest): Promise<{ reply: s
         why: p.why,
         time: p.time.padStart(5, '0'),
         ...(p.savedId && savedIds.has(p.savedId) ? { savedId: p.savedId } : {}),
+        ...(p.restaurantId && restaurantIds.has(p.restaurantId) ? { restaurantId: p.restaurantId } : {}),
       }))
       .sort((a, b) => a.time.localeCompare(b.time)),
   }
@@ -447,23 +469,7 @@ export async function rainPlanWithAi(request: RainPlanRequest): Promise<{ reply:
   }
 }
 
-const words = (text: string) =>
-  new Set(
-    text
-      .normalize('NFKD')
-      .replace(/[̀-ͯ]/g, '')
-      .toLowerCase()
-      .split(/[^\p{L}\p{N}]+/u)
-      .filter(Boolean),
-  )
-
-/** Share of words the two names have in common (0–1). */
-export function nameMatch(a: string, b: string): number {
-  const x = words(a)
-  const y = words(b)
-  const shared = [...x].filter((w) => y.has(w)).length
-  return shared / (new Set([...x, ...y]).size || 1)
-}
+export { nameMatch } from './names'
 
 /** Gemini's coordinates are approximate; a map entry this far away is a different place. */
 const MAX_DISTANCE_M = 2000
@@ -485,12 +491,12 @@ export async function resolveOnMap(place: AssistantPlace, provider: PoiProvider 
   }
   if (!provider) return fallback
 
-  // Google's own ranking is reliable, and every resolve is a billed Place Details call: take its top hit.
-  if (provider.id === 'google') {
+  // Google: the place has to really be there under that name. The nearest "similar" result is not
+  // enough: an invented restaurant would borrow a real one's position.
+  if (provider.id === 'google' && provider.verify) {
     try {
-      const [top] = await provider.suggest(`${place.searchName} ${place.address ?? place.city}`, place.location, signal)
-      const poi = top ? await top.resolve() : null
-      if (poi && distanceMeters(poi.location, place.location) <= MAX_DISTANCE_M) return { ...poi, name: place.name }
+      const poi = await provider.verify(place.searchName, place.location, signal, place.address ?? place.city)
+      if (poi) return { ...poi, name: place.name }
     } catch (error) {
       if (signal.aborted) throw error
     }

@@ -2,6 +2,7 @@ import { CATEGORIES, categoryFromGoogleTypes } from '@/data/categories'
 import type { CategoryId } from '@/data/types'
 import { safeHttpUrl } from '@/lib/deeplinks'
 import { boundsKey, boundsToCircle, distanceMeters } from '@/lib/geo'
+import { sameName } from '@/lib/names'
 import { NEED_BY_ID, NEED_LIMIT, NEED_RADIUS_M } from './needs'
 import { dedupePois, type Poi, type PoiDetails, type PoiProvider, type Suggestion } from './poi'
 
@@ -184,13 +185,13 @@ export function createGoogleProvider(places: google.maps.PlacesLibrary): PoiProv
       return detailsSettled.get(googlePlaceId)
     },
 
-    async searchText(query, near, signal) {
+    async searchText(query, near, signal, options) {
       const { places: found } = await Place.searchByText({
         textQuery: query,
         fields: [...BASIC_FIELDS, 'rating', 'userRatingCount'],
         ...(near ? { locationBias: { center: near, radius: 15_000 } } : {}),
-        maxResultCount: 6,
-        language: 'he',
+        maxResultCount: options?.limit ?? 6,
+        language: options?.language ?? 'he',
         region: 'jp',
       })
       if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
@@ -247,6 +248,25 @@ export function createGoogleProvider(places: google.maps.PlacesLibrary): PoiProv
         })
         .filter((poi) => distanceMeters(near, poi.location) <= NEED_RADIUS_M * 1.5)
         .sort((a, b) => distanceMeters(near, a.location) - distanceMeters(near, b.location))
+    },
+
+    async verify(name, near, signal, area) {
+      // English names, so they can be compared with the English name the AI gave.
+      const { places: found } = await Place.searchByText({
+        textQuery: area ? `${name} ${area}` : name,
+        fields: [...BASIC_FIELDS, 'businessStatus'],
+        locationBias: { center: near, radius: 3000 },
+        maxResultCount: 5,
+        language: 'en',
+        region: 'jp',
+      })
+      if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
+      for (const place of found) {
+        const poi = toPoi(place)
+        if (!poi || String(place.businessStatus ?? '') === 'CLOSED_PERMANENTLY') continue
+        if (distanceMeters(near, poi.location) <= 2500 && sameName(name, poi.name)) return poi
+      }
+      return null
     },
 
     async matchGoogle(name, location) {

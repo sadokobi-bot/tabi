@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
-import { ArrowDown, BookmarkCheck, Check, CloudRain, LoaderCircle, MapPin, RefreshCw, Umbrella } from 'lucide-react'
+import { ArrowDown, BookmarkCheck, Check, CloudRain, MapPin, RefreshCw, Umbrella } from 'lucide-react'
 import { motion } from 'motion/react'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { Button } from '@/components/ui/Button'
@@ -43,12 +43,13 @@ function useDayRain(date: string, where: LatLng | null): Forecast {
   return forecast
 }
 
-type Located = { status: 'locating' } | { status: 'found' | 'approx'; poi: Poi }
+/** An alternative the AI suggested, checked on the map: its real map entry (none for saved places). */
+type Checked = RainSwap & { poi?: Poi }
 
 type Phase =
   | { name: 'intro' }
   | { name: 'loading' }
-  | { name: 'result'; reply: string; swaps: RainSwap[] }
+  | { name: 'result'; reply: string; swaps: Checked[]; removed: number }
   | { name: 'error'; failure: AssistantFailure }
 
 export function RainPlanSheet({ date, onClose }: { date: string | null; onClose: () => void }) {
@@ -70,7 +71,6 @@ export function RainPlan({ date, onDone }: { date: string; onDone: () => void })
   const plan = useTripStore((state) => state.plan)
   const placesById = useTripStore((state) => state.placesById)
   const [phase, setPhase] = useState<Phase>({ name: 'intro' })
-  const [located, setLocated] = useState<Record<number, Located>>({})
   const [skipped, setSkipped] = useState<Set<number>>(new Set())
   const abortRef = useRef<AbortController | null>(null)
   useEffect(() => () => abortRef.current?.abort(), [])
@@ -86,8 +86,9 @@ export function RainPlan({ date, onDone }: { date: string; onDone: () => void })
 
   const generate = async () => {
     abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
     setPhase({ name: 'loading' })
-    setLocated({})
     setSkipped(new Set())
     const { places } = useTripStore.getState()
     const scheduled = new Set(Object.values(plan).flatMap((dayItems) => dayItems.map((item) => item.placeId)))
@@ -117,47 +118,38 @@ export function RainPlan({ date, onDone }: { date: string; onDone: () => void })
           .map((place) => place.name),
         ...(hotel ? { hotel: hotel.name } : {}),
       })
-      setPhase({ name: 'result', reply: answer.reply, swaps: answer.swaps })
-      void locate(answer.swaps)
+      if (controller.signal.aborted) return
+      // Each new place is checked on the map first: one that isn't really there is dropped.
+      const checked = await Promise.all(
+        answer.swaps.map(async (swap): Promise<Checked | null> => {
+          if (swap.savedId) return swap
+          try {
+            const poi = await Promise.race([
+              resolveOnMap(swap, provider, controller.signal),
+              new Promise<null>((resolve) => setTimeout(() => resolve(null), LOCATE_TIMEOUT_MS)),
+            ])
+            return poi && !poi.key.startsWith('ai:') ? { ...swap, poi } : null
+          } catch {
+            return null
+          }
+        }),
+      )
+      if (controller.signal.aborted) return
+      const real = checked.filter((swap): swap is Checked => swap !== null)
+      setPhase({ name: 'result', reply: answer.reply, swaps: real, removed: answer.swaps.length - real.length })
     } catch (error) {
       console.error('[rain] failed', error)
       setPhase({ name: 'error', failure: failureOf(error) })
     }
   }
 
-  /** Pins each new alternative to a real map entry (saved places are exact already). */
-  const locate = async (swaps: RainSwap[]) => {
-    const controller = new AbortController()
-    abortRef.current = controller
-    setLocated(Object.fromEntries(swaps.flatMap((swap, index) => (swap.savedId ? [] : [[index, { status: 'locating' }]]))))
-    for (const [index, swap] of swaps.entries()) {
-      if (swap.savedId) continue
-      const approx: Poi = { key: `ai:${index}`, source: 'osm', name: swap.name, category: swap.category, location: swap.location }
-      try {
-        const poi = await Promise.race([
-          resolveOnMap(swap, provider, controller.signal),
-          new Promise<null>((resolve) => setTimeout(() => resolve(null), LOCATE_TIMEOUT_MS)),
-        ])
-        if (controller.signal.aborted) return
-        setLocated((current) => ({
-          ...current,
-          [index]: poi && !poi.key.startsWith('ai:') ? { status: 'found', poi } : { status: 'approx', poi: approx },
-        }))
-      } catch {
-        if (controller.signal.aborted) return
-        setLocated((current) => ({ ...current, [index]: { status: 'approx', poi: approx } }))
-      }
-    }
-  }
-
-  const apply = (swaps: RainSwap[]) => {
+  const apply = (swaps: Checked[]) => {
     const chosen = swaps.flatMap((swap, index) => (skipped.has(index) ? [] : [{ swap, index }]))
     let dayItems: ItineraryItem[] = [...(useTripStore.getState().plan[date] ?? [])]
-    for (const { swap, index } of chosen) {
+    for (const { swap } of chosen) {
       let placeId = swap.savedId
       if (!placeId) {
-        const entry = located[index]
-        const poi = entry && entry.status !== 'locating' ? entry.poi : undefined
+        const poi = swap.poi
         placeId = actions.createPlace(
           {
             name: swap.name,
@@ -165,7 +157,7 @@ export function RainPlan({ date, onDone }: { date: string; onDone: () => void })
             location: poi?.location ?? swap.location,
             ...(poi?.googlePlaceId ? { googlePlaceId: poi.googlePlaceId } : {}),
             ...(poi?.osmId ? { osmId: poi.osmId } : {}),
-            ...(poi?.address && entry?.status === 'found' ? { address: poi.address } : {}),
+            ...(poi?.address ? { address: poi.address } : {}),
             ...(swap.why ? { notes: swap.why } : {}),
           },
           null,
@@ -187,8 +179,6 @@ export function RainPlan({ date, onDone }: { date: string; onDone: () => void })
     )
     onDone()
   }
-
-  const stillLocating = Object.values(located).some((entry) => entry.status === 'locating')
 
   return (
     <div className="px-5 pb-6">
@@ -267,6 +257,11 @@ export function RainPlan({ date, onDone }: { date: string; onDone: () => void })
       {phase.name === 'result' && (
         <div className="mt-4">
           {phase.reply && <p className="rounded-control bg-sky-500/[0.08] px-4 py-3 text-sm leading-relaxed">{phase.reply}</p>}
+          {phase.removed > 0 && (
+            <p className="mt-2 rounded-control bg-amber-400/12 px-4 py-2.5 text-xs leading-relaxed">
+              {phase.removed === 1 ? 'הסרנו הצעה אחת' : `הסרנו ${phase.removed} הצעות`} שלא מצאנו במפה, כדי שלא תגיעו למקום שלא קיים.
+            </p>
+          )}
           {phase.swaps.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted">כל העצירות של היום מקורות, אז הגשם לא משנה כלום 🙂</p>
           ) : (
@@ -274,7 +269,6 @@ export function RainPlan({ date, onDone }: { date: string; onDone: () => void })
               {phase.swaps.map((swap, index) => {
                 const original = items.find((item) => item.id === swap.replaceId)
                 const originalPlace = original ? placesById[original.placeId] : undefined
-                const entry = located[index]
                 const on = !skipped.has(index)
                 return (
                   <li key={index} className={clsx('surface rounded-control p-3 transition-opacity', !on && 'opacity-55')}>
@@ -295,14 +289,6 @@ export function RainPlan({ date, onDone }: { date: string; onDone: () => void })
                           {swap.savedId ? (
                             <>
                               <BookmarkCheck aria-hidden className="size-3.5 text-accent" /> מהרשימה שלכם
-                            </>
-                          ) : entry?.status === 'locating' ? (
-                            <>
-                              <LoaderCircle aria-hidden className="size-3.5 animate-spin" /> מאתרים במפה…
-                            </>
-                          ) : entry?.status === 'approx' ? (
-                            <>
-                              <MapPin aria-hidden className="size-3.5" /> מיקום משוער
                             </>
                           ) : (
                             <>
@@ -339,7 +325,7 @@ export function RainPlan({ date, onDone }: { date: string; onDone: () => void })
           )}
           <div className="mt-5 flex gap-2">
             {phase.swaps.length > 0 && (
-              <Button size="lg" className="flex-1" disabled={stillLocating} loading={stillLocating} onClick={() => apply(phase.swaps)}>
+              <Button size="lg" className="flex-1" onClick={() => apply(phase.swaps)}>
                 {phase.swaps.length - skipped.size > 0 ? `להחליף (${phase.swaps.length - skipped.size})` : 'להשאיר כמו שהוא'}
               </Button>
             )}

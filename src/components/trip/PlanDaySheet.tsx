@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import clsx from 'clsx'
-import { BookmarkCheck, CalendarCheck, LoaderCircle, MapPin, RefreshCw, Sparkles, Umbrella } from 'lucide-react'
+import { BookmarkCheck, CalendarCheck, MapPin, RefreshCw, ShieldCheck, Sparkles, Umbrella } from 'lucide-react'
 import { motion } from 'motion/react'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { Button } from '@/components/ui/Button'
@@ -18,6 +18,7 @@ import { addDays, formatDay, tripDates } from '@/lib/dates'
 import { newId } from '@/lib/ids'
 import type { Poi } from '@/maps/poi'
 import { usePoiProvider } from '@/maps/usePoiProvider'
+import { dietOf, findRestaurants } from '@/lib/mealOptions'
 import { useTrip, useTripStore } from '@/store/trip'
 import { ui } from '@/store/ui'
 import { RainPlan } from './RainPlan'
@@ -36,21 +37,16 @@ const INTERESTS = [
 
 const LOCATE_TIMEOUT_MS = 10_000
 
-/** Gemini's own coordinates, when the map can't confirm the place. */
-const approximate = (stop: PlannedStop): Poi => ({
-  key: `ai:${stop.location.lat.toFixed(5)},${stop.location.lng.toFixed(5)}`,
-  source: 'osm',
-  name: stop.name,
-  category: stop.category,
-  location: stop.location,
-})
+/** A stop the AI suggested, checked on the map: its real map entry (none for saved places). */
+type Checked = PlannedStop & { poi?: Poi }
 
-type Located = { status: 'locating' } | { status: 'found' | 'approx'; poi: Poi }
+/** What the plan does about a kosher wish: written by the app from the plan itself, not by the AI. */
+type DietNote = { tone: 'ok' | 'warn'; text: string }
 
 type Phase =
   | { name: 'form' }
-  | { name: 'loading' }
-  | { name: 'result'; reply: string; stops: PlannedStop[]; inDay: Set<string> }
+  | { name: 'loading'; step: string }
+  | { name: 'result'; reply: string; stops: Checked[]; inDay: Set<string>; removed: number; dietNote?: DietNote }
   | { name: 'error'; failure: AssistantFailure }
 
 /** "Plan my day": Gemini builds the day around what's fixed, from saved places and real recommendations. */
@@ -73,7 +69,6 @@ function PlanDay({ date, onClose }: { date: string; onClose: () => void }) {
   const [phase, setPhase] = useState<Phase>({ name: 'form' })
   const [rain, setRain] = useState(false)
   const hasStops = useTripStore((state) => (state.plan[date]?.length ?? 0) > 0)
-  const [located, setLocated] = useState<Record<number, Located>>({})
   const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => () => abortRef.current?.abort(), [])
@@ -83,8 +78,9 @@ function PlanDay({ date, onClose }: { date: string; onClose: () => void }) {
 
   const generate = async () => {
     abortRef.current?.abort()
-    setPhase({ name: 'loading' })
-    setLocated({})
+    const controller = new AbortController()
+    abortRef.current = controller
+    setPhase({ name: 'loading', step: 'מחפשים מסעדות אמיתיות באזור…' })
     const { plan, places, placesById } = useTripStore.getState()
     const hotel = hotelId ? placesById[hotelId] : undefined
     const city = getCity(trip.dayCities[date]) ?? (hotel ? nearestCity(hotel.location) : undefined)
@@ -100,8 +96,15 @@ function PlanDay({ date, onClose }: { date: string; onClose: () => void }) {
     const elsewhere = places.filter(
       (place) => scheduled.has(place.id) && !inDay.has(place.id) && (!city || nearestCity(place.location)?.id === city.id),
     )
+    const wishText = [interests.join(', '), wishes].filter(Boolean).join('. ')
+    const firstFixed = fixed[0] ? placesById[fixed[0].id] : undefined
+    const center = city?.location ?? hotel?.location ?? firstFixed?.location ?? null
 
     try {
+      // Meals come only from restaurants that are really on the map (the AI used to invent some).
+      const restaurants = await findRestaurants(provider, center, wishText)
+      if (controller.signal.aborted) return
+      setPhase({ name: 'loading', step: 'מתכננים לכם יום…' })
       const answer = await planDayWithAi({
         area: city?.en ?? '',
         dateLabel: new Date(`${date}T00:00:00Z`).toLocaleDateString('en-US', {
@@ -111,13 +114,15 @@ function PlanDay({ date, onClose }: { date: string; onClose: () => void }) {
           year: 'numeric',
           timeZone: 'UTC',
         }),
-        wishes: [interests.join(', '), wishes].filter(Boolean).join('. '),
+        wishes: wishText,
         relaxed,
         saved: saved.slice(0, 60).map(({ id, name, category }) => ({ id, name, category })),
         fixed,
         elsewhere: elsewhere.slice(0, 40).map((place) => place.name),
         ...(hotel ? { hotel: hotel.name } : {}),
+        restaurants: restaurants.options,
       })
+      if (controller.signal.aborted) return
       // A "new" suggestion that is really one of our saved places (named a little differently) links to it.
       const stops = answer.stops.map((stop) => {
         if (stop.savedId) return stop
@@ -131,58 +136,61 @@ function PlanDay({ date, onClose }: { date: string; onClose: () => void }) {
       // Never the same place twice in one day.
       const seen = new Set<string>()
       const unique = stops.filter((stop) => !stop.savedId || (!seen.has(stop.savedId) && seen.add(stop.savedId)))
-      if (unique.length === 0) {
+      // Every new place is checked on the map before it's shown: one that isn't there is dropped.
+      setPhase({ name: 'loading', step: 'בודקים שכל המקומות באמת קיימים…' })
+      const checked = await Promise.all(
+        unique.map(async (stop): Promise<Checked | null> => {
+          if (stop.savedId) return stop
+          // A restaurant from the map: its real name (the AI's Hebrew rendering can be wrong: "Chabad" → "חברון").
+          const restaurant = stop.restaurantId ? restaurants.pois[stop.restaurantId] : undefined
+          if (restaurant) return { ...stop, name: restaurant.name, poi: restaurant }
+          try {
+            const poi = await Promise.race([
+              resolveOnMap(stop, provider, controller.signal),
+              new Promise<null>((resolve) => setTimeout(() => resolve(null), LOCATE_TIMEOUT_MS)),
+            ])
+            return poi && !poi.key.startsWith('ai:') ? { ...stop, poi } : null
+          } catch {
+            return null
+          }
+        }),
+      )
+      if (controller.signal.aborted) return
+      const real = checked.filter((stop): stop is Checked => stop !== null)
+      if (real.length === 0) {
         setPhase({ name: 'error', failure: 'other' })
         return
       }
-      setPhase({ name: 'result', reply: answer.reply, stops: unique, inDay })
-      locate(unique)
+      // Kosher only counts when the place says so in its name (and was found looking for kosher food).
+      const kosher = dietOf(wishText) === 'kosher'
+      const kosherStop = real.find((stop) => {
+        const option = restaurants.options.find((o) => o.id === stop.restaurantId)
+        return option?.foundBy === 'kosher restaurant' && /kosher|chabad|כשר/i.test(option.name)
+      })
+      const dietNote: DietNote | undefined = !kosher
+        ? undefined
+        : kosherStop
+          ? { tone: 'ok', text: `כולל מסעדה כשרה: ${kosherStop.name}` }
+          : { tone: 'warn', text: 'לא מצאנו מסעדה כשרה באזור, אז הארוחות הן במסעדות צמחוניות או טבעוניות.' }
+      setPhase({ name: 'result', reply: answer.reply, stops: real, inDay, removed: unique.length - real.length, dietNote })
     } catch (error) {
       console.error('[plan] failed', error)
       setPhase({ name: 'error', failure: failureOf(error) })
     }
   }
 
-  /** Pins the new suggestions to real map entries, one by one (saved places are already exact). */
-  const locate = async (stops: PlannedStop[]) => {
-    const controller = new AbortController()
-    abortRef.current = controller
-    setLocated(Object.fromEntries(stops.flatMap((stop, index) => (stop.savedId ? [] : [[index, { status: 'locating' }]]))))
-    for (const [index, stop] of stops.entries()) {
-      if (stop.savedId) continue
-      try {
-        // A map lookup that hangs (offline, maps not loaded) falls back to Gemini's approximate position.
-        const poi = await Promise.race([
-          resolveOnMap(stop, provider, controller.signal),
-          new Promise<null>((resolve) => setTimeout(() => resolve(null), LOCATE_TIMEOUT_MS)),
-        ])
-        if (controller.signal.aborted) return
-        setLocated((current) => ({
-          ...current,
-          [index]: poi && !poi.key.startsWith('ai:') ? { status: 'found', poi } : { status: 'approx', poi: approximate(stop) },
-        }))
-      } catch {
-        if (controller.signal.aborted) return
-        setLocated((current) => ({ ...current, [index]: { status: 'approx', poi: approximate(stop) } }))
-      }
-    }
-  }
-
-  const stillLocating = Object.values(located).some((entry) => entry.status === 'locating')
-
   // The same sheet, for the rainy-day version of a day that's already planned.
   if (rain) return <RainPlan date={date} onDone={onClose} />
 
-  const save = (stops: PlannedStop[]) => {
+  const save = (stops: Checked[]) => {
     const { plan } = useTripStore.getState()
     let items: ItineraryItem[] = [...(plan[date] ?? [])]
     const inDay = new Set(items.map((item) => item.placeId))
     let added = 0
-    for (const [index, stop] of stops.entries()) {
+    for (const stop of stops) {
       let placeId = stop.savedId
       if (!placeId) {
-        const entry = located[index]
-        const poi = entry && entry.status !== 'locating' ? entry.poi : undefined
+        const poi = stop.poi
         placeId = actions.createPlace(
           {
             name: stop.name,
@@ -190,7 +198,7 @@ function PlanDay({ date, onClose }: { date: string; onClose: () => void }) {
             location: poi?.location ?? stop.location,
             ...(poi?.googlePlaceId ? { googlePlaceId: poi.googlePlaceId } : {}),
             ...(poi?.osmId ? { osmId: poi.osmId } : {}),
-            ...(poi?.address && entry?.status === 'found' ? { address: poi.address } : {}),
+            ...(poi?.address ? { address: poi.address } : {}),
             ...(stop.why ? { notes: stop.why } : {}),
           },
           null,
@@ -302,9 +310,9 @@ function PlanDay({ date, onClose }: { date: string; onClose: () => void }) {
               <Sparkles className="size-6" />
             </motion.span>
             <p role="status" className="mt-4 font-semibold">
-              מתכננים לכם יום…
+              {phase.step}
             </p>
-            <p className="mt-1 text-sm text-muted">זה לוקח כ-15 שניות</p>
+            <p className="mt-1 text-sm text-muted">זה לוקח כ-20 שניות</p>
           </div>
         </div>
       )}
@@ -321,9 +329,26 @@ function PlanDay({ date, onClose }: { date: string; onClose: () => void }) {
       {phase.name === 'result' && (
         <div className="mt-4">
           {phase.reply && <p className="rounded-control bg-accent/[0.07] px-4 py-3 text-sm leading-relaxed">{phase.reply}</p>}
+          {phase.dietNote && (
+            <p
+              className={clsx(
+                'mt-2 rounded-control px-4 py-2.5 text-sm leading-relaxed font-medium',
+                phase.dietNote.tone === 'ok'
+                  ? 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-300'
+                  : 'bg-amber-400/12 text-amber-900 dark:text-amber-300',
+              )}
+            >
+              <bdi>{phase.dietNote.text}</bdi>
+            </p>
+          )}
+          {phase.removed > 0 && (
+            <p className="mt-2 flex items-start gap-2 rounded-control bg-amber-400/12 px-4 py-2.5 text-xs leading-relaxed">
+              <ShieldCheck aria-hidden className="mt-px size-4 shrink-0 text-amber-700 dark:text-amber-400" />
+              {phase.removed === 1 ? 'הסרנו הצעה אחת' : `הסרנו ${phase.removed} הצעות`} שלא מצאנו במפה, כדי שלא תגיעו למקום שלא קיים.
+            </p>
+          )}
           <ol className="relative mt-4 space-y-3 before:absolute before:inset-y-4 before:start-[2.6rem] before:w-px before:bg-line">
             {phase.stops.map((stop, index) => {
-              const entry = located[index]
               return (
                 <li key={index} className="relative flex items-start gap-3">
                   <span className="w-11 shrink-0 pt-3 text-end text-sm font-semibold tabular-nums" dir="ltr">
@@ -333,6 +358,11 @@ function PlanDay({ date, onClose }: { date: string; onClose: () => void }) {
                     <CategoryIcon category={stop.category} className="size-9" />
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold">{stop.name}</p>
+                      {stop.poi && stop.poi.name !== stop.name && (
+                        <p className="truncate text-xs text-muted" dir="auto">
+                          {stop.poi.name}
+                        </p>
+                      )}
                       {stop.why && <p className="mt-0.5 text-xs leading-relaxed text-muted">{stop.why}</p>}
                       <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-muted">
                         {stop.savedId && phase.inDay.has(stop.savedId) ? (
@@ -342,14 +372,6 @@ function PlanDay({ date, onClose }: { date: string; onClose: () => void }) {
                         ) : stop.savedId ? (
                           <>
                             <BookmarkCheck aria-hidden className="size-3.5 text-accent" /> מהרשימה שלכם
-                          </>
-                        ) : entry?.status === 'locating' ? (
-                          <>
-                            <LoaderCircle aria-hidden className="size-3.5 animate-spin" /> מאתרים במפה…
-                          </>
-                        ) : entry?.status === 'approx' ? (
-                          <>
-                            <MapPin aria-hidden className="size-3.5" /> מיקום משוער
                           </>
                         ) : (
                           <>
@@ -364,7 +386,7 @@ function PlanDay({ date, onClose }: { date: string; onClose: () => void }) {
             })}
           </ol>
           <div className="mt-5 flex gap-2">
-            <Button size="lg" className="flex-1" disabled={stillLocating} loading={stillLocating} onClick={() => save(phase.stops)}>
+            <Button size="lg" className="flex-1" onClick={() => save(phase.stops)}>
               שמירה ביום {dayNumber}
             </Button>
             <Button size="lg" variant="secondary" icon={<RefreshCw aria-hidden className="size-4" />} onClick={generate}>

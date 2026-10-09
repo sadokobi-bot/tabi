@@ -76,7 +76,12 @@ export interface PoiProvider {
   /** The place's name and address in Japanese (to show a taxi driver). Google only; not to be stored. */
   localNames?(googlePlaceId: string): Promise<{ name?: string; address?: string } | null>
   /** Real places for a free-text search ("wagyu restaurant in Shinjuku"), best first, biased toward `near`. */
-  searchText(query: string, near: LatLng | null, signal: AbortSignal): Promise<Poi[]>
+  searchText(query: string, near: LatLng | null, signal: AbortSignal, options?: { language?: string; limit?: number }): Promise<Poi[]>
+  /**
+   * The real place with this name near `near`, or null when there's none: the name has to match, it
+   * has to be close and not closed for good. Used to check places an AI suggested.
+   */
+  verify?(name: string, near: LatLng, signal: AbortSignal, area?: string): Promise<Poi | null>
   /** The closest toilets / ATMs / convenience stores… around `near`, nearest first. */
   nearby(need: NeedId, near: LatLng, signal: AbortSignal): Promise<Poi[]>
 }
