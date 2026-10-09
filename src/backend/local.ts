@@ -19,6 +19,8 @@ interface LocalUser {
   hash: string
   createdAt: number
   profile?: Profile
+  /** Version of the terms they accepted. */
+  termsVersion?: number
 }
 
 function read<T>(key: string, fallback: T): T {
@@ -107,7 +109,17 @@ export function createLocalBackend(): Backend {
       const notify = () => {
         const uid = read<string | null>('session', null)
         const user = uid ? Object.values(read<Record<string, LocalUser>>('users', {})).find((u) => u.uid === uid) : undefined
-        callback(user ? ({ uid: user.uid, username: user.username, profile: user.profile ?? null } satisfies SessionUser) : null)
+        callback(
+          user
+            ? ({
+                uid: user.uid,
+                username: user.username,
+                profile: user.profile ?? null,
+                email: null,
+                termsVersion: user.termsVersion ?? null,
+              } satisfies SessionUser)
+            : null,
+        )
       }
       notify()
       const stopSession = subscribe('session', notify)
@@ -128,7 +140,7 @@ export function createLocalBackend(): Backend {
       write('session', user.uid)
     },
 
-    async signUp(username, password, profile) {
+    async signUp(username, password, profile, termsVersion) {
       const check = checkUsername(username)
       if (!check.ok) throw new AppError('invalid-username', check.reason)
       if (password.length < 6) throw new AppError('weak-password')
@@ -136,9 +148,55 @@ export function createLocalBackend(): Backend {
       if (users[check.key]) throw new AppError('username-taken')
       const { salt, hash } = await hashPassword(password)
       const uid = newId()
-      users[check.key] = { uid, username: check.display, salt, hash, createdAt: Date.now(), profile }
+      users[check.key] = { uid, username: check.display, salt, hash, createdAt: Date.now(), profile, termsVersion }
       write('users', users)
       write('session', uid)
+    },
+
+    // On this device only: no e-mail is sent, so there's nothing to recover with.
+    async sendPasswordReset() {
+      throw new AppError('no-recovery-email', 'במצב מקומי אין שחזור סיסמה במייל')
+    },
+
+    async setRecoveryEmail() {
+      throw new AppError('unknown', 'מייל לשחזור זמין רק כשהאפליקציה מחוברת לענן')
+    },
+
+    async acceptTerms(user, version) {
+      const users = read<Record<string, LocalUser>>('users', {})
+      const entry = Object.entries(users).find(([, u]) => u.uid === user.uid)
+      if (!entry) throw new AppError('unknown')
+      users[entry[0]] = { ...entry[1], termsVersion: version }
+      write('users', users)
+    },
+
+    async spendUsage(uid, day, bucket, limit) {
+      const key = `usage:${uid}:${day}`
+      const usage = read<Record<string, number>>(key, {})
+      if ((usage[bucket] ?? 0) >= limit) return false
+      write(key, { ...usage, [bucket]: (usage[bucket] ?? 0) + 1 })
+      return true
+    },
+
+    async deleteAccount(user, password, trips) {
+      const users = read<Record<string, LocalUser>>('users', {})
+      const entry = Object.entries(users).find(([, u]) => u.uid === user.uid)
+      if (!entry) throw new AppError('unknown')
+      const { hash } = await hashPassword(password, entry[1].salt)
+      if (hash !== entry[1].hash) throw new AppError('invalid-credentials')
+      for (const trip of trips) {
+        if (trip.ownerId !== user.uid) await this.leaveTrip(trip, user.uid)
+        else {
+          const heir = trip.memberIds.find((id) => id !== user.uid)
+          if (heir) {
+            await this.transferTrip(trip, heir)
+            await this.leaveTrip({ ...trip, ownerId: heir }, user.uid)
+          } else await this.deleteTrip(trip)
+        }
+      }
+      const { [entry[0]]: _removed, ...rest } = read<Record<string, LocalUser>>('users', {})
+      write('users', rest)
+      await this.signOut()
     },
 
     async signOut() {
@@ -245,6 +303,15 @@ export function createLocalBackend(): Backend {
     async declineJoin(tripId, uid) {
       const requests = read<Record<string, JoinRequest>>(requestsKey(tripId), {})
       if (requests[uid]) write(requestsKey(tripId), { ...requests, [uid]: { ...requests[uid], status: 'declined' } })
+    },
+
+    async leaveTrip(trip, uid) {
+      await this.setPresence(trip.id, uid, null)
+      await this.removeMember(trip.id, uid)
+    },
+
+    async transferTrip(trip, newOwnerId) {
+      updateTripRecord(trip.id, (record) => ({ ...record, ownerId: newOwnerId }))
     },
 
     async removeMember(tripId, uid) {

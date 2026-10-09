@@ -10,6 +10,7 @@ import { distanceMeters } from './geo'
 import { newId } from './ids'
 import { dietOf, findRestaurants, searchOptions, type MapOptions } from './mealOptions'
 import { nameMatch } from './names'
+import { spend } from './quota'
 import { seasonFor } from './seasons'
 
 /** The short questionnaire before planning the whole trip. */
@@ -140,6 +141,7 @@ export async function planTrip(
   provider: PoiProvider | null,
   onProgress: (p: PlanProgress) => void,
 ): Promise<TripPlan> {
+  await spend('trip')
   const dates = tripDates(trip)
   const { plan, places, placesById } = useTripStore.getState()
   const wishes = wishesOf(prefs)

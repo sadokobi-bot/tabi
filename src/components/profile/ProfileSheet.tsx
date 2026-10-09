@@ -15,6 +15,8 @@ import { byGender } from '@/lib/hebrew'
 import { FlightsEditor } from './FlightsEditor'
 import { JoinRequests } from './JoinRequests'
 import { DeleteTrip } from './DeleteTrip'
+import { LeaveTrip } from './LeaveTrip'
+import { AccountSection } from './AccountSection'
 import { startTour } from '@/store/tour'
 import { ProfileFields, validateProfile, type ProfileDraft, type ProfileErrors } from './ProfileFields'
 
@@ -298,6 +300,7 @@ function ProfileBody({ onClose }: { onClose: () => void }) {
             </Button>
           </form>
         )}
+        <LeaveTrip key={`leave-${trip.id}`} trip={trip} uid={user.uid} onLeft={onClose} />
         {isOwner && <DeleteTrip key={trip.id} trip={trip} onDeleted={onClose} />}
       </Section>
 
@@ -354,6 +357,10 @@ function ProfileBody({ onClose }: { onClose: () => void }) {
         >
           סיור במפה
         </Button>
+      </Section>
+
+      <Section title="החשבון שלי">
+        <AccountSection user={user} cloud={mode === 'cloud'} />
       </Section>
 
       <Section title="חיבורים">

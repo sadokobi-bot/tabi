@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import clsx from 'clsx'
-import { Eye, EyeOff, HardDrive, Lock, LockKeyhole, User } from 'lucide-react'
+import { Eye, EyeOff, HardDrive, Lock, LockKeyhole, Mail, MailCheck, User } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { AppError, errorMessage } from '@/backend'
 import { checkUsername } from '@/backend/username'
@@ -8,12 +8,18 @@ import { SakuraDrift } from '@/components/brand/SakuraDrift'
 import { CatMascot, type CatMood } from '@/components/brand/CatMascot'
 
 import { SunGate } from '@/components/brand/SunGate'
+import { TermsConsent } from '@/components/legal/LegalSheet'
+import { RECAPTCHA_SITE_KEY } from '@/config/env'
+import { TERMS_VERSION } from '@/data/legal'
 import { ProfileFields, validateProfile, type ProfileDraft, type ProfileErrors } from '@/components/profile/ProfileFields'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
 import { useSession } from '@/store/session'
+import { ui } from '@/store/ui'
 
-type Mode = 'signIn' | 'signUp'
+type Mode = 'signIn' | 'signUp' | 'reset'
+
+const looksLikeEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
 
 /** Username + password sign-in; sign-up in two short steps (who you are, then the account). */
 export function AuthScreen() {
@@ -30,15 +36,21 @@ export function AuthScreen() {
   const [busy, setBusy] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [suggestSignUp, setSuggestSignUp] = useState(false)
+  const [email, setEmail] = useState('')
+  const [agreed, setAgreed] = useState(false)
+  const [resetSentTo, setResetSentTo] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<{
     username?: string
     password?: string
     confirm?: string
+    email?: string
+    terms?: boolean
   }>({})
 
   const switchMode = (next: Mode) => {
     setMode(next)
     setStep(1)
+    setResetSentTo(null)
     setFormError(null)
     setSuggestSignUp(false)
     setFieldErrors({})
@@ -58,18 +70,38 @@ export function AuthScreen() {
       return
     }
 
+    if (mode === 'reset') {
+      if (!looksLikeEmail(email)) {
+        setFieldErrors({ email: 'הקלידו את המייל לשחזור' })
+        return
+      }
+      setFieldErrors({})
+      setBusy(true)
+      try {
+        await backend.sendPasswordReset(email)
+        setResetSentTo(email.trim())
+      } catch (error) {
+        setFormError(errorMessage(error))
+      } finally {
+        setBusy(false)
+      }
+      return
+    }
+
     if (mode === 'signUp') {
       const check = checkUsername(username)
       const errors = {
         username: check.ok ? undefined : check.reason,
         password: password.length < 6 ? 'לפחות 6 תווים' : undefined,
         confirm: confirm !== password ? 'הסיסמאות לא תואמות' : undefined,
+        email: email.trim() && !looksLikeEmail(email) ? 'כתובת המייל לא תקינה' : undefined,
+        terms: !agreed,
       }
       setFieldErrors(errors)
-      if (errors.username || errors.password || errors.confirm) return
+      if (errors.username || errors.password || errors.confirm || errors.email || errors.terms) return
     } else if (!username.trim() || !password) {
       setFieldErrors({
-        username: username.trim() ? undefined : 'הקלידו שם משתמש',
+        username: username.trim() ? undefined : 'הקלידו שם משתמש או מייל',
         password: password ? undefined : 'הקלידו סיסמה',
       })
       return
@@ -78,22 +110,39 @@ export function AuthScreen() {
     setBusy(true)
     try {
       if (mode === 'signIn') await backend.signIn(username, password)
-      else
-        await backend.signUp(username, password, {
-          firstName: profile.firstName.trim(),
-          lastName: profile.lastName.trim(),
-          gender: profile.gender!,
-        })
+      else {
+        await backend.signUp(
+          username,
+          password,
+          { firstName: profile.firstName.trim(), lastName: profile.lastName.trim(), gender: profile.gender! },
+          TERMS_VERSION,
+        )
+        // The account exists either way; a recovery e-mail that didn't go through can be added in the profile.
+        if (email.trim()) {
+          const user = useSession.getState().user ?? { uid: '', username }
+          backend
+            .setRecoveryEmail(user, email, password)
+            .then(() => ui.toast(`שלחנו קישור אימות ל-${email.trim()}. אחרי האישור, נכנסים עם המייל`))
+            .catch((error: unknown) => ui.toast(`המייל לשחזור לא נוסף: ${errorMessage(error)}. אפשר להוסיף אותו בפרופיל`, 'error'))
+        }
+      }
     } catch (error) {
-      setFormError(errorMessage(error))
-      setSuggestSignUp(mode === 'signIn' && error instanceof AppError && error.code === 'invalid-credentials')
+      const wrong = mode === 'signIn' && error instanceof AppError && error.code === 'invalid-credentials'
+      // Once a recovery e-mail is added, the e-mail is what signs in.
+      setFormError(
+        wrong && !username.includes('@') && backend.mode === 'cloud'
+          ? `${errorMessage(error)}. הוספתם מייל לשחזור? היכנסו עם המייל`
+          : errorMessage(error),
+      )
+      setSuggestSignUp(wrong)
     } finally {
       setBusy(false)
     }
   }
 
   const signIn = mode === 'signIn'
-  const details = !signIn && step === 1
+  const reset = mode === 'reset'
+  const details = mode === 'signUp' && step === 1
 
   // What the cat does and says follows the form.
   const name = profile.firstName.trim()
@@ -133,10 +182,10 @@ export function AuthScreen() {
       <header
         className={clsx(
           'relative flex min-h-0 flex-1 flex-col items-center justify-center text-center',
-          signIn ? 'px-6 pt-[calc(env(safe-area-inset-top)+1rem)] pb-6' : 'px-4 pt-[calc(env(safe-area-inset-top)+0.25rem)] pb-2',
+          signIn || reset ? 'px-6 pt-[calc(env(safe-area-inset-top)+1rem)] pb-6' : 'px-4 pt-[calc(env(safe-area-inset-top)+0.25rem)] pb-2',
         )}
       >
-        {signIn ? (
+        {signIn || reset ? (
           // Shared with the launch screen: the sun glides up into place.
           <motion.div layoutId="sun-gate" transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}>
             <SunGate className="size-24" />
@@ -167,7 +216,7 @@ export function AuthScreen() {
           </motion.div>
         )}
         <AnimatePresence initial={false}>
-          {signIn && (
+          {(signIn || reset) && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto', transition: { delay: 0.1 } }}
@@ -187,7 +236,7 @@ export function AuthScreen() {
         initial={{ opacity: 0, y: 48 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="relative mx-auto w-full max-w-md rounded-t-[2rem] border-t border-line bg-card px-6 pt-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] shadow-[0_-16px_48px_-24px_rgb(0_0_0/0.3)] sm:mb-10 sm:rounded-[2rem] sm:border"
+        className="relative mx-auto min-h-0 w-full max-w-md overflow-y-auto overscroll-contain rounded-t-[2rem] border-t border-line bg-card px-6 pt-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] shadow-[0_-16px_48px_-24px_rgb(0_0_0/0.3)] sm:mb-10 sm:rounded-[2rem] sm:border"
       >
         <motion.div
           key={`${mode}-${step}`}
@@ -196,7 +245,7 @@ export function AuthScreen() {
           transition={{ duration: 0.25 }}
           className="mb-5"
         >
-          {!signIn && (
+          {mode === 'signUp' && (
             <div className="mb-3 flex items-center gap-3">
               <div aria-hidden className="flex flex-1 gap-1.5">
                 <span className="h-1 flex-1 rounded-full bg-accent-fill" />
@@ -205,18 +254,53 @@ export function AuthScreen() {
               <span className="text-xs font-medium text-muted">שלב {step} מתוך 2</span>
             </div>
           )}
-          <h1 className="text-2xl font-bold tracking-tight">{signIn ? 'שמחים לראות אתכם שוב' : details ? 'נעים להכיר' : 'פרטי החשבון'}</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {signIn ? 'שמחים לראות אתכם שוב' : reset ? 'איפוס סיסמה' : details ? 'נעים להכיר' : 'פרטי החשבון'}
+          </h1>
           <p className="mt-1.5 text-sm text-muted">
             {signIn
               ? 'התחברו כדי להמשיך לתכנן את הטיול'
-              : details
-                ? 'ספרו לנו מי אתם, כדי שהשותפים לטיול ידעו'
-                : `${profile.firstName.trim()}, בחרו שם משתמש וסיסמה לכניסה`}
+              : reset
+                ? 'הקלידו את המייל לשחזור שהוספתם לחשבון, ונשלח אליו קישור לבחירת סיסמה חדשה'
+                : details
+                  ? 'ספרו לנו מי אתם, כדי שהשותפים לטיול ידעו'
+                  : `${profile.firstName.trim()}, בחרו שם משתמש וסיסמה לכניסה`}
           </p>
         </motion.div>
 
         <form onSubmit={submit} className="space-y-4" noValidate>
-          {details ? (
+          {reset ? (
+            resetSentTo ? (
+              <div
+                role="status"
+                className="flex gap-3 rounded-control bg-green-500/10 px-4 py-3 text-sm leading-relaxed text-green-800 dark:text-green-300"
+              >
+                <MailCheck aria-hidden className="mt-0.5 size-5 shrink-0" />
+                <p>
+                  אם המייל <bdi dir="ltr">{resetSentTo}</bdi> שייך לחשבון, שלחנו אליו קישור לאיפוס הסיסמה. לא מוצאים? בדקו גם בתיקיית הספאם.
+                </p>
+              </div>
+            ) : (
+              <>
+                <TextField
+                  label="מייל לשחזור"
+                  leading={<Mail className="size-[18px]" />}
+                  type="email"
+                  inputMode="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  error={fieldErrors.email}
+                  autoComplete="email"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  dir="ltr"
+                />
+                <p className="text-xs leading-relaxed text-muted">
+                  לא הוספתם מייל לשחזור? לצערנו אי אפשר לאפס את הסיסמה. אפשר לפתוח חשבון חדש ולבקש מהשותפים את קוד ההזמנה לטיול.
+                </p>
+              </>
+            )
+          ) : details ? (
             <ProfileFields
               draft={profile}
               errors={profileErrors}
@@ -228,7 +312,7 @@ export function AuthScreen() {
           ) : (
             <>
               <TextField
-                label="שם משתמש"
+                label={signIn ? 'שם משתמש או מייל' : 'שם משתמש'}
                 leading={<User className="size-[18px]" />}
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
@@ -238,7 +322,7 @@ export function AuthScreen() {
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}
-                maxLength={16}
+                maxLength={signIn ? 120 : 16}
               />
               <TextField
                 label="סיסמה"
@@ -287,9 +371,49 @@ export function AuthScreen() {
                       dir="ltr"
                       className="mb-1"
                     />
+                    {backend?.mode === 'cloud' && (
+                      <div className="mt-4">
+                        <TextField
+                          label="מייל לשחזור סיסמה (לא חובה)"
+                          leading={<Mail className="size-[18px]" />}
+                          type="email"
+                          inputMode="email"
+                          value={email}
+                          onChange={(event) => setEmail(event.target.value)}
+                          error={fieldErrors.email}
+                          hint="אם תשכחו את הסיסמה, נשלח לשם קישור לאיפוס"
+                          autoComplete="email"
+                          autoCapitalize="none"
+                          spellCheck={false}
+                          dir="ltr"
+                        />
+                      </div>
+                    )}
+                    <div className="mt-4">
+                      <TermsConsent
+                        checked={agreed}
+                        error={fieldErrors.terms}
+                        onChange={(value) => {
+                          setAgreed(value)
+                          setFieldErrors((current) => ({ ...current, terms: false }))
+                        }}
+                      />
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
+              {signIn && backend?.mode === 'cloud' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (username.includes('@')) setEmail(username.trim())
+                    switchMode('reset')
+                  }}
+                  className="tap-target relative -mt-1 text-sm font-semibold text-accent"
+                >
+                  שכחתי סיסמה
+                </button>
+              )}
             </>
           )}
 
@@ -304,12 +428,20 @@ export function AuthScreen() {
             </div>
           )}
 
-          <Button type="submit" size="lg" className="mt-2 w-full" loading={busy}>
-            {signIn ? 'כניסה' : details ? 'המשך' : 'יצירת חשבון'}
-          </Button>
+          {!(reset && resetSentTo) && (
+            <Button type="submit" size="lg" className="mt-2 w-full" loading={busy}>
+              {signIn ? 'כניסה' : reset ? 'שליחת קישור לאיפוס' : details ? 'המשך' : 'יצירת חשבון'}
+            </Button>
+          )}
         </form>
 
-        {!signIn && step === 2 ? (
+        {reset ? (
+          <p className="mt-4 text-center text-sm text-muted">
+            <button type="button" onClick={() => switchMode('signIn')} className="tap-target relative font-semibold text-accent">
+              חזרה להתחברות
+            </button>
+          </p>
+        ) : !signIn && step === 2 ? (
           <p className="mt-4 text-center text-sm text-muted">
             <button type="button" onClick={() => setStep(1)} className="tap-target relative font-semibold text-accent">
               חזרה לפרטים האישיים
@@ -332,6 +464,19 @@ export function AuthScreen() {
           <p className="mt-5 flex items-start gap-2 text-xs leading-relaxed text-muted">
             <HardDrive aria-hidden className="mt-0.5 size-3.5 shrink-0" />
             מצב מקומי: החשבון והנתונים נשמרים בדפדפן הזה בלבד. אחרי חיבור לענן (Firebase) כולם יסתנכרנו בין המכשירים.
+          </p>
+        )}
+        {RECAPTCHA_SITE_KEY && (
+          <p className="mt-4 text-center text-[11px] leading-relaxed text-muted">
+            האתר מוגן ב-reCAPTCHA, ו
+            <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer" className="underline">
+              מדיניות הפרטיות
+            </a>{' '}
+            ו
+            <a href="https://policies.google.com/terms" target="_blank" rel="noreferrer" className="underline">
+              תנאי השירות
+            </a>{' '}
+            של Google חלים עליו.
           </p>
         )}
       </motion.main>

@@ -1,6 +1,12 @@
 import { initializeApp } from 'firebase/app'
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check'
 import {
+  EmailAuthProvider,
   createUserWithEmailAndPassword,
+  deleteUser,
+  reauthenticateWithCredential,
+  sendPasswordResetEmail,
+  verifyBeforeUpdateEmail,
   getAuth,
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -18,6 +24,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  runTransaction,
   initializeFirestore,
   limitToLast,
   onSnapshot,
@@ -30,11 +37,11 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore'
-import { firebaseConfig } from '@/config/env'
+import { firebaseConfig, RECAPTCHA_SITE_KEY } from '@/config/env'
 import type { ChatMessage, ChatMeta, DayPlan, Gender, JoinRequest, Place, Presence, Ticket, Trip } from '@/data/types'
 import { newInviteCode, normalizeInviteCode } from '@/lib/ids'
 import { AppError, displayName, memberOf, type Backend, type ErrorCode, type Profile, type SessionUser } from './types'
-import { checkUsername, emailToUsername, usernameToEmail } from './username'
+import { checkUsername, emailToUsername, isUsernameEmail, usernameToEmail } from './username'
 
 /**
  * Cloud backend: Firebase Auth (username → synthetic e-mail + password) and Firestore.
@@ -70,6 +77,7 @@ function toAppError(error: unknown): AppError {
   const code = (error as { code?: string } | null)?.code ?? ''
   const map: Record<string, ErrorCode> = {
     'auth/email-already-in-use': 'username-taken',
+    'auth/requires-recent-login': 'invalid-credentials',
     'auth/invalid-credential': 'invalid-credentials',
     'auth/invalid-login-credentials': 'invalid-credentials',
     'auth/wrong-password': 'invalid-credentials',
@@ -87,6 +95,10 @@ function toAppError(error: unknown): AppError {
 
 export function createFirebaseBackend(): Backend {
   const app = initializeApp(firebaseConfig)
+  // App Check: only this app (on its own site) may use the project's AI and data. Off until a key is set.
+  if (RECAPTCHA_SITE_KEY) {
+    initializeAppCheck(app, { provider: new ReCaptchaV3Provider(RECAPTCHA_SITE_KEY), isTokenAutoRefreshEnabled: true })
+  }
   const auth = getAuth(app)
   // Persistent cache: the trip keeps working offline (subway, flights) and syncs when back online.
   const db = initializeFirestore(app, {
@@ -97,7 +109,17 @@ export function createFirebaseBackend(): Backend {
   const toSession = (user: User): SessionUser => ({
     uid: user.uid,
     username: user.displayName || emailToUsername(user.email ?? ''),
+    email: isUsernameEmail(user.email) ? null : user.email,
   })
+  const usageRef = (uid: string, day: string) => doc(db, 'users', uid, 'usage', day)
+
+  /** Confirms it's really them (Firebase asks for a fresh sign-in before sensitive changes). */
+  const reauthenticate = async (password: string) => {
+    const current = auth.currentUser
+    if (!current?.email) throw new AppError('unknown')
+    await reauthenticateWithCredential(current, EmailAuthProvider.credential(current.email, password))
+    return current
+  }
 
   // onAuthStateChanged fires before updateProfile() finishes on sign-up, so listeners re-emit afterwards.
   const reemitters = new Set<() => void>()
@@ -139,16 +161,18 @@ export function createFirebaseBackend(): Backend {
       // The user, then again with their profile once it's read (undefined = still loading,
       // null = the server says there is none: an account from before profiles).
       let profile: Profile | null | undefined
+      let termsVersion: number | null | undefined
       let stopProfile: (() => void) | null = null
       const emit = () => {
         const user = auth.currentUser
-        callback(user ? { ...toSession(user), profile } : null)
+        callback(user ? { ...toSession(user), profile, termsVersion } : null)
       }
       reemitters.add(emit)
       const unsubscribe = onAuthStateChanged(auth, (user) => {
         stopProfile?.()
         stopProfile = null
         profile = undefined
+        termsVersion = undefined
         emit()
         if (!user) return
         stopProfile = onSnapshot(
@@ -157,11 +181,14 @@ export function createFirebaseBackend(): Backend {
             // Missing from the offline cache isn't missing: wait for the server before asking for details.
             if (!snapshot.exists() && snapshot.metadata.fromCache) return
             profile = toProfile(snapshot.data())
+            const accepted = snapshot.data()?.termsVersion
+            termsVersion = typeof accepted === 'number' ? accepted : null
             emit()
           },
           (error) => {
             console.warn('[profile] not readable', error)
             profile = null
+            termsVersion = null
             emit()
           },
         )
@@ -173,24 +200,100 @@ export function createFirebaseBackend(): Backend {
       }
     },
 
-    async signIn(username, password) {
-      const check = checkUsername(username)
-      if (!check.ok) throw new AppError('invalid-credentials')
+    async signIn(usernameOrEmail, password) {
+      const typed = usernameOrEmail.trim()
       try {
+        if (typed.includes('@')) {
+          await signInWithEmailAndPassword(auth, typed, password)
+          return
+        }
+        const check = checkUsername(typed)
+        if (!check.ok) throw new AppError('invalid-credentials')
         await signInWithEmailAndPassword(auth, usernameToEmail(check.key), password)
       } catch (error) {
         throw toAppError(error)
       }
     },
 
-    async signUp(username, password, profile) {
+    async sendPasswordReset(usernameOrEmail) {
+      const typed = usernameOrEmail.trim()
+      try {
+        // The link goes to the recovery e-mail, so that's what they type.
+        if (!typed.includes('@')) throw new AppError('no-recovery-email')
+        auth.languageCode = 'he'
+        await sendPasswordResetEmail(auth, typed)
+      } catch (error) {
+        const code = (error as { code?: string } | null)?.code
+        if (code === 'auth/invalid-email') throw new AppError('invalid-email')
+        // Same answer whether or not the e-mail has an account (nobody learns who signed up).
+        if (code === 'auth/user-not-found') return
+        throw toAppError(error)
+      }
+    },
+
+    async setRecoveryEmail(_user, email, password) {
+      try {
+        const current = await reauthenticate(password)
+        auth.languageCode = 'he'
+        await verifyBeforeUpdateEmail(current, email.trim())
+      } catch (error) {
+        const code = (error as { code?: string } | null)?.code
+        if (code === 'auth/invalid-email') throw new AppError('invalid-email')
+        if (code === 'auth/email-already-in-use') throw new AppError('email-in-use')
+        throw toAppError(error)
+      }
+    },
+
+    async acceptTerms(user, version) {
+      try {
+        await setDoc(profileRef(user.uid), { termsVersion: version, termsAt: Date.now() }, { merge: true })
+      } catch (error) {
+        throw toAppError(error)
+      }
+    },
+
+    async spendUsage(uid, day, bucket, limit) {
+      try {
+        return await runTransaction(db, async (transaction) => {
+          const snapshot = await transaction.get(usageRef(uid, day))
+          const used = Number(snapshot.data()?.[bucket] ?? 0)
+          if (used >= limit) return false
+          transaction.set(usageRef(uid, day), { [bucket]: used + 1 }, { merge: true })
+          return true
+        })
+      } catch (error) {
+        throw toAppError(error)
+      }
+    },
+
+    async deleteAccount(user, password, trips) {
+      try {
+        const current = await reauthenticate(password)
+        for (const trip of trips) {
+          if (trip.ownerId !== user.uid) await this.leaveTrip(trip, user.uid)
+          else {
+            const heir = trip.memberIds.find((id) => id !== user.uid)
+            if (heir) {
+              await this.transferTrip(trip, heir)
+              await this.leaveTrip({ ...trip, ownerId: heir }, user.uid)
+            } else await this.deleteTrip(trip)
+          }
+        }
+        await deleteDoc(profileRef(user.uid))
+        await deleteUser(current)
+      } catch (error) {
+        throw toAppError(error)
+      }
+    },
+
+    async signUp(username, password, profile, termsVersion) {
       const check = checkUsername(username)
       if (!check.ok) throw new AppError('invalid-username', check.reason)
       if (password.length < 6) throw new AppError('weak-password')
       try {
         const credential = await createUserWithEmailAndPassword(auth, usernameToEmail(check.key), password)
         await updateProfile(credential.user, { displayName: check.display })
-        await setDoc(profileRef(credential.user.uid), { ...profile, updatedAt: Date.now() })
+        await setDoc(profileRef(credential.user.uid), { ...profile, updatedAt: Date.now(), termsVersion, termsAt: Date.now() })
         emitCurrentUser()
       } catch (error) {
         throw toAppError(error)
@@ -199,7 +302,8 @@ export function createFirebaseBackend(): Backend {
 
     async saveProfile(user, profile, tripIds) {
       try {
-        await setDoc(profileRef(user.uid), { ...profile, updatedAt: Date.now() })
+        // Merge: the profile doc also keeps which terms they accepted.
+        await setDoc(profileRef(user.uid), { ...profile, updatedAt: Date.now() }, { merge: true })
         // Members may update their own entry in their trips (name and gender).
         const member = memberOf({ ...user, profile })
         await Promise.all(tripIds.map((tripId) => updateDoc(tripRef(tripId), { [`members.${user.uid}`]: member }).catch(() => undefined)))
@@ -340,6 +444,29 @@ export function createFirebaseBackend(): Backend {
     async declineJoin(tripId, uid) {
       try {
         await updateDoc(requestRef(tripId, uid), { status: 'declined' })
+      } catch (error) {
+        throw toAppError(error)
+      }
+    },
+
+    async leaveTrip(trip, uid) {
+      try {
+        // Their live location goes with them.
+        await setDoc(presenceRef(trip.id), { [uid]: deleteField() }, { merge: true }).catch(() => undefined)
+        await updateDoc(tripRef(trip.id), { memberIds: arrayRemove(uid), [`members.${uid}`]: deleteField() })
+      } catch (error) {
+        throw toAppError(error)
+      }
+    },
+
+    async transferTrip(trip, newOwnerId) {
+      try {
+        const batch = writeBatch(db)
+        batch.update(tripRef(trip.id), { ownerId: newOwnerId })
+        // The invite shows whose approval a join waits for.
+        if (trip.inviteCode)
+          batch.set(doc(db, 'invites', trip.inviteCode), { ownerName: trip.members[newOwnerId]?.name ?? '' }, { merge: true })
+        await batch.commit()
       } catch (error) {
         throw toAppError(error)
       }

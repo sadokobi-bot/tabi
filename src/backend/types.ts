@@ -15,6 +15,10 @@ export interface SessionUser {
   username: string
   /** Undefined while loading; null for accounts from before profiles (asked to fill it in once). */
   profile?: Profile | null
+  /** The recovery e-mail (verified), or null when none was added. */
+  email?: string | null
+  /** Version of the terms and privacy policy they accepted (null: none yet; undefined: loading). */
+  termsVersion?: number | null
 }
 
 /** How the user is called in the app: first and last name, or the username before a profile exists. */
@@ -49,6 +53,9 @@ export type ErrorCode =
   | 'invite-not-found'
   | 'permission-denied'
   | 'network'
+  | 'no-recovery-email'
+  | 'invalid-email'
+  | 'email-in-use'
   | 'unknown'
 
 export class AppError extends Error {
@@ -70,6 +77,9 @@ const MESSAGES: Record<ErrorCode, string> = {
   'invite-not-found': 'לא מצאנו טיול עם הקוד הזה',
   'permission-denied': 'אין לכם הרשאה לפעולה הזו',
   network: 'אין חיבור לאינטרנט. נסו שוב',
+  'no-recovery-email': 'כדי לאפס סיסמה, הקלידו את המייל לשחזור שהוספתם לחשבון',
+  'invalid-email': 'כתובת המייל לא תקינה',
+  'email-in-use': 'המייל הזה כבר משמש חשבון אחר',
   unknown: 'משהו השתבש. נסו שוב',
 }
 
@@ -96,8 +106,18 @@ export interface Backend {
   readonly mode: 'local' | 'cloud'
 
   onAuthChange(callback: (user: SessionUser | null) => void): Unsubscribe
-  signIn(username: string, password: string): Promise<void>
-  signUp(username: string, password: string, profile: Profile): Promise<void>
+  /** With the username, or with the recovery e-mail once one was added (then only with it). */
+  signIn(usernameOrEmail: string, password: string): Promise<void>
+  signUp(username: string, password: string, profile: Profile, termsVersion: number): Promise<void>
+  /** Sends a password-reset link to the recovery e-mail typed in. */
+  sendPasswordReset(usernameOrEmail: string): Promise<void>
+  /** Adds (or changes) the recovery e-mail: a link is sent there, and the e-mail is set once it's opened. */
+  setRecoveryEmail(user: SessionUser, email: string, password: string): Promise<void>
+  acceptTerms(user: SessionUser, version: number): Promise<void>
+  /** Deletes the account: leaves (or hands over, or deletes) every trip, then removes the user's data. */
+  deleteAccount(user: SessionUser, password: string, trips: Trip[]): Promise<void>
+  /** Counts one use of an AI feature today; false when the daily limit is already reached. */
+  spendUsage(uid: string, day: string, bucket: string, limit: number): Promise<boolean>
   /** Saves the profile and refreshes the name / gender shown in the user's trips. */
   saveProfile(user: SessionUser, profile: Profile, tripIds: string[]): Promise<void>
   signOut(): Promise<void>
@@ -119,6 +139,10 @@ export interface Backend {
   declineJoin(tripId: string, uid: string): Promise<void>
   /** The owner removes a member from the trip. */
   removeMember(tripId: string, uid: string): Promise<void>
+  /** A member (not the owner) leaves the trip. */
+  leaveTrip(trip: Trip, uid: string): Promise<void>
+  /** The owner hands the trip over to another member. */
+  transferTrip(trip: Trip, newOwnerId: string): Promise<void>
   updateTrip(tripId: string, patch: TripPatch): Promise<void>
   /** The owner deletes the trip and everything in it (places, plan, chat, tickets, its invite code). */
   deleteTrip(trip: Trip, onProgress?: (phase: DeletePhase) => void): Promise<void>

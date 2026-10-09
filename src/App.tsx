@@ -6,11 +6,14 @@ import { TripDataSync } from '@/app/TripDataSync'
 import { SplashScreen, useIntroDone } from '@/components/layout/SplashScreen'
 import { Toaster } from '@/components/ui/Toaster'
 import { DeletionScreen } from '@/components/profile/DeletionScreen'
+import { LegalSheet } from '@/components/legal/LegalSheet'
+import { TERMS_VERSION } from '@/data/legal'
 import { GOOGLE_MAPS_API_KEY, hasGoogleMaps } from '@/config/env'
 import { AppLayout } from '@/layouts/AppLayout'
 import { AuthScreen } from '@/screens/AuthScreen'
 import { OnboardingScreen } from '@/screens/OnboardingScreen'
 import { ProfileSetupScreen } from '@/screens/ProfileSetupScreen'
+import { TermsScreen } from '@/screens/TermsScreen'
 import { recallPendingJoin, rememberPendingJoin } from '@/store/joins'
 import { ui } from '@/store/ui'
 import { startSession, useSession } from '@/store/session'
@@ -29,6 +32,7 @@ export default function App() {
         <SessionGate />
         <Toaster />
         <DeletionScreen />
+        <LegalSheet />
       </MotionConfig>
     </BrowserRouter>
   )
@@ -59,11 +63,17 @@ function SignedInApp() {
   const trip = useActiveTrip()
   const introDone = useIntroDone()
   const profileMissing = useSession((state) => state.user?.profile === null)
+  // null: never accepted (undefined: still loading, don't wait on it).
+  const termsMissing = useSession((state) => {
+    const accepted = state.user?.termsVersion
+    return accepted === null || (typeof accepted === 'number' && accepted < TERMS_VERSION)
+  })
   usePendingJoin()
 
   if (!tripsLoaded || !introDone) return <SplashScreen failed={!!syncError} message={syncError ?? undefined} />
   // Accounts from before sign-up asked for a name fill it in once (undefined = still loading: don't wait on it).
   if (profileMissing) return <ProfileSetupScreen />
+  if (termsMissing) return <TermsScreen />
   // A new account (no trips yet) chooses: a trip of its own, or joining one with an invite code.
   // Later trips are added from the trip settings ("הטיולים שלי"), which also lands here.
   if (creatingTrip || needsFirstTrip) return <OnboardingScreen />

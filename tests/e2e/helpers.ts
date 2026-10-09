@@ -23,6 +23,7 @@ export async function fillAccount(page: Page, username: string, password = PASSW
   await page.getByLabel('שם משתמש').fill(username)
   await page.getByLabel('סיסמה', { exact: true }).fill(password)
   await page.getByLabel('אימות סיסמה').fill(confirm)
+  await page.getByRole('checkbox', { name: /תנאי השימוש/ }).check()
   await page.getByRole('button', { name: 'יצירת חשבון' }).click()
 }
 

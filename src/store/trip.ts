@@ -47,6 +47,9 @@ export const useTripStore = create<TripState>(() => ({
   tickets: [],
 }))
 
+/** Trips this user just left (or deleted with the account): their disappearing needs no note. */
+export const leftTrips = new Set<string>()
+
 const activeTripStorageKey = (uid: string) => `tabi:activeTrip:${uid}`
 
 export function rememberActiveTrip(uid: string, tripId: string) {

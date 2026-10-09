@@ -451,3 +451,8 @@ input[type='time']::-webkit-date-and-time-value {
     display: none;
   }
 }
+
+/* App Check runs reCAPTCHA invisibly; its notice is on the sign-in screen and in the privacy policy instead of the badge. */
+.grecaptcha-badge {
+  visibility: hidden;
+}

@@ -64,6 +64,11 @@ export function usernameToEmail(key: string): string {
   return `${local}@${EMAIL_DOMAIN}`
 }
 
+/** The account's own e-mail is the made-up one (no recovery e-mail added). */
+export function isUsernameEmail(email: string | null | undefined): boolean {
+  return !email || email.endsWith(`@${EMAIL_DOMAIN}`)
+}
+
 export function emailToUsername(email: string): string {
   const local = email.split('@')[0] ?? ''
   return local.startsWith('x-') ? new TextDecoder().decode(base32Decode(local.slice(2))) : local

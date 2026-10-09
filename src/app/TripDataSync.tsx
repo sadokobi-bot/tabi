@@ -4,7 +4,7 @@ import { removePlaceEverywhere } from '@/data/planOps'
 import { prefetchTickets } from '@/data/tickets'
 import { useOnline } from '@/hooks/useOnline'
 import { useSession } from '@/store/session'
-import { recallActiveTrip, setPlaces, useTripStore } from '@/store/trip'
+import { leftTrips, recallActiveTrip, setPlaces, useTripStore } from '@/store/trip'
 import { ui } from '@/store/ui'
 
 /** New trips stopped starting with sample places on 2026-10-06. */
@@ -103,7 +103,7 @@ export function TripDataSync() {
         // The open trip is gone for good (the owner removed us, or deleted it): say so.
         const lost = confirmed && current ? before.find((trip) => trip.id === current && !trips.some((t) => t.id === current)) : undefined
         // (The owner deleting it sees the deletion screen instead.)
-        if (lost && lost.ownerId !== uid) ui.toast(`הטיול "${lost.name}" כבר לא ברשימה שלכם`)
+        if (lost && lost.ownerId !== uid && !leftTrips.has(lost.id)) ui.toast(`הטיול "${lost.name}" כבר לא ברשימה שלכם`)
         const remembered = recallActiveTrip(uid)
         const pick = [current, remembered].find((id) => id && trips.some((trip) => trip.id === id)) ?? trips[0]?.id ?? null
         useTripStore.setState({ trips, tripsLoaded: true, tripsConfirmed: confirmed, activeTripId: pick, syncError: null })

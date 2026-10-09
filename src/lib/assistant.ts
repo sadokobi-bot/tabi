@@ -2,6 +2,7 @@ import type { CategoryId, EntryInfo, LatLng } from '@/data/types'
 import type { Poi, PoiProvider } from '@/maps/poi'
 import { distanceMeters } from '@/lib/geo'
 import { nameMatch } from './names'
+import { QuotaError, spend } from './quota'
 import { DAYS_SYSTEM, OUTLINE_SYSTEM } from './tripPrompts'
 import { CITIES } from '@/data/cities'
 
@@ -137,6 +138,7 @@ export async function translateImage(image: PromptImage, question: string): Prom
   const prompt = question.trim()
     ? `Translate and explain this photo. The traveller also asks: ${question.trim()}`
     : 'Translate and explain this photo.'
+  await spend('translate')
   const result = await generate('translate', [prompt, { inlineData: image }])
   const json = JSON.parse(result.response.text()) as Partial<Translation>
   return {
@@ -292,17 +294,19 @@ function getModels(kind: ModelKind) {
 type Prompt = string | (string | { inlineData: { data: string; mimeType: string } })[]
 
 /** Why a request failed, in terms the UI can explain. */
-export type AssistantFailure = 'disabled' | 'quota' | 'busy' | 'other'
+export type AssistantFailure = 'disabled' | 'quota' | 'limit' | 'busy' | 'other'
 
 export const FAILURE_TEXT: Record<AssistantFailure, string> = {
   disabled: 'העוזר עוד לא הופעל. בעל הטיול צריך להפעיל את Firebase AI Logic.',
   quota:
     'העוזר הגיע למכסה החינמית של Gemini. נסו שוב בעוד דקה. אם זה חוזר, המכסה היומית נגמרה, והיא מתחדשת כל יום ב-10:00 בבוקר (שעון ישראל).',
+  limit: 'הגעתם למגבלת השימוש היומית בכלי הזה, כדי שהשירות יישאר זמין לכולם. היא מתחדשת כל יום בחצות (שעון יפן).',
   busy: 'העוזר עמוס כרגע. נסו שוב בעוד דקה.',
   other: 'העוזר לא זמין כרגע. נסו שוב בעוד רגע.',
 }
 
 export function failureOf(error: unknown): AssistantFailure {
+  if (error instanceof QuotaError) return 'limit'
   const text = `${(error as { code?: string } | null)?.code ?? ''} ${(error as Error | null)?.message ?? ''}`
   if (text.includes('api-not-enabled')) return 'disabled'
   if (/429|quota|RESOURCE_EXHAUSTED/i.test(text)) return 'quota'
@@ -333,6 +337,7 @@ async function generate(kind: ModelKind, prompt: Prompt) {
 }
 
 export async function askAssistant(text: string, near: LatLng | null): Promise<AssistantAnswer> {
+  await spend('assistant')
   const where = near ? `\n(The map is currently around lat ${near.lat.toFixed(4)}, lng ${near.lng.toFixed(4)}.)` : ''
   const result = await generate('ask', text + where)
   const json = JSON.parse(result.response.text()) as {
@@ -369,6 +374,7 @@ export async function extractPlaces(text: string, image: PromptImage | null): Pr
     ? `Extract the places from this post:
 ${text.trim()}`
     : 'Extract the places from this post.'
+  await spend('assistant')
   const result = await generate('import', image ? [instruction, { inlineData: image }] : instruction)
   const json = JSON.parse(result.response.text()) as {
     reply?: string
@@ -404,10 +410,12 @@ export function englishQuery(text: string): Promise<string> {
   const key = text.trim().toLowerCase()
   let pending = queryCache.get(key)
   if (!pending) {
-    pending = generate('query', text.trim()).then((result) => {
-      const json = JSON.parse(result.response.text()) as { query?: string }
-      return (json.query ?? '').replace(/[^\p{L}\p{N}\s'&.-]/gu, '').trim()
-    })
+    pending = spend('search')
+      .then(() => generate('query', text.trim()))
+      .then((result) => {
+        const json = JSON.parse(result.response.text()) as { query?: string }
+        return (json.query ?? '').replace(/[^\p{L}\p{N}\s'&.-]/gu, '').trim()
+      })
     pending.catch(() => queryCache.delete(key))
     queryCache.set(key, pending)
   }
@@ -422,6 +430,7 @@ export async function entryInfoWithAi(place: { name: string; area?: string; type
     place.type ? `Kind of place: ${place.type}` : '',
     place.website ? `Official website: ${place.website}` : '',
   ]
+  await spend('entry')
   const result = await generate('entry', lines.filter(Boolean).join('\n'))
   const json = JSON.parse(result.response.text()) as Partial<Omit<EntryInfo, 'checkedAt'>>
   const pick = <T extends string>(value: unknown, options: readonly T[], fallback: T): T =>
@@ -499,6 +508,7 @@ export function cleanText(text: string | undefined | null, fallback = ''): strin
 
 /** A full day, built around what's already fixed and the places the group saved (or a plan revised). */
 export async function planDayWithAi(request: DayPlanRequest): Promise<{ reply: string; stops: PlannedStop[] }> {
+  await spend('plan')
   const lines = [
     `Area: ${request.area || 'not chosen yet: infer it from the wishes and the saved places'}`,
     `Date: ${request.dateLabel}`,
@@ -701,6 +711,7 @@ export interface RainPlanRequest {
 
 /** Indoor alternatives for the day's outdoor stops at rainy hours. */
 export async function rainPlanWithAi(request: RainPlanRequest): Promise<{ reply: string; swaps: RainSwap[] }> {
+  await spend('rain')
   const lines = [
     `Area: ${request.area || 'infer it from the stops'}`,
     `Date: ${request.dateLabel}`,
