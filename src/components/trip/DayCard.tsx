@@ -44,12 +44,14 @@ export function DayCard({
   return (
     <section
       id={`day-${id}`}
+      // Each day in a box of its own, so it's clear where one ends and the next begins.
       className={clsx(
-        '-mx-2 scroll-mt-24 rounded-card p-2 transition-colors',
-        isOver && 'bg-accent/[0.07] ring-1 ring-accent/40 ring-inset',
+        'scroll-mt-24 rounded-card border bg-fg/[0.035] p-3 shadow-sm transition-colors dark:bg-fg/[0.05]',
+        isToday ? 'border-accent/50' : 'border-line',
+        isOver && 'bg-accent/[0.07] ring-2 ring-accent/40 ring-inset',
       )}
     >
-      <header className="mb-2 flex items-center gap-3 px-1">
+      <header className="-mx-3 -mt-3 mb-3 flex items-center gap-3 rounded-t-card border-b border-line bg-card/60 px-4 py-2.5">
         <div className="min-w-0 flex-1">
           <h3 className={clsx('flex items-center gap-2 font-bold', isToday && 'text-accent')}>
             {title}
@@ -91,7 +93,7 @@ export function DayCard({
         )}
       </header>
 
-      {extra && <div className="-mt-0.5 mb-2 px-1">{extra}</div>}
+      {extra && <div className="-mt-1 mb-2 px-1">{extra}</div>}
 
       <SortableContext id={id} items={itemIds} strategy={verticalListSortingStrategy}>
         <ol ref={setNodeRef} className="min-h-12 space-y-2">

@@ -188,7 +188,7 @@ export function TripBoard({ trip, plan, places, placesById, today }: TripBoardPr
       onDragEnd={onDragEnd}
       onDragCancel={() => setDragging(null)}
     >
-      <div className="space-y-6">
+      <div className="space-y-4">
         <DayCard
           id={IDEAS}
           title="רעיונות שעוד לא שובצו"
