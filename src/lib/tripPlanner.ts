@@ -10,6 +10,7 @@ import { distanceMeters } from './geo'
 import { newId } from './ids'
 import { dietOf, findRestaurants, searchOptions, type MapOptions } from './mealOptions'
 import { nameMatch } from './names'
+import { seasonFor } from './seasons'
 
 /** The short questionnaire before planning the whole trip. */
 export interface TripPreferences {
@@ -22,6 +23,8 @@ export interface TripPreferences {
   interests: string[]
   food: string[]
   notes: string
+  /** Seasonal highlights in their dates they want built in (ids from seasons.ts). */
+  season: string[]
 }
 
 /** A stop checked on the map (none for places already saved). */
@@ -61,6 +64,14 @@ const BUDGET: Record<TripPreferences['budget'], string> = {
 /** Days planned in one request. */
 const CHUNK = 4
 const LOCATE_TIMEOUT_MS = 10_000
+
+/** The time of year, for the planner: what's on during the trip (chosen highlights) and what to keep in mind. */
+function seasonText(trip: Trip, prefs: TripPreferences): string {
+  return seasonFor(trip.startDate, trip.days)
+    .filter((event) => event.kind === 'heads-up' || prefs.season.includes(event.id))
+    .map((event) => `${event.kind === 'highlight' ? 'Build in' : 'Keep in mind'}: ${event.en} (usually ${event.from} to ${event.to})`)
+    .join('; ')
+}
 
 const wishesOf = (prefs: TripPreferences) => [prefs.interests.join(', '), prefs.food.join(', '), prefs.notes].filter(Boolean).join('. ')
 
@@ -146,6 +157,7 @@ export async function planTrip(
     cities: CITIES.map(({ id, en }) => ({ id, en })),
     wanted: prefs.cities.map((id) => getCity(id)?.en ?? id),
     mustSee: prefs.mustSee,
+    season: seasonText(trip, prefs),
     fixed: fixedCities,
     flights: trip.flights.map((flight) => `${flight.label}: ${flight.from} → ${flight.to}, ${flight.departAt}`).join('; '),
   })
@@ -223,6 +235,7 @@ export async function planTrip(
           budget: BUDGET[prefs.budget],
           wishes,
           mustSee: prefs.mustSee,
+          season: seasonText(trip, prefs),
           saved: places
             .filter((place) => place.category !== 'hotel' && nearestCity(place.location)?.id === city)
             .slice(0, 50)

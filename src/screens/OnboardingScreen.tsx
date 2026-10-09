@@ -11,6 +11,7 @@ import { useLatest } from '@/hooks/useLatest'
 import { hasFirebase } from '@/config/env'
 import { ui } from '@/store/ui'
 import { isoDateInTz } from '@/lib/dates'
+import { seasonFor } from '@/lib/seasons'
 import { normalizeInviteCode } from '@/lib/ids'
 import { getBackend, useCurrentUser } from '@/store/session'
 import { recallPendingJoin, rememberPendingJoin, type PendingJoin } from '@/store/joins'
@@ -230,6 +231,7 @@ export function OnboardingScreen() {
                     </div>
                   </div>
                 </div>
+                <SeasonHint startDate={startDate} days={Number(days)} />
                 {hasFirebase && (
                   <label className="surface mt-3 flex cursor-pointer items-center gap-3 rounded-card p-4">
                     <Sparkles aria-hidden className="size-5 shrink-0 text-accent" />
@@ -280,6 +282,26 @@ export function OnboardingScreen() {
           </motion.div>
         </AnimatePresence>
       </main>
+    </div>
+  )
+}
+
+/** What's on in Japan in the chosen dates (blossom, foliage, festivals, holidays). */
+function SeasonHint({ startDate, days }: { startDate: string; days: number }) {
+  if (!/^d{4}-d{2}-d{2}$/.test(startDate) || !(days >= 1 && days <= 90)) return null
+  const events = seasonFor(startDate, days)
+  if (events.length === 0) return null
+  return (
+    <div className="mt-3 rounded-card bg-accent/[0.07] px-4 py-3">
+      <p className="text-xs font-semibold text-muted">בתאריכים האלה ביפן</p>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {events.map((event) => (
+          <span key={event.id} className="inline-flex items-center gap-1 rounded-full bg-card/70 px-2.5 py-1 text-xs font-medium">
+            <span aria-hidden>{event.emoji}</span>
+            {event.title}
+          </span>
+        ))}
+      </div>
     </div>
   )
 }

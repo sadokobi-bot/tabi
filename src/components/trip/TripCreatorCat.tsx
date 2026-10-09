@@ -1,122 +1,92 @@
-import { useEffect, useState } from 'react'
-import clsx from 'clsx'
-import { motion, useReducedMotion } from 'motion/react'
+import { useEffect, useRef } from 'react'
+import { useReducedMotion } from 'motion/react'
 
-/** The cat planning the trip: think, draw the route, think again… (frame and how long it stays, ms). */
-const WORKING: [number, number][] = [
-  [1, 1500],
-  [2, 650],
-  [3, 650],
-  [2, 650],
-  [3, 650],
-  [2, 650],
-]
+/** Frames of the trip-creator clip (public/mascot/creator/NNN.webp), 12 a second. */
+const FPS = 12
+const FRAMES = 120
+/** Thinking and drawing on the map: played in a loop while the AI works. */
+const WORK_END = 76
+/** Cheering, then off with the backpack: played once when the trip is ready, ending on the last frame. */
+const DONE_START = 78
+/** Frames blended at the loop's seam, so the jump back to the start doesn't show. */
+const BLEND = 4
 
-export type CreatorStage = 'working' | 'almost' | 'done'
+/** How long the "ready" part plays (the wizard waits for it before showing the plan). */
+export const CREATOR_DONE_MS = Math.round(((FRAMES - DONE_START) / FPS) * 1000) + 300
+
+const frameUrl = (n: number) => `${import.meta.env.BASE_URL}mascot/creator/${String(n).padStart(3, '0')}.webp`
+
+let loaded: HTMLImageElement[] | null = null
+
+/** Starts loading every frame (once per session). */
+export function preloadCreatorFrames(): HTMLImageElement[] {
+  loaded ??= Array.from({ length: FRAMES }, (_, n) => {
+    const image = new Image()
+    image.decoding = 'async'
+    image.src = frameUrl(n)
+    return image
+  })
+  return loaded
+}
+
+export type CreatorStage = 'working' | 'done'
 
 /**
- * The trip-creator cat, in five frames: thinking and drawing on the map while the AI works, holding
- * up the finished map near the end, and setting off with a backpack when the trip is ready.
- * Under it a dotted route is drawn along with the progress.
+ * The trip-creator cat, an animated clip played as an image sequence (iPhones can't play video with
+ * a transparent background): it thinks and draws on its map while the AI works, and cheers and sets
+ * off with a backpack when the trip is ready.
  */
-export function TripCreatorCat({ stage, share }: { stage: CreatorStage; share: number }) {
+export function TripCreatorCat({ stage }: { stage: CreatorStage }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const reduceMotion = useReducedMotion()
-  const [step, setStep] = useState(0)
+
   useEffect(() => {
-    if (stage !== 'working' || reduceMotion) return
-    const timer = setTimeout(() => setStep((s) => (s + 1) % WORKING.length), WORKING[step]![1])
-    return () => clearTimeout(timer)
-  }, [stage, step, reduceMotion])
+    const canvas = canvasRef.current
+    const context = canvas?.getContext('2d')
+    if (!canvas || !context) return
+    const images = preloadCreatorFrames()
+    const ready = (n: number) => images[n]!.complete && images[n]!.naturalWidth > 0
+    let frame = stage === 'done' ? DONE_START : 0
+    let shown = -1
+    let last = 0
+    let raf = 0
 
-  const frame = stage === 'done' ? 5 : stage === 'almost' ? 4 : WORKING[step]![0]
-  const drawing = stage === 'working' && frame !== 1
+    const draw = (n: number, blendWith?: number, amount = 0) => {
+      context.clearRect(0, 0, canvas.width, canvas.height)
+      context.globalAlpha = 1
+      context.drawImage(images[n]!, 0, 0, canvas.width, canvas.height)
+      if (blendWith != null && amount > 0 && ready(blendWith)) {
+        context.globalAlpha = amount
+        context.drawImage(images[blendWith]!, 0, 0, canvas.width, canvas.height)
+        context.globalAlpha = 1
+      }
+      shown = n
+    }
 
-  return (
-    <div className="relative mx-auto h-72 w-80">
-      {/* The route, drawn as the plan comes together. */}
-      <svg aria-hidden viewBox="0 0 320 64" className="absolute inset-x-0 bottom-0 h-16 w-full overflow-visible text-accent">
-        <path
-          d="M16 40 C 75 6, 120 62, 165 32 S 265 10, 304 30"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeDasharray="1 9"
-          opacity={0.25}
-        />
-        <motion.path
-          d="M16 40 C 75 6, 120 62, 165 32 S 265 10, 304 30"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="3"
-          strokeLinecap="round"
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: Math.max(0.03, share) }}
-          transition={{ duration: 0.8, ease: 'easeOut' }}
-          opacity={0.55}
-        />
-        {[16, 165, 304].map((x, index) => (
-          <motion.circle
-            key={x}
-            cx={x}
-            cy={[40, 32, 30][index]}
-            r="5"
-            fill="currentColor"
-            initial={{ scale: 0 }}
-            animate={{ scale: share >= index / 2 ? 1 : 0 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 15 }}
-          />
-        ))}
-      </svg>
+    const tick = (now: number) => {
+      raf = requestAnimationFrame(tick)
+      if (reduceMotion) {
+        const still = stage === 'done' ? FRAMES - 1 : 0
+        if (shown !== still && ready(still)) draw(still)
+        return
+      }
+      if (now - last < 1000 / FPS) return
+      // Wait for a frame that hasn't arrived yet rather than skip it.
+      if (!ready(frame)) return
+      last = now
+      if (stage === 'working') {
+        // The last frames of the loop fade into the first ones.
+        const intoLoop = frame - (WORK_END - BLEND)
+        draw(frame, intoLoop >= 0 ? intoLoop : undefined, intoLoop >= 0 ? (intoLoop + 1) / (BLEND + 1) : 0)
+        frame = frame >= WORK_END ? BLEND : frame + 1
+      } else {
+        draw(frame)
+        frame = Math.min(frame + 1, FRAMES - 1)
+      }
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [stage, reduceMotion])
 
-      <motion.div
-        className="absolute inset-x-0 top-0 mx-auto size-64"
-        style={{ originY: 1 }}
-        animate={
-          stage === 'done'
-            ? { x: [0, 10, 0, 10, 0], y: [0, -8, 0, -8, 0], rotate: [0, 3, 0, 3, 0] }
-            : stage === 'almost'
-              ? { y: [0, -10, 0], rotate: 0, x: 0 }
-              : drawing
-                ? { rotate: [0, -1.5, 0, 1.5, 0], y: 0, x: 0 }
-                : { y: [0, -3, 0], rotate: 0, x: 0 }
-        }
-        transition={
-          stage === 'done'
-            ? { duration: 1.2, ease: 'easeInOut' }
-            : { duration: stage === 'almost' ? 0.9 : drawing ? 0.35 : 1.6, repeat: Infinity, ease: 'easeInOut' }
-        }
-      >
-        {[1, 2, 3, 4, 5].map((n) => (
-          <img
-            key={n}
-            src={`${import.meta.env.BASE_URL}mascot/creator-${n}.png`}
-            alt=""
-            aria-hidden
-            draggable={false}
-            className={clsx('absolute inset-0 size-full object-contain select-none', n !== frame && 'opacity-0')}
-          />
-        ))}
-      </motion.div>
-
-      {/* A few sparkles while it works. */}
-      {stage !== 'done' &&
-        [
-          ['12%', '18%', 0],
-          ['82%', '10%', 0.6],
-          ['88%', '52%', 1.2],
-        ].map(([left, top, delay]) => (
-          <motion.span
-            key={String(left)}
-            aria-hidden
-            className="absolute text-lg text-amber-400"
-            style={{ left: left as string, top: top as string }}
-            animate={{ opacity: [0, 1, 0], scale: [0.6, 1.1, 0.6] }}
-            transition={{ duration: 1.8, repeat: Infinity, delay: delay as number }}
-          >
-            ✦
-          </motion.span>
-        ))}
-    </div>
-  )
+  return <canvas ref={canvasRef} width={360} height={360} aria-hidden className="mx-auto size-72" />
 }

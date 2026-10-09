@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/Button'
 import { CategoryIcon } from '@/components/ui/CategoryIcon'
 import { TextAreaField } from '@/components/ui/TextField'
 import { CITIES, getCity } from '@/data/cities'
-import { TripCreatorCat } from './TripCreatorCat'
+import { seasonFor, type SeasonEvent } from '@/lib/seasons'
+import { CREATOR_DONE_MS, preloadCreatorFrames, TripCreatorCat } from './TripCreatorCat'
 import { FAILURE_TEXT, failureOf, type AssistantFailure } from '@/lib/assistant'
 import { formatDay, tripDates } from '@/lib/dates'
 import { KOSHER_INFO, kosherNote } from '@/lib/mealOptions'
@@ -39,6 +40,7 @@ const DEFAULTS: TripPreferences = {
   interests: [],
   food: [],
   notes: '',
+  season: [],
 }
 
 type Phase =
@@ -60,9 +62,16 @@ function Wizard() {
   const [prefs, setPrefs] = useState<TripPreferences>(() => ({
     ...DEFAULTS,
     cities: [...new Set(Object.values(trip.dayCities).filter(Boolean) as string[])],
+    // What's on during the trip is built in unless they say otherwise.
+    season: seasonFor(trip.startDate, trip.days)
+      .filter((event) => event.kind === 'highlight')
+      .map((event) => event.id),
   }))
   const [phase, setPhase] = useState<Phase>({ name: 'questions', page: 0 })
   const running = useRef(false)
+  // The animation's frames load while they answer the questions.
+  useEffect(() => void preloadCreatorFrames(), [])
+  const season = seasonFor(trip.startDate, trip.days)
   const set = (patch: Partial<TripPreferences>) => setPrefs((current) => ({ ...current, ...patch }))
   const close = () => ui.setTripWizard(false)
 
@@ -85,7 +94,7 @@ function Wizard() {
       }
       // A moment for the cat to set off with its backpack before the plan shows.
       setPhase({ name: 'planning', progress: { done: 1, total: 1, label: 'הטיול מוכן! 🎒' }, finished: true })
-      await new Promise((resolve) => setTimeout(resolve, 1800))
+      await new Promise((resolve) => setTimeout(resolve, CREATOR_DONE_MS))
       setPhase({ name: 'preview', plan })
     } catch (error) {
       console.error('[trip wizard] failed', error)
@@ -153,6 +162,7 @@ function Wizard() {
               prefs={prefs}
               set={set}
               hasPlan={hasPlan}
+              season={season}
               onNext={() => (phase.page < 2 ? setPhase({ name: 'questions', page: (phase.page + 1) as 1 | 2 }) : void start())}
             />
           )}
@@ -197,12 +207,14 @@ function Questions({
   prefs,
   set,
   hasPlan,
+  season,
   onNext,
 }: {
   page: 0 | 1 | 2
   prefs: TripPreferences
   set: (patch: Partial<TripPreferences>) => void
   hasPlan: boolean
+  season: SeasonEvent[]
   onNext: () => void
 }) {
   const toggle = (list: string[], value: string) => (list.includes(value) ? list.filter((v) => v !== value) : [...list, value])
@@ -228,6 +240,9 @@ function Questions({
                 לו״ז מלא לכל יום, עם אטרקציות ומסעדות. אחר כך אפשר לשנות הכול.
                 {hasPlan && ' פעילויות שכבר בלו״ז יישארו, והתכנון ייבנה סביבן.'}
               </Intro>
+              {season.length > 0 && (
+                <SeasonCard events={season} selected={prefs.season} onToggle={(id) => set({ season: toggle(prefs.season, id) })} />
+              )}
               <Question title="מי נוסע?">
                 <Choice
                   options={[
@@ -326,6 +341,69 @@ function Questions({
   )
 }
 
+/** What's on in Japan during the trip: highlights to build in (on by default) and things worth knowing. */
+function SeasonCard({ events, selected, onToggle }: { events: SeasonEvent[]; selected: string[]; onToggle: (id: string) => void }) {
+  const highlights = events.filter((event) => event.kind === 'highlight')
+  const headsUps = events.filter((event) => event.kind === 'heads-up')
+  return (
+    <section aria-label="העונה שלכם" className="surface rounded-card p-4">
+      <p className="text-sm font-semibold">מה קורה ביפן בתאריכים שלכם</p>
+      {highlights.length > 0 && (
+        <ul className="mt-3 space-y-2">
+          {highlights.map((event) => {
+            const on = selected.includes(event.id)
+            return (
+              <li key={event.id}>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={on}
+                  onClick={() => onToggle(event.id)}
+                  className={clsx(
+                    'flex w-full items-start gap-3 rounded-control p-3 text-start transition',
+                    on ? 'bg-accent/10 ring-1 ring-accent/40' : 'bg-fg/[0.04]',
+                  )}
+                >
+                  <span aria-hidden className="text-2xl leading-none">
+                    {event.emoji}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold">{event.title}</span>
+                    <span className="mt-0.5 block text-xs leading-relaxed text-muted">{event.note}</span>
+                  </span>
+                  <span
+                    className={clsx(
+                      'mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                      on ? 'bg-accent-fill text-accent-fg' : 'bg-fg/8 text-muted',
+                    )}
+                  >
+                    {on ? 'נשלב בטיול' : 'לא לשלב'}
+                  </span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      {headsUps.length > 0 && (
+        <ul className="mt-3 space-y-2">
+          {headsUps.map((event) => (
+            <li key={event.id} className="flex gap-3 rounded-control bg-amber-400/10 p-3 text-xs leading-relaxed">
+              <span aria-hidden className="text-lg leading-none">
+                {event.emoji}
+              </span>
+              <span>
+                <b className="text-sm font-semibold">{event.title}</b>
+                <span className="block text-muted">{event.note}. נתכנן בהתאם.</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
 function Intro({ image, title, children }: { image: string; title: string; children: ReactNode }) {
   return (
     <div className="flex items-center gap-3">
@@ -400,10 +478,10 @@ function Chips({ options, selected, onToggle }: { options: [string, string][]; s
 
 function Planning({ progress, days, finished }: { progress: PlanProgress; days: number; finished?: boolean }) {
   const share = Math.max(0.04, Math.min(1, progress.done / progress.total))
-  const stage = finished ? 'done' : share >= 0.85 ? 'almost' : 'working'
+  const stage = finished ? 'done' : 'working'
   return (
-    <div className="flex flex-col items-center pt-8 pb-12 text-center">
-      <TripCreatorCat stage={stage} share={finished ? 1 : share} />
+    <div className="flex flex-col items-center pt-4 pb-12 text-center">
+      <TripCreatorCat stage={stage} />
       <p role="status" className={clsx('mt-6 font-semibold', finished && 'text-lg text-accent')}>
         {progress.label}
       </p>

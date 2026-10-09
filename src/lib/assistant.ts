@@ -571,6 +571,7 @@ export interface TripOutlineRequest {
   cities: { id: string; en: string }[]
   wanted: string[]
   mustSee: string
+  season: string
   fixed: { day: number; city: string }[]
   flights: string
 }
@@ -585,6 +586,7 @@ export async function outlineTripWithAi(request: TripOutlineRequest): Promise<{ 
     `City ids: ${request.cities.map((city) => `${city.id} (${city.en})`).join(', ')}`,
     `Cities they want: ${request.wanted.length ? request.wanted.join(', ') : 'none given: choose'}`,
     `Must visit: ${request.mustSee.trim() || 'nothing specific'}`,
+    request.season ? `Season during the trip: ${request.season}` : '',
     request.fixed.length ? `Fixed days: ${request.fixed.map((f) => `day ${f.day} = ${f.city}`).join('; ')}` : '',
     request.flights ? `Flights: ${request.flights}` : '',
   ]
@@ -611,6 +613,7 @@ export interface DaysPlanRequest {
   budget: string
   wishes: string
   mustSee: string
+  season: string
   saved: { id: string; name: string; category: CategoryId }[]
   elsewhere: string[]
   restaurants: MapOption[]
@@ -626,6 +629,7 @@ export async function planDaysWithAi(request: DaysPlanRequest): Promise<Record<s
     `Budget: ${request.budget}`,
     `Interests and food wishes: ${request.wishes || '(none)'}`,
     `Must visit (where in this city): ${request.mustSee.trim() || 'nothing specific'}`,
+    request.season ? `Season: ${request.season}` : '',
     `Days: ${request.days
       .map((day) => {
         const fixed = day.fixed.length

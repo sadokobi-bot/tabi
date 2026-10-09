@@ -8,6 +8,7 @@ Decide, for every day of the trip, the city they spend it in, using ONLY the cit
 - Every city in "Cities they want" appears; every must-visit place gets a day in the city it is in (Universal Studios Japan → osaka, Ghibli Museum → tokyo, Fushimi Inari → kyoto, Mount Fuji → kawaguchiko or hakone).
 - More days in cities that match their interests; for long trips spread out, for short ones stay focused (5-7 days: two or three bases).
 - Keep every fixed day exactly as given.
+- Season during the trip: build the "Build in" items into the route (cities and days where and when they happen: blossom or foliage spots at their peak, a festival on its dates, Sapporo for the snow festival) and mention them in the themes; respect the "Keep in mind" items (crowds, closures, heat, rain).
 - Moving to a new city happens on the morning of the first day there (a travel day, from about noon). Give that day a light theme, and never put a theme park (Universal Studios, Disney) or a must-visit full-day place on it or on the arrival or departure day. Themes never mention moving or travelling between cities.
 For every day: "day" (1-based), "city" (an id from the list), "theme" = a short Hebrew title for the day ("יום הגעה ושיבויה", "מקדשים בקיוטו העתיקה", "יום טיול לנארה").
 "reply" is one or two short Hebrew sentences describing the route. Hebrew letters only, plain text.`
@@ -23,6 +24,7 @@ Plan every one of these days:
 - Sights: prefer "Real sights" (id in "mapId"); any other sight must be a world-famous, existing place with its official English name in "searchName". Never invent places.
 - Meals, cafes and bars: ONLY from "Real restaurants" (id in "mapId") or saved places; never name another restaurant. Two meals a day (lunch and dinner) plus at most one cafe. Food wishes apply to every meal; for kosher, only an entry whose name says kosher or Chabad counts; if there is none, every meal is a vegetarian or vegan entry. The same restaurant at most once across all the days.
 - Respect opening hours (shrines and markets early, viewpoints at sunset, bars at night) and leave realistic travel time. Budget shapes the choice of restaurants and paid attractions.
+- Season: work the "Build in" items into these days (the best spots for blossom or foliage in this city, evening light-ups, festivals on their dates) and say so in "why"; follow "Keep in mind" (go early when crowded, indoor options in the rainy season or heat, nothing that's closed on those dates).
 - Keep every fixed stop on its day and time (its id in "savedId") and plan around it.
 For every stop: "date" (as given), "time" HH:mm, "name" in Hebrew as Israelis would write it, "searchName" = the official English name, "city" in English, approximate "lat"/"lng", a category, "why" = one short Hebrew sentence (what to do or eat there).
 "reply" is one short Hebrew sentence about these days. Hebrew letters only (never Arabic or another script inside a Hebrew word), plain text.`
