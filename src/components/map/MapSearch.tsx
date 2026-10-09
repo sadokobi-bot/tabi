@@ -2,13 +2,77 @@ import { useEffect, useRef, useState } from 'react'
 import { LoaderCircle, MapPin, Search, X } from 'lucide-react'
 import type { LatLng } from '@/data/types'
 import { useLatest } from '@/hooks/useLatest'
-import type { PoiProvider, Suggestion } from '@/maps/poi'
+import { hasFirebase } from '@/config/env'
+import { englishQuery } from '@/lib/assistant'
+import { englishAlias, hasHebrew } from '@/maps/aliases'
+import type { Poi, PoiProvider, Suggestion } from '@/maps/poi'
 import { useTripStore } from '@/store/trip'
 import { ui } from '@/store/ui'
 
 interface MapSearchProps {
   provider: PoiProvider | null
   near: LatLng | null
+}
+
+/** Enough to show without looking further. */
+const ENOUGH = 3
+/** The extra searches (billed, and the AI) wait until typing pauses a little longer. */
+const PAUSE_MS = 500
+
+const asSuggestion = (poi: Poi): Suggestion => ({
+  key: poi.googlePlaceId ?? poi.key,
+  title: poi.name,
+  subtitle: poi.address,
+  resolve: async () => poi,
+})
+
+/** One entry per place: the same key, or the same name and area (a map can hold a place twice). */
+function merge(...lists: Suggestion[][]): Suggestion[] {
+  const seen = new Set<string>()
+  return lists.flat().filter((suggestion) => {
+    const keys = [suggestion.key, `${suggestion.title.toLowerCase()}|${(suggestion.subtitle ?? '').toLowerCase()}`]
+    if (keys.some((key) => seen.has(key))) return false
+    keys.forEach((key) => seen.add(key))
+    return true
+  })
+}
+
+/**
+ * Searches in layers, showing results as they come: Google's type-ahead (also for the English name of
+ * a well-known place written in Hebrew), then a full text search, which forgives spelling and
+ * transliteration, and last, for Hebrew, the AI's English version of the search.
+ */
+async function searchLayers(
+  provider: PoiProvider,
+  query: string,
+  near: LatLng | null,
+  signal: AbortSignal,
+  show: (results: Suggestion[], done: boolean) => void,
+) {
+  const alias = englishAlias(query)
+  const quiet = <T,>(promise: Promise<T[]>) => promise.catch((): T[] => [])
+  const [aliasFound, found] = await Promise.all([
+    alias ? quiet(provider.suggest(alias, near, signal)) : Promise.resolve([]),
+    quiet(provider.suggest(query, near, signal)),
+  ])
+  let results = merge(aliasFound, found)
+  if (results.length >= ENOUGH) return show(results, true)
+  show(results, false)
+
+  await new Promise((resolve) => setTimeout(resolve, PAUSE_MS))
+  if (signal.aborted) return
+  const text = await quiet(provider.searchText(alias ?? query, near, signal))
+  results = merge(results, text.map(asSuggestion))
+  if (results.length > 0 || !hasFirebase || !hasHebrew(query)) return show(results, true)
+  show(results, false)
+
+  const english = await englishQuery(query).catch(() => '')
+  if (signal.aborted || !english) return show(results, true)
+  const [byName, byText] = await Promise.all([
+    quiet(provider.suggest(english, near, signal)),
+    quiet(provider.searchText(english, near, signal)),
+  ])
+  show(merge(byName, byText.map(asSuggestion)), true)
 }
 
 /** Floating glass search: type-ahead over Google Places (or OpenStreetMap), opens the result's sheet. */
@@ -30,18 +94,18 @@ export function MapSearch({ provider, near }: MapSearchProps) {
       return
     }
     const controller = new AbortController()
+    const signal = controller.signal
+    // Results of what was typed before don't stay up under the new text.
+    setResults([])
     setStatus('loading')
     const timer = setTimeout(() => {
-      provider.suggest(trimmed, nearRef.current, controller.signal).then(
-        (found) => {
-          if (controller.signal.aborted) return
-          setResults(found)
-          setStatus('idle')
-        },
-        () => {
-          if (!controller.signal.aborted) setStatus('error')
-        },
-      )
+      searchLayers(provider, trimmed, nearRef.current, signal, (found, done) => {
+        if (signal.aborted) return
+        setResults(found)
+        if (done) setStatus('idle')
+      }).catch(() => {
+        if (!signal.aborted) setStatus('error')
+      })
     }, 300)
     return () => {
       clearTimeout(timer)
@@ -65,10 +129,7 @@ export function MapSearch({ provider, near }: MapSearchProps) {
     // Already saved? Open our copy (with notes and schedule) instead of the raw result.
     const savedMatch = useTripStore
       .getState()
-      .places.find(
-        (place) =>
-          (poi.googlePlaceId && place.googlePlaceId === poi.googlePlaceId) || (poi.osmId && place.osmId === poi.osmId),
-      )
+      .places.find((place) => (poi.googlePlaceId && place.googlePlaceId === poi.googlePlaceId) || (poi.osmId && place.osmId === poi.osmId))
     if (savedMatch) ui.openPlace(savedMatch.id)
     else ui.openPoi(poi)
   }
@@ -131,9 +192,7 @@ export function MapSearch({ provider, near }: MapSearchProps) {
               </span>
             </button>
           ))}
-          {status === 'idle' && results.length === 0 && (
-            <p className="px-3 py-3 text-sm text-muted">לא נמצאו תוצאות</p>
-          )}
+          {status === 'idle' && results.length === 0 && <p className="px-3 py-3 text-sm text-muted">לא נמצאו תוצאות</p>}
           {status === 'error' && <p className="px-3 py-3 text-sm text-red-600">החיפוש נכשל. בדקו את החיבור לאינטרנט</p>}
           <p className="px-3 pt-1 pb-1.5 text-[10px] text-muted">
             {provider?.id === 'google' ? 'תוצאות: Google' : 'תוצאות: OpenStreetMap'}

@@ -115,7 +115,11 @@ Be accurate. When you are not sure of something, say "unknown" (or 0 / "") rathe
 - "englishName": the official English name. "confident": false when you are not sure about the place or its prices.
 Hebrew text in Hebrew letters only. Plain text, no markdown.`
 
-type ModelKind = 'ask' | 'import' | 'plan' | 'translate' | 'rain' | 'entry' | 'outline' | 'days'
+const QUERY_SYSTEM = `You turn a search typed in a Hebrew trip app into what to search on Google Maps in Japan.
+The text is usually Hebrew: a place name written in Hebrew letters ("יוניברסל סטודיו", "מקדש הזהב"), a kind of place ("ראמן טוב"), or both ("סושי בשיבויה").
+Return "query": the English search, using a place's official English name when it names one ("Universal Studios Japan", "Kinkaku-ji", "sushi Shibuya"). Keep it short. No explanations.`
+
+type ModelKind = 'ask' | 'import' | 'plan' | 'translate' | 'rain' | 'entry' | 'outline' | 'days' | 'query'
 
 /** What a dish is, as far as a menu photo tells (for allergies, kosher and taste). */
 export const FOOD_TAGS = ['spicy', 'pork', 'beef', 'chicken', 'seafood', 'raw', 'vegetarian', 'alcohol', 'sweet'] as const
@@ -184,63 +188,66 @@ function getModels(kind: ModelKind) {
       })
       const instance = ai.getAI(getApp(), { backend: new ai.GoogleAIBackend() })
       const responseSchema =
-        kind === 'outline'
-          ? Schema.object({
-              properties: {
-                reply: Schema.string(),
-                days: Schema.array({
-                  items: Schema.object({
-                    properties: {
-                      day: Schema.integer(),
-                      city: Schema.enumString({ enum: CITIES.map((city) => city.id) }),
-                      theme: Schema.string(),
-                    },
-                  }),
-                }),
-              },
-            })
-          : kind === 'entry'
+        kind === 'query'
+          ? Schema.object({ properties: { query: Schema.string() } })
+          : kind === 'outline'
             ? Schema.object({
                 properties: {
-                  entry: Schema.enumString({ enum: ['free', 'paid', 'partly', 'unknown'] }),
-                  bookAhead: Schema.enumString({ enum: ['required', 'recommended', 'no', 'unknown'] }),
-                  priceYen: Schema.number(),
-                  priceNote: Schema.string(),
-                  bookAheadNote: Schema.string(),
-                  tip: Schema.string(),
-                  soldOnline: Schema.boolean(),
-                  englishName: Schema.string(),
-                  confident: Schema.boolean(),
+                  reply: Schema.string(),
+                  days: Schema.array({
+                    items: Schema.object({
+                      properties: {
+                        day: Schema.integer(),
+                        city: Schema.enumString({ enum: CITIES.map((city) => city.id) }),
+                        theme: Schema.string(),
+                      },
+                    }),
+                  }),
                 },
               })
-            : kind === 'translate'
+            : kind === 'entry'
               ? Schema.object({
                   properties: {
-                    kind: Schema.enumString({ enum: ['menu', 'sign', 'product', 'other'] }),
-                    title: Schema.string(),
-                    summary: Schema.string(),
-                    items: Schema.array({
-                      items: Schema.object({
-                        properties: {
-                          original: Schema.string(),
-                          hebrew: Schema.string(),
-                          note: Schema.string(),
-                          price: Schema.string(),
-                          tags: Schema.array({ items: Schema.enumString({ enum: [...FOOD_TAGS] }) }),
-                        },
+                    entry: Schema.enumString({ enum: ['free', 'paid', 'partly', 'unknown'] }),
+                    bookAhead: Schema.enumString({ enum: ['required', 'recommended', 'no', 'unknown'] }),
+                    priceYen: Schema.number(),
+                    priceNote: Schema.string(),
+                    bookAheadNote: Schema.string(),
+                    tip: Schema.string(),
+                    soldOnline: Schema.boolean(),
+                    englishName: Schema.string(),
+                    confident: Schema.boolean(),
+                  },
+                })
+              : kind === 'translate'
+                ? Schema.object({
+                    properties: {
+                      kind: Schema.enumString({ enum: ['menu', 'sign', 'product', 'other'] }),
+                      title: Schema.string(),
+                      summary: Schema.string(),
+                      items: Schema.array({
+                        items: Schema.object({
+                          properties: {
+                            original: Schema.string(),
+                            hebrew: Schema.string(),
+                            note: Schema.string(),
+                            price: Schema.string(),
+                            tags: Schema.array({ items: Schema.enumString({ enum: [...FOOD_TAGS] }) }),
+                          },
+                        }),
                       }),
-                    }),
-                  },
-                })
-              : Schema.object({
-                  properties: {
-                    reply: Schema.string(),
-                    places: Schema.array({ items: place }),
-                    ...(kind === 'ask' ? { googleQuery: Schema.string(), areaLat: Schema.number(), areaLng: Schema.number() } : {}),
-                  },
-                })
+                    },
+                  })
+                : Schema.object({
+                    properties: {
+                      reply: Schema.string(),
+                      places: Schema.array({ items: place }),
+                      ...(kind === 'ask' ? { googleQuery: Schema.string(), areaLat: Schema.number(), areaLng: Schema.number() } : {}),
+                    },
+                  })
       // Reading text off an image is transcription first: the fast models handle it in seconds.
-      const list = kind === 'import' || kind === 'translate' ? IMPORT_MODELS : MODELS.map((model) => ({ model, fast: false }))
+      const list =
+        kind === 'import' || kind === 'translate' || kind === 'query' ? IMPORT_MODELS : MODELS.map((model) => ({ model, fast: false }))
       return list.map(({ model, fast }) =>
         ai.getGenerativeModel(instance, {
           model,
@@ -253,6 +260,7 @@ function getModels(kind: ModelKind) {
             entry: ENTRY_SYSTEM,
             outline: OUTLINE_SYSTEM,
             days: DAYS_SYSTEM,
+            query: QUERY_SYSTEM,
           }[kind],
           generationConfig: {
             responseMimeType: 'application/json',
@@ -387,6 +395,23 @@ ${text.trim()}`
       ...(p.address?.trim() ? { address: p.address.trim() } : {}),
     })),
   }
+}
+
+const queryCache = new Map<string, Promise<string>>()
+
+/** A Hebrew map search, in English (place names as Google knows them). Asked once per text. */
+export function englishQuery(text: string): Promise<string> {
+  const key = text.trim().toLowerCase()
+  let pending = queryCache.get(key)
+  if (!pending) {
+    pending = generate('query', text.trim()).then((result) => {
+      const json = JSON.parse(result.response.text()) as { query?: string }
+      return (json.query ?? '').replace(/[^\p{L}\p{N}\s'&.-]/gu, '').trim()
+    })
+    pending.catch(() => queryCache.delete(key))
+    queryCache.set(key, pending)
+  }
+  return pending
 }
 
 /** Tickets for a place: free or paid, the usual price, booking ahead, a tip. */
