@@ -2,6 +2,8 @@ import type { CategoryId, EntryInfo, LatLng } from '@/data/types'
 import type { Poi, PoiProvider } from '@/maps/poi'
 import { distanceMeters } from '@/lib/geo'
 import { nameMatch } from './names'
+import { DAYS_SYSTEM, OUTLINE_SYSTEM } from './tripPrompts'
+import { CITIES } from '@/data/cities'
 
 /** A place the assistant thinks the user means. Coordinates are approximate until resolved on the map. */
 export interface AssistantPlace {
@@ -113,7 +115,7 @@ Be accurate. When you are not sure of something, say "unknown" (or 0 / "") rathe
 - "englishName": the official English name. "confident": false when you are not sure about the place or its prices.
 Hebrew text in Hebrew letters only. Plain text, no markdown.`
 
-type ModelKind = 'ask' | 'import' | 'plan' | 'translate' | 'rain' | 'entry'
+type ModelKind = 'ask' | 'import' | 'plan' | 'translate' | 'rain' | 'entry' | 'outline' | 'days'
 
 /** What a dish is, as far as a menu photo tells (for allergies, kosher and taste). */
 export const FOOD_TAGS = ['spicy', 'pork', 'beef', 'chicken', 'seafood', 'raw', 'vegetarian', 'alcohol', 'sweet'] as const
@@ -167,52 +169,76 @@ function getModels(kind: ModelKind) {
             ? { ...common, why: Schema.string() }
             : kind === 'plan'
               ? { ...common, why: Schema.string(), time: Schema.string(), savedId: Schema.string(), mapId: Schema.string() }
-              : kind === 'rain'
-                ? { ...common, why: Schema.string(), time: Schema.string(), savedId: Schema.string(), replaceId: Schema.string() }
-                : { ...common, address: Schema.string(), note: Schema.string() },
+              : kind === 'days'
+                ? {
+                    ...common,
+                    date: Schema.string(),
+                    why: Schema.string(),
+                    time: Schema.string(),
+                    savedId: Schema.string(),
+                    mapId: Schema.string(),
+                  }
+                : kind === 'rain'
+                  ? { ...common, why: Schema.string(), time: Schema.string(), savedId: Schema.string(), replaceId: Schema.string() }
+                  : { ...common, address: Schema.string(), note: Schema.string() },
       })
       const instance = ai.getAI(getApp(), { backend: new ai.GoogleAIBackend() })
       const responseSchema =
-        kind === 'entry'
+        kind === 'outline'
           ? Schema.object({
               properties: {
-                entry: Schema.enumString({ enum: ['free', 'paid', 'partly', 'unknown'] }),
-                bookAhead: Schema.enumString({ enum: ['required', 'recommended', 'no', 'unknown'] }),
-                priceYen: Schema.number(),
-                priceNote: Schema.string(),
-                bookAheadNote: Schema.string(),
-                tip: Schema.string(),
-                soldOnline: Schema.boolean(),
-                englishName: Schema.string(),
-                confident: Schema.boolean(),
+                reply: Schema.string(),
+                days: Schema.array({
+                  items: Schema.object({
+                    properties: {
+                      day: Schema.integer(),
+                      city: Schema.enumString({ enum: CITIES.map((city) => city.id) }),
+                      theme: Schema.string(),
+                    },
+                  }),
+                }),
               },
             })
-          : kind === 'translate'
+          : kind === 'entry'
             ? Schema.object({
                 properties: {
-                  kind: Schema.enumString({ enum: ['menu', 'sign', 'product', 'other'] }),
-                  title: Schema.string(),
-                  summary: Schema.string(),
-                  items: Schema.array({
-                    items: Schema.object({
-                      properties: {
-                        original: Schema.string(),
-                        hebrew: Schema.string(),
-                        note: Schema.string(),
-                        price: Schema.string(),
-                        tags: Schema.array({ items: Schema.enumString({ enum: [...FOOD_TAGS] }) }),
-                      },
+                  entry: Schema.enumString({ enum: ['free', 'paid', 'partly', 'unknown'] }),
+                  bookAhead: Schema.enumString({ enum: ['required', 'recommended', 'no', 'unknown'] }),
+                  priceYen: Schema.number(),
+                  priceNote: Schema.string(),
+                  bookAheadNote: Schema.string(),
+                  tip: Schema.string(),
+                  soldOnline: Schema.boolean(),
+                  englishName: Schema.string(),
+                  confident: Schema.boolean(),
+                },
+              })
+            : kind === 'translate'
+              ? Schema.object({
+                  properties: {
+                    kind: Schema.enumString({ enum: ['menu', 'sign', 'product', 'other'] }),
+                    title: Schema.string(),
+                    summary: Schema.string(),
+                    items: Schema.array({
+                      items: Schema.object({
+                        properties: {
+                          original: Schema.string(),
+                          hebrew: Schema.string(),
+                          note: Schema.string(),
+                          price: Schema.string(),
+                          tags: Schema.array({ items: Schema.enumString({ enum: [...FOOD_TAGS] }) }),
+                        },
+                      }),
                     }),
-                  }),
-                },
-              })
-            : Schema.object({
-                properties: {
-                  reply: Schema.string(),
-                  places: Schema.array({ items: place }),
-                  ...(kind === 'ask' ? { googleQuery: Schema.string(), areaLat: Schema.number(), areaLng: Schema.number() } : {}),
-                },
-              })
+                  },
+                })
+              : Schema.object({
+                  properties: {
+                    reply: Schema.string(),
+                    places: Schema.array({ items: place }),
+                    ...(kind === 'ask' ? { googleQuery: Schema.string(), areaLat: Schema.number(), areaLng: Schema.number() } : {}),
+                  },
+                })
       // Reading text off an image is transcription first: the fast models handle it in seconds.
       const list = kind === 'import' || kind === 'translate' ? IMPORT_MODELS : MODELS.map((model) => ({ model, fast: false }))
       return list.map(({ model, fast }) =>
@@ -225,11 +251,26 @@ function getModels(kind: ModelKind) {
             translate: TRANSLATE_SYSTEM,
             rain: RAIN_SYSTEM,
             entry: ENTRY_SYSTEM,
+            outline: OUTLINE_SYSTEM,
+            days: DAYS_SYSTEM,
           }[kind],
           generationConfig: {
             responseMimeType: 'application/json',
             responseSchema,
-            temperature: kind === 'plan' ? 0.7 : kind === 'rain' ? 0.5 : kind === 'ask' ? 0.4 : kind === 'entry' ? 0.1 : 0.2,
+            temperature:
+              kind === 'plan'
+                ? 0.7
+                : kind === 'rain'
+                  ? 0.5
+                  : kind === 'ask'
+                    ? 0.4
+                    : kind === 'entry'
+                      ? 0.1
+                      : kind === 'outline'
+                        ? 0.5
+                        : kind === 'days'
+                          ? 0.6
+                          : 0.2,
             ...(fast ? { thinkingConfig: { thinkingLevel: ai.ThinkingLevel.MINIMAL } } : {}),
           },
         }),
@@ -491,6 +532,124 @@ export async function planDayWithAi(request: DayPlanRequest): Promise<{ reply: s
       }))
       .sort((a, b) => a.time.localeCompare(b.time)),
   }
+}
+
+/** The whole trip's route: which city each day is spent in, and the day's theme. */
+export interface TripOutlineRequest {
+  days: number
+  /** e.g. "starting Friday, 9 October 2026" */
+  startLabel: string
+  travelers: string
+  pace: 'relaxed' | 'balanced' | 'packed'
+  budget: string
+  interests: string
+  cities: { id: string; en: string }[]
+  wanted: string[]
+  mustSee: string
+  fixed: { day: number; city: string }[]
+  flights: string
+}
+
+export async function outlineTripWithAi(request: TripOutlineRequest): Promise<{ reply: string; days: { city: string; theme: string }[] }> {
+  const lines = [
+    `Days: ${request.days} (${request.startLabel})`,
+    `Who travels: ${request.travelers}`,
+    `Pace: ${request.pace}`,
+    `Budget: ${request.budget}`,
+    `Interests: ${request.interests || '(none given: a classic first trip)'}`,
+    `City ids: ${request.cities.map((city) => `${city.id} (${city.en})`).join(', ')}`,
+    `Cities they want: ${request.wanted.length ? request.wanted.join(', ') : 'none given: choose'}`,
+    `Must visit: ${request.mustSee.trim() || 'nothing specific'}`,
+    request.fixed.length ? `Fixed days: ${request.fixed.map((f) => `day ${f.day} = ${f.city}`).join('; ')}` : '',
+    request.flights ? `Flights: ${request.flights}` : '',
+  ]
+  const result = await generate('outline', lines.filter(Boolean).join('\n'))
+  const json = JSON.parse(result.response.text()) as { reply?: string; days?: { day: number; city: string; theme: string }[] }
+  const ids = new Set(request.cities.map((city) => city.id))
+  const byDay = new Map((json.days ?? []).map((d) => [d.day, d]))
+  const days: { city: string; theme: string }[] = []
+  for (let day = 1; day <= request.days; day++) {
+    const fixed = request.fixed.find((f) => f.day === day)
+    const answer = byDay.get(day)
+    // A missing or unknown city carries the day before (or Tokyo on day 1).
+    const city = fixed?.city ?? (answer && ids.has(answer.city) ? answer.city : (days[day - 2]?.city ?? 'tokyo'))
+    days.push({ city, theme: cleanText(answer?.theme) })
+  }
+  return { reply: cleanText(json.reply), days }
+}
+
+export interface DaysPlanRequest {
+  city: string
+  days: { date: string; label: string; theme: string; note: string; fixed: { id: string; time?: string; name: string }[] }[]
+  travelers: string
+  pace: 'relaxed' | 'balanced' | 'packed'
+  budget: string
+  wishes: string
+  mustSee: string
+  saved: { id: string; name: string; category: CategoryId }[]
+  elsewhere: string[]
+  restaurants: MapOption[]
+  sights: MapOption[]
+}
+
+/** Several days in one city, planned together (so they don't repeat each other). */
+export async function planDaysWithAi(request: DaysPlanRequest): Promise<Record<string, PlannedStop[]>> {
+  const lines = [
+    `City: ${request.city}`,
+    `Who travels: ${request.travelers}`,
+    `Pace: ${request.pace}`,
+    `Budget: ${request.budget}`,
+    `Interests and food wishes: ${request.wishes || '(none)'}`,
+    `Must visit (where in this city): ${request.mustSee.trim() || 'nothing specific'}`,
+    `Days: ${request.days
+      .map((day) => {
+        const fixed = day.fixed.length
+          ? `; fixed stops: ${day.fixed.map((s) => `[${s.id}] ${s.time ?? 'any time'} ${s.name}`).join(', ')}`
+          : ''
+        return `${day.date} (${day.label}) theme "${day.theme}"${day.note ? `, ${day.note}` : ''}${fixed}`
+      })
+      .join(' | ')}`,
+    `Saved places in this city: ${request.saved.length ? request.saved.map((p) => `[${p.id}] ${p.name} (${p.category})`).join('; ') : 'none'}`,
+    request.elsewhere.length ? `Already planned on other days (don't suggest): ${request.elsewhere.join('; ')}` : '',
+    `Real restaurants: ${request.restaurants.length ? request.restaurants.map(optionLine).join('; ') : 'none (no map results)'}`,
+    `Real sights: ${request.sights.length ? request.sights.map(optionLine).join('; ') : 'none (no map results)'}`,
+  ]
+  const result = await generate('days', lines.filter(Boolean).join('\n'))
+  const json = JSON.parse(result.response.text()) as {
+    places?: {
+      date: string
+      name: string
+      searchName: string
+      city: string
+      lat: number
+      lng: number
+      category: string
+      why: string
+      time: string
+      savedId?: string
+      mapId?: string
+    }[]
+  }
+  const dates = new Set(request.days.map((day) => day.date))
+  const savedIds = new Set([...request.saved.map((p) => p.id), ...request.days.flatMap((day) => day.fixed.map((s) => s.id))])
+  const mapIds = new Set([...request.restaurants, ...request.sights].map((option) => option.id))
+  const byDate: Record<string, PlannedStop[]> = Object.fromEntries(request.days.map((day) => [day.date, []]))
+  for (const p of json.places ?? []) {
+    if (!dates.has(p.date) || !/^\d{1,2}:\d{2}$/.test(p.time)) continue
+    byDate[p.date]!.push({
+      name: cleanText(p.name, p.searchName),
+      searchName: p.searchName,
+      city: p.city,
+      category: CATEGORY_IDS.includes(p.category as CategoryId) ? (p.category as CategoryId) : 'other',
+      location: { lat: p.lat, lng: p.lng },
+      why: cleanText(p.why),
+      time: p.time.padStart(5, '0'),
+      ...(p.savedId && savedIds.has(p.savedId) ? { savedId: p.savedId } : {}),
+      ...(p.mapId && mapIds.has(p.mapId) ? { mapId: p.mapId } : {}),
+    })
+  }
+  for (const date of dates) byDate[date] = byDate[date]!.sort((a, b) => a.time.localeCompare(b.time)).slice(0, 9)
+  return byDate
 }
 
 /** An indoor alternative for one of the day's stops, at the same time. */

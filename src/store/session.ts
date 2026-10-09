@@ -21,7 +21,7 @@ export function startSession(): Unsubscribe {
       useSession.setState({ backend })
       unsubscribe = backend.onAuthChange((user) => {
         // Signing out happens inside the profile sheet: without this, the next sign-in opens on it.
-        if (!user) useUi.setState({ profileOpen: false, selection: null, ticket: null, routeDate: null, pickingLocation: false, chatDraft: null })
+        if (!user) useUi.setState({ profileOpen: false, selection: null, ticket: null, routeDate: null, pickingLocation: false, chatDraft: null, tripWizard: false })
         useSession.setState({ user, status: user ? 'signedIn' : 'signedOut' })
       })
     })

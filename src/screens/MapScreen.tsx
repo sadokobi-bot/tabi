@@ -120,7 +120,7 @@ export default function MapScreen() {
   // The map tour, the first time the map is opened (after the welcome tour).
   const tourOpen = useTour((state) => state.open)
   useEffect(() => {
-    if (!isActive || tourOpen || !mapTourDue(me.uid)) return
+    if (!isActive || tourOpen || useUi.getState().tripWizard || !mapTourDue(me.uid)) return
     const timer = setTimeout(() => mapTourDue(me.uid) && startTour('map'), 1000)
     return () => clearTimeout(timer)
   }, [isActive, tourOpen, me.uid])

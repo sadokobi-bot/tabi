@@ -48,6 +48,8 @@ interface UiState {
   ticket: Ticket | null
   /** A place about to be shared in the chat (shown above the message box). */
   chatDraft: SharedPlace | null
+  /** "Plan the whole trip" (questionnaire, then the AI builds every day). */
+  tripWizard: boolean
 }
 
 export const useUi = create<UiState>(() => ({
@@ -60,6 +62,7 @@ export const useUi = create<UiState>(() => ({
   routeDate: null,
   ticket: null,
   chatDraft: null,
+  tripWizard: false,
 }))
 
 let nonce = 0
@@ -76,6 +79,7 @@ export const ui = {
   showRoute: (routeDate: string) => useUi.setState({ routeDate, selection: null, pickingLocation: false }),
   clearRoute: () => useUi.setState({ routeDate: null }),
   openTicket: (ticket: Ticket | null) => useUi.setState({ ticket }),
+  setTripWizard: (tripWizard: boolean) => useUi.setState({ tripWizard, ...(tripWizard ? { selection: null, profileOpen: false } : {}) }),
   setChatDraft: (chatDraft: SharedPlace | null) => useUi.setState({ chatDraft, ...(chatDraft ? { selection: null } : {}) }),
   toast: (message: string, tone: Toast['tone'] = 'info') => useUi.setState({ toast: { id: ++nonce, message, tone } }),
 }

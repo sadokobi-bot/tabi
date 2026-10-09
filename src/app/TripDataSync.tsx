@@ -7,6 +7,9 @@ import { useSession } from '@/store/session'
 import { recallActiveTrip, setPlaces, useTripStore } from '@/store/trip'
 import { ui } from '@/store/ui'
 
+/** New trips stopped starting with sample places on 2026-10-06. */
+const SAMPLES_ENDED_AT = Date.UTC(2026, 9, 7)
+
 /** Sample places whose deletion was already sent (snapshots can show them again until it lands). */
 const removing = new Set<string>()
 
@@ -17,7 +20,8 @@ const removing = new Set<string>()
 function removeSamplePlaces(backend: Backend, tripId: string) {
   const { trips, places, plan } = useTripStore.getState()
   const trip = trips.find((t) => t.id === tripId)
-  if (!trip) return
+  // Only trips from those days: newer ones can get places right away (the whole-trip planner).
+  if (!trip || trip.createdAt > SAMPLES_ENDED_AT) return
   const samples = places.filter(
     (place) => !removing.has(place.id) && place.createdBy === trip.ownerId && Math.abs(place.createdAt - trip.createdAt) < 5000,
   )

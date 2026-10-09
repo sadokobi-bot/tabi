@@ -27,7 +27,13 @@ export interface MapOptions {
 }
 
 /** Map searches around a point, as numbered options ("r1", "s4"…) that say which search found them. */
-async function searchOptions(provider: PoiProvider, near: LatLng, queries: string[], prefix: string, max: number): Promise<MapOptions> {
+export async function searchOptions(
+  provider: PoiProvider,
+  near: LatLng,
+  queries: string[],
+  prefix: string,
+  max: number,
+): Promise<MapOptions> {
   const results = await Promise.all(
     queries.map(async (query) => {
       const controller = new AbortController()

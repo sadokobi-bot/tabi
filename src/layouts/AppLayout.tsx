@@ -9,6 +9,8 @@ import { BottomTabBar } from '@/components/navigation/BottomTabBar'
 import { PlaceSheet } from '@/components/place/PlaceSheet'
 import { TicketViewer } from '@/components/place/TicketViewer'
 import { Tour } from '@/components/tour/Tour'
+import { TripWizard } from '@/components/trip/TripWizard'
+import { useUi } from '@/store/ui'
 import { useCurrentUser } from '@/store/session'
 import { startTour, tourPending } from '@/store/tour'
 import { ProfileSheet } from '@/components/profile/ProfileSheet'
@@ -40,12 +42,13 @@ export function AppLayout() {
   const { pathname } = useLocation()
   const user = useCurrentUser()
 
-  // A new account's first visit: the welcome tour, once the screen has settled.
+  // A new account's first visit: the welcome tour, once the screen has settled (and after planning the trip).
+  const wizardOpen = useUi((state) => state.tripWizard)
   useEffect(() => {
-    if (!tourPending(user.uid)) return
-    const timer = setTimeout(startTour, 900)
+    if (wizardOpen || !tourPending(user.uid)) return
+    const timer = setTimeout(() => startTour(), 900)
     return () => clearTimeout(timer)
-  }, [user.uid])
+  }, [user.uid, wizardOpen])
   const activeIndex = findTabIndex(pathname)
   const activeTab = TABS[activeIndex]
 
@@ -113,6 +116,7 @@ export function AppLayout() {
       <ProfileSheet />
       <TicketViewer />
       <Tour />
+      <TripWizard />
       <PresenceSync />
     </div>
   )

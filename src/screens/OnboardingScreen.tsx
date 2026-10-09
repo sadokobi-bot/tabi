@@ -8,6 +8,8 @@ import { SunGate } from '@/components/brand/SunGate'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
 import { useLatest } from '@/hooks/useLatest'
+import { hasFirebase } from '@/config/env'
+import { ui } from '@/store/ui'
 import { isoDateInTz } from '@/lib/dates'
 import { normalizeInviteCode } from '@/lib/ids'
 import { getBackend, useCurrentUser } from '@/store/session'
@@ -34,6 +36,8 @@ export function OnboardingScreen() {
   const [name, setName] = useState(`יפן ${new Date().getFullYear()}`)
   const [startDate, setStartDate] = useState(() => isoDateInTz(new Date()))
   const [days, setDays] = useState('30')
+  // Cloud mode: offer to have the AI plan every day right after the trip is created.
+  const [planWithAi, setPlanWithAi] = useState(hasFirebase)
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -72,7 +76,11 @@ export function OnboardingScreen() {
       setError('מלאו שם, תאריך התחלה ומספר ימים (1-90)')
       return
     }
-    void run(() => getBackend().createTrip(user, { name: name.trim(), startDate, days: dayCount }))
+    void run(async () => {
+      const id = await getBackend().createTrip(user, { name: name.trim(), startDate, days: dayCount })
+      if (planWithAi) ui.setTripWizard(true)
+      return id
+    })
   }
 
   const join = async (event: FormEvent) => {
@@ -222,6 +230,21 @@ export function OnboardingScreen() {
                     </div>
                   </div>
                 </div>
+                {hasFirebase && (
+                  <label className="surface mt-3 flex cursor-pointer items-center gap-3 rounded-card p-4">
+                    <Sparkles aria-hidden className="size-5 shrink-0 text-accent" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold">לבנות לנו לו״ז לכל הטיול</span>
+                      <span className="block text-xs text-muted">כמה שאלות קצרות, וה-AI יתכנן כל יום עם מקומות אמיתיים</span>
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={planWithAi}
+                      onChange={(event) => setPlanWithAi(event.target.checked)}
+                      className="size-5 shrink-0 accent-[var(--app-accent-fill)]"
+                    />
+                  </label>
+                )}
                 <FormFooter error={error} busy={busy} label="יצירת הטיול" />
               </form>
             )}
