@@ -49,3 +49,34 @@ test('the owner deletes a trip only after typing "מחיקה"', async ({ page })
   // No trips left: back to choosing a trip.
   await expect(page.getByRole('button', { name: /טיול חדש משלי/ })).toBeVisible()
 })
+
+test('the first visit to the map (after the welcome tour) explains the map, once', async ({ page }) => {
+  await signUp(page, uniqueName('maptour'))
+  await createFirstTrip(page)
+  await page.getByRole('link', { name: 'מפה' }).click()
+
+  const tour = page.getByRole('dialog', { name: 'סיור במפה' })
+  await expect(tour).toContainText('ברוכים הבאים למפה!')
+  for (const [step, title] of [
+    'חיפוש',
+    'המלצות באזור',
+    'המקומות שלכם',
+    'צריך עכשיו',
+    'המיקום שלי',
+    'מקום משלכם',
+    'לחיצה על סיכה',
+    'בהצלחה!',
+  ].entries()) {
+    await tour.getByRole('button', { name: /יאללה|הבא/ }).click()
+    await expect(tour.getByRole('heading', { level: 2 })).toContainText(title)
+    if (process.env.TOUR_SHOTS) await page.screenshot({ path: `${process.env.TOUR_SHOTS}/maptour-${step}.png` })
+  }
+  await tour.getByRole('button', { name: 'בואו נתחיל' }).click()
+  await expect(tour).toHaveCount(0)
+
+  // Not again.
+  await page.getByRole('link', { name: 'היום' }).click()
+  await page.getByRole('link', { name: 'מפה' }).click()
+  await page.waitForTimeout(1500)
+  await expect(tour).toHaveCount(0)
+})

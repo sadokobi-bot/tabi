@@ -235,6 +235,7 @@ export function Assistant({ provider, near }: AssistantProps) {
       <motion.button
         type="button"
         aria-label="עוזר AI: חיפוש מקום"
+        data-tour="assistant"
         whileTap={{ scale: 0.9 }}
         onClick={() => {
           haptic()

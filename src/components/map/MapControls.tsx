@@ -43,6 +43,7 @@ export function MapControls({ bearing, geoStatus, following, onLocate, onResetNo
         <motion.button
           type="button"
           aria-label={liveCount ? `איפה כולם, ${liveCount} משתפים מיקום` : 'איפה כולם'}
+          data-tour="people"
           whileTap={{ scale: 0.9 }}
           onClick={onPeople}
           className="glass relative grid size-12 place-items-center rounded-full"
@@ -59,6 +60,7 @@ export function MapControls({ bearing, geoStatus, following, onLocate, onResetNo
       <motion.button
         type="button"
         aria-label="המיקום שלי"
+        data-tour="locate"
         whileTap={{ scale: 0.9 }}
         onClick={onLocate}
         className={clsx('glass grid size-12 place-items-center rounded-full', following && 'text-location')}
@@ -73,6 +75,7 @@ export function MapControls({ bearing, geoStatus, following, onLocate, onResetNo
       <motion.button
         type="button"
         aria-label="הוספת מקום משלנו"
+        data-tour="add-place"
         whileTap={{ scale: 0.9 }}
         onClick={onAdd}
         className="grid size-14 place-items-center rounded-full bg-accent-fill text-accent-fg shadow-accent"

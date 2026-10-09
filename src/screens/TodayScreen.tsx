@@ -107,6 +107,7 @@ export default function TodayScreen() {
             type="button"
             onClick={() => ui.setProfileOpen(true)}
             aria-label="פרופיל והגדרות הטיול"
+            data-tour="profile"
             className="tap-target relative rounded-full transition active:scale-90"
           >
             <Avatar name={firstName(user)} className="size-11 text-lg" />

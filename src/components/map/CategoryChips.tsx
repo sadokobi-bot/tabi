@@ -23,17 +23,19 @@ interface CategoryChipsProps {
 export function CategoryChips({ showSaved, savedCount, onToggleSaved, active, onToggle, onNeeds }: CategoryChipsProps) {
   return (
     <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 py-1">
-      <Chip pressed={false} color="var(--app-accent)" onClick={onNeeds} icon={LifeBuoy}>
+      <Chip pressed={false} color="var(--app-accent)" onClick={onNeeds} icon={LifeBuoy} tour="needs-chip">
         צריך עכשיו
       </Chip>
-      <Chip pressed={showSaved} color="var(--app-accent)" onClick={onToggleSaved} icon={Bookmark}>
+      <Chip pressed={showSaved} color="var(--app-accent)" onClick={onToggleSaved} icon={Bookmark} tour="saved-chip">
         שמורים · {savedCount}
       </Chip>
-      {RECOMMENDABLE.map((id) => (
-        <Chip key={id} pressed={active.includes(id)} color={CATEGORIES[id].color} onClick={() => onToggle(id)} icon={CATEGORIES[id].icon}>
-          {CATEGORIES[id].plural}
-        </Chip>
-      ))}
+      <div data-tour="categories" className="flex shrink-0 gap-2">
+        {RECOMMENDABLE.map((id) => (
+          <Chip key={id} pressed={active.includes(id)} color={CATEGORIES[id].color} onClick={() => onToggle(id)} icon={CATEGORIES[id].icon}>
+            {CATEGORIES[id].plural}
+          </Chip>
+        ))}
+      </div>
     </div>
   )
 }
@@ -44,13 +46,16 @@ interface ChipProps {
   icon: typeof Bookmark
   onClick: () => void
   children: ReactNode
+  /** Marks the chip for the map tour. */
+  tour?: string
 }
 
-function Chip({ pressed, color, icon: Icon, onClick, children }: ChipProps) {
+function Chip({ pressed, color, icon: Icon, onClick, children, tour }: ChipProps) {
   return (
     <motion.button
       type="button"
       aria-pressed={pressed}
+      data-tour={tour}
       whileTap={{ scale: 0.92 }}
       onClick={() => {
         haptic()

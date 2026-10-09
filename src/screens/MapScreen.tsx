@@ -27,6 +27,7 @@ import { useAreaRecommendations } from '@/maps/useAreaRecommendations'
 import { usePoiProvider } from '@/maps/usePoiProvider'
 import { useTrip, useTripStore } from '@/store/trip'
 import { ui, useUi } from '@/store/ui'
+import { mapTourDue, startTour, useTour } from '@/store/tour'
 
 // Only one engine is ever downloaded: Google Maps when a key is configured, otherwise MapLibre + OpenStreetMap.
 const MapEngine = lazy<ComponentType<MapViewProps>>(() =>
@@ -115,6 +116,14 @@ export default function MapScreen() {
   }
 
   useTabReselect('map', locate)
+
+  // The map tour, the first time the map is opened (after the welcome tour).
+  const tourOpen = useTour((state) => state.open)
+  useEffect(() => {
+    if (!isActive || tourOpen || !mapTourDue(me.uid)) return
+    const timer = setTimeout(() => mapTourDue(me.uid) && startTour('map'), 1000)
+    return () => clearTimeout(timer)
+  }, [isActive, tourOpen, me.uid])
 
   // Frame the whole day when a route opens or gains / loses a stop (not on every plan edit).
   const routePoints = route?.path
@@ -269,7 +278,7 @@ export default function MapScreen() {
       {/* Top overlay: search + filter chips (glass, floating over the map) */}
       <div aria-hidden className="status-blend absolute inset-x-0 top-0 z-[5] h-16" />
       <div className="pt-screen pointer-events-none absolute inset-x-0 top-0 z-10 space-y-2">
-        <div className="pointer-events-auto px-4">
+        <div className="pointer-events-auto px-4" data-tour="map-search">
           <MapSearch provider={provider} near={viewport?.center ?? null} />
         </div>
         {route ? (

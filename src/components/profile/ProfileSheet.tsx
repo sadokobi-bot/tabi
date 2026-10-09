@@ -343,6 +343,17 @@ function ProfileBody({ onClose }: { onClose: () => void }) {
         >
           סיור קצר באפליקציה
         </Button>
+        <Button
+          variant="secondary"
+          className="mt-2 w-full"
+          icon={<MapIcon aria-hidden className="size-4" />}
+          onClick={() => {
+            onClose()
+            startTour('map')
+          }}
+        >
+          סיור במפה
+        </Button>
       </Section>
 
       <Section title="חיבורים">
