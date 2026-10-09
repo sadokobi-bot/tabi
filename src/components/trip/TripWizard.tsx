@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { CategoryIcon } from '@/components/ui/CategoryIcon'
 import { TextAreaField } from '@/components/ui/TextField'
 import { CITIES, getCity } from '@/data/cities'
+import { TripCreatorCat } from './TripCreatorCat'
 import { FAILURE_TEXT, failureOf, type AssistantFailure } from '@/lib/assistant'
 import { formatDay, tripDates } from '@/lib/dates'
 import { KOSHER_INFO, kosherNote } from '@/lib/mealOptions'
@@ -42,7 +43,7 @@ const DEFAULTS: TripPreferences = {
 
 type Phase =
   | { name: 'questions'; page: 0 | 1 | 2 }
-  | { name: 'planning'; progress: PlanProgress }
+  | { name: 'planning'; progress: PlanProgress; finished?: boolean }
   | { name: 'preview'; plan: TripPlan }
   | { name: 'error'; failure: AssistantFailure }
 
@@ -78,7 +79,14 @@ function Wizard() {
     try {
       const plan = await planTrip(trip, prefs, provider, (progress) => setPhase({ name: 'planning', progress }))
       const planned = plan.days.filter((day) => day.stops.length > 0).length
-      setPhase(planned === 0 ? { name: 'error', failure: 'other' } : { name: 'preview', plan })
+      if (planned === 0) {
+        setPhase({ name: 'error', failure: 'other' })
+        return
+      }
+      // A moment for the cat to set off with its backpack before the plan shows.
+      setPhase({ name: 'planning', progress: { done: 1, total: 1, label: 'הטיול מוכן! 🎒' }, finished: true })
+      await new Promise((resolve) => setTimeout(resolve, 1800))
+      setPhase({ name: 'preview', plan })
     } catch (error) {
       console.error('[trip wizard] failed', error)
       setPhase({ name: 'error', failure: failureOf(error) })
@@ -148,7 +156,7 @@ function Wizard() {
               onNext={() => (phase.page < 2 ? setPhase({ name: 'questions', page: (phase.page + 1) as 1 | 2 }) : void start())}
             />
           )}
-          {phase.name === 'planning' && <Planning progress={phase.progress} days={trip.days} />}
+          {phase.name === 'planning' && <Planning progress={phase.progress} days={trip.days} finished={phase.finished} />}
           {phase.name === 'preview' && <Preview plan={phase.plan} kosher={kosherStatus(phase.plan, prefs)} />}
           {phase.name === 'error' && (
             <div className="py-16 text-center">
@@ -390,28 +398,29 @@ function Chips({ options, selected, onToggle }: { options: [string, string][]; s
   )
 }
 
-function Planning({ progress, days }: { progress: PlanProgress; days: number }) {
+function Planning({ progress, days, finished }: { progress: PlanProgress; days: number; finished?: boolean }) {
   const share = Math.max(0.04, Math.min(1, progress.done / progress.total))
+  const stage = finished ? 'done' : share >= 0.85 ? 'almost' : 'working'
   return (
-    <div className="flex flex-col items-center py-12 text-center">
-      <motion.img
-        src={`${import.meta.env.BASE_URL}mascot/map.png`}
-        alt=""
-        aria-hidden
-        className="size-40 object-contain"
-        style={{ originY: 1 }}
-        animate={{ rotate: [0, -3, 0, 3, 0], y: [0, -3, 0] }}
-        transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <p role="status" className="mt-6 font-semibold">
+    <div className="flex flex-col items-center pt-8 pb-12 text-center">
+      <TripCreatorCat stage={stage} share={finished ? 1 : share} />
+      <p role="status" className={clsx('mt-6 font-semibold', finished && 'text-lg text-accent')}>
         {progress.label}
       </p>
-      <div className="mt-4 h-2 w-full max-w-64 overflow-hidden rounded-full bg-fg/8">
-        <motion.div className="h-full rounded-full bg-accent-fill" animate={{ width: `${share * 100}%` }} transition={{ duration: 0.5 }} />
-      </div>
-      <p className="mt-4 max-w-xs text-sm text-muted">
-        בונים לכם {days} ימים. {days > 10 ? 'בטיול ארוך זה לוקח כמה דקות' : 'זה לוקח כדקה'}, השאירו את המסך פתוח.
-      </p>
+      {!finished && (
+        <>
+          <div className="mt-4 h-2 w-full max-w-64 overflow-hidden rounded-full bg-fg/8">
+            <motion.div
+              className="h-full rounded-full bg-accent-fill"
+              animate={{ width: `${share * 100}%` }}
+              transition={{ duration: 0.5 }}
+            />
+          </div>
+          <p className="mt-4 max-w-xs text-sm text-muted">
+            בונים לכם {days} ימים. {days > 10 ? 'בטיול ארוך זה לוקח כמה דקות' : 'זה לוקח כדקה'}, השאירו את המסך פתוח.
+          </p>
+        </>
+      )}
     </div>
   )
 }
