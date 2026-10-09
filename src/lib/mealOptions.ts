@@ -4,6 +4,17 @@ import type { MapOption } from './assistant'
 
 export type Diet = 'kosher' | 'vegan' | 'vegetarian'
 
+/** What to tell travellers who keep kosher: no certified restaurants, but Chabad houses. */
+export const KOSHER_INFO =
+  'ביפן נכון לעכשיו אין מסעדות עם תעודת כשרות. יש בתי חב״ד בערים הגדולות (טוקיו, קיוטו, אוסקה) שמגישים ארוחות כשרות, כדאי לתאם איתם מראש.'
+
+/** The note under a plan that was asked to be kosher. */
+export function kosherNote(chabad?: string): string {
+  return chabad
+    ? `${KOSHER_INFO} שבצנו ארוחה ב${/^[A-Za-z]/.test(chabad) ? '-' : ''}${chabad}, ושאר הארוחות במסעדות צמחוניות או טבעוניות.`
+    : `${KOSHER_INFO} בינתיים הארוחות בתוכנית הן במסעדות צמחוניות או טבעוניות.`
+}
+
 /** A food wish in the travellers' own words. */
 export function dietOf(text: string): Diet | null {
   if (/כשר|kosher/i.test(text)) return 'kosher'
@@ -14,7 +25,7 @@ export function dietOf(text: string): Diet | null {
 
 const DIET_QUERIES: Record<Diet, string[]> = {
   // Kosher places in Japan are few: the plant-based ones are the fallback.
-  kosher: ['kosher restaurant', 'vegan restaurant', 'vegetarian restaurant'],
+  kosher: ['kosher restaurant', 'Chabad house', 'vegan restaurant', 'vegetarian restaurant'],
   vegan: ['vegan restaurant', 'vegetarian restaurant'],
   vegetarian: ['vegetarian restaurant', 'vegan restaurant'],
 }

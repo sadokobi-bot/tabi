@@ -9,6 +9,7 @@ import { TextAreaField } from '@/components/ui/TextField'
 import { CITIES, getCity } from '@/data/cities'
 import { FAILURE_TEXT, failureOf, type AssistantFailure } from '@/lib/assistant'
 import { formatDay, tripDates } from '@/lib/dates'
+import { KOSHER_INFO, kosherNote } from '@/lib/mealOptions'
 import { kosherStatus, planTrip, saveTripPlan, type PlanProgress, type TripPlan, type TripPreferences } from '@/lib/tripPlanner'
 import { usePoiProvider } from '@/maps/usePoiProvider'
 import { useTrip, useTripStore } from '@/store/trip'
@@ -216,7 +217,7 @@ function Questions({
           {page === 0 && (
             <>
               <Intro image="map.png" title="כמה שאלות קצרות, ואנחנו נבנה לכם את כל הטיול">
-                לו״ז לכל יום, עם מקומות ומסעדות אמיתיים מהמפה. אחר כך אפשר לשנות הכול.
+                לו״ז מלא לכל יום, עם אטרקציות ומסעדות. אחר כך אפשר לשנות הכול.
                 {hasPlan && ' פעילויות שכבר בלו״ז יישארו, והתכנון ייבנה סביבן.'}
               </Intro>
               <Question title="מי נוסע?">
@@ -286,6 +287,11 @@ function Questions({
               </Question>
               <Question title="מגבלות באוכל?">
                 <Chips options={FOOD.map((f) => [f, f])} selected={prefs.food} onToggle={(f) => set({ food: toggle(prefs.food, f) })} />
+                {prefs.food.includes('כשר') && (
+                  <p className="mt-2.5 rounded-control bg-amber-400/12 px-3.5 py-2.5 text-xs leading-relaxed">
+                    {KOSHER_INFO} לשאר הארוחות נבחר מסעדות צמחוניות וטבעוניות.
+                  </p>
+                )}
               </Question>
               <TextAreaField
                 label="עוד משהו? (לא חובה)"
@@ -404,7 +410,7 @@ function Planning({ progress, days }: { progress: PlanProgress; days: number }) 
         <motion.div className="h-full rounded-full bg-accent-fill" animate={{ width: `${share * 100}%` }} transition={{ duration: 0.5 }} />
       </div>
       <p className="mt-4 max-w-xs text-sm text-muted">
-        בונים {days} ימים ממקומות ומסעדות אמיתיים. {days > 10 ? 'בטיול ארוך זה לוקח כמה דקות' : 'זה לוקח כדקה'}, השאירו את המסך פתוח.
+        בונים לכם {days} ימים. {days > 10 ? 'בטיול ארוך זה לוקח כמה דקות' : 'זה לוקח כדקה'}, השאירו את המסך פתוח.
       </p>
     </div>
   )
@@ -426,9 +432,7 @@ function Preview({ plan, kosher }: { plan: TripPlan; kosher: 'found' | 'none' | 
               : 'bg-amber-400/12 text-amber-900 dark:text-amber-300',
           )}
         >
-          {kosher === 'found'
-            ? 'כולל מסעדות כשרות בימים שאפשר.'
-            : 'לא מצאנו מסעדות כשרות בערים האלה, אז הארוחות הן במסעדות צמחוניות או טבעוניות.'}
+          {kosher === 'found' ? kosherNote('בית חב״ד') : kosherNote()}
         </p>
       )}
       {plan.failed.length > 0 && (

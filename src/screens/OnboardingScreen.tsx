@@ -235,7 +235,7 @@ export function OnboardingScreen() {
                     <Sparkles aria-hidden className="size-5 shrink-0 text-accent" />
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-semibold">לבנות לנו לו״ז לכל הטיול</span>
-                      <span className="block text-xs text-muted">כמה שאלות קצרות, וה-AI יתכנן כל יום עם מקומות אמיתיים</span>
+                      <span className="block text-xs text-muted">כמה שאלות קצרות, וה-AI יתכנן לכם כל יום</span>
                     </span>
                     <input
                       type="checkbox"

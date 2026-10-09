@@ -27,7 +27,7 @@ import { addDays, formatDay, tripDates } from '@/lib/dates'
 import { newId } from '@/lib/ids'
 import type { Poi } from '@/maps/poi'
 import { usePoiProvider } from '@/maps/usePoiProvider'
-import { dietOf, findRestaurants, findSights, type MapOptions } from '@/lib/mealOptions'
+import { dietOf, findRestaurants, findSights, kosherNote, type MapOptions } from '@/lib/mealOptions'
 import { useTrip, useTripStore } from '@/store/trip'
 import { ui } from '@/store/ui'
 import { RainPlan } from './RainPlan'
@@ -179,11 +179,9 @@ function PlanDay({ date, onClose }: { date: string; onClose: () => void }) {
     if (dietOf(context.request.wishes) !== 'kosher') return undefined
     const kosherStop = stops.find((stop) => {
       const option = context.restaurants.options.find((o) => o.id === stop.mapId)
-      return option?.foundBy === 'kosher restaurant' && /kosher|chabad|כשר/i.test(option.name)
+      return (option?.foundBy === 'kosher restaurant' || option?.foundBy === 'Chabad house') && /kosher|chabad|כשר|חב״ד/i.test(option.name)
     })
-    return kosherStop
-      ? { tone: 'ok', text: `כולל מסעדה כשרה: ${kosherStop.name}` }
-      : { tone: 'warn', text: 'לא מצאנו מסעדה כשרה באזור, אז הארוחות הן במסעדות צמחוניות או טבעוניות.' }
+    return kosherStop ? { tone: 'ok', text: kosherNote(kosherStop.name) } : { tone: 'warn', text: kosherNote() }
   }
 
   const generate = async () => {
@@ -191,7 +189,7 @@ function PlanDay({ date, onClose }: { date: string; onClose: () => void }) {
     const controller = new AbortController()
     abortRef.current = controller
     setChange('')
-    setPhase({ name: 'loading', step: 'מחפשים מקומות אמיתיים באזור…' })
+    setPhase({ name: 'loading', step: 'מחפשים מקומות באזור…' })
     const { plan, places, placesById } = useTripStore.getState()
     const hotel = hotelId ? placesById[hotelId] : undefined
     const city = getCity(trip.dayCities[date]) ?? (hotel ? nearestCity(hotel.location) : undefined)
