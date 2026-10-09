@@ -1,11 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Route, Sunrise, Sunset, Thermometer, Umbrella } from 'lucide-react'
+import { Route, Sunrise, Sunset, Thermometer, Ticket, Umbrella } from 'lucide-react'
 import type { ItineraryItem, LatLng, Place } from '@/data/types'
 import { parseHm } from '@/lib/dates'
 import { formatDistance } from '@/lib/geo'
 import { estimateLeg, pathMeters } from '@/lib/travel'
 import { fetchDayForecast, rainWindows, type DayForecast } from '@/lib/weather'
 import { durationLabel } from './TravelLeg'
+import { readCachedRate } from '@/lib/currency'
+import { useTripStore } from '@/store/trip'
 
 /** Out in the open: these are the stops rain actually spoils. */
 const OUTDOOR = new Set<Place['category']>(['nature', 'amusement'])
@@ -33,6 +35,7 @@ interface BriefingCardProps {
  */
 export function BriefingCard({ date, items, placesById, location, start, onRainPlan }: BriefingCardProps) {
   const [forecast, setForecast] = useState<DayForecast | null>(null)
+  const tickets = useTripStore((state) => state.tickets)
   const { lat, lng } = location
 
   useEffect(() => {
@@ -65,6 +68,24 @@ export function BriefingCard({ date, items, placesById, location, start, onRainP
         .filter(Boolean)
         .join(' · '),
     })
+  }
+
+  // Entry tickets: about how much the day costs per person, and anything that must be booked and isn't.
+  const entries = stops.flatMap(({ place }) => (place.entry ? [{ place, entry: place.entry }] : []))
+  const entryCost = entries.reduce((sum, { entry }) => sum + (entry.entry === 'paid' || entry.entry === 'partly' ? entry.priceYen : 0), 0)
+  if (entryCost > 0) {
+    const rate = readCachedRate()
+    lines.push({
+      icon: <Ticket className="size-4" />,
+      text: `כרטיסי כניסה היום: בערך ¥${entryCost.toLocaleString('en-US')} לאדם${rate ? ` (≈ ₪${Math.round(entryCost / rate.jpyPerIls)})` : ''}`,
+    })
+  }
+  const unbooked = entries.find(
+    ({ place, entry }) =>
+      entry.bookAhead === 'required' && !place.booking?.booked && !tickets.some((ticket) => ticket.placeId === place.id),
+  )
+  if (unbooked) {
+    lines.push({ icon: <Ticket className="size-4" />, text: `${unbooked.place.name} צריך כרטיס מראש, ועוד לא סומן שהוזמן`, tone: 'warn' })
   }
 
   if (forecast) {

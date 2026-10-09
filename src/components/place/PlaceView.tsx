@@ -32,6 +32,7 @@ import { usePoiProvider } from '@/maps/usePoiProvider'
 import { scheduleOf, useTrip, useTripStore } from '@/store/trip'
 import { ui } from '@/store/ui'
 import { BookingSection } from './BookingSection'
+import { EntryTickets } from './EntryTickets'
 import { HotelSection } from './HotelSection'
 import { NavigateBar } from './NavigateBar'
 import { VisitSection } from './VisitSection'
@@ -187,6 +188,16 @@ export function PlaceView({ subject, onEdit, onSchedule }: PlaceViewProps) {
           </a>
         )}
 
+        {(category === 'attraction' || category === 'amusement' || category === 'nature') && (
+          <EntryTickets
+            key={saved?.id ?? subject.googlePlaceId ?? name}
+            name={name}
+            saved={saved}
+            website={website}
+            typeLabel={data?.typeLabel}
+            address={address}
+          />
+        )}
         {saved && (saved.category === 'hotel' || Object.values(trip.stays).includes(saved.id)) && (
           <HotelSection key={`hotel-${saved.id}`} place={saved} />
         )}

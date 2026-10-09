@@ -1,4 +1,4 @@
-import type { CategoryId, LatLng } from '@/data/types'
+import type { CategoryId, EntryInfo, LatLng } from '@/data/types'
 import type { Poi, PoiProvider } from '@/maps/poi'
 import { distanceMeters } from '@/lib/geo'
 import { nameMatch } from './names'
@@ -101,7 +101,19 @@ You get the area, the date, when rain is expected, the day's stops (id, time, na
 For every replacement: "replaceId"; "time" = the replaced stop's time as HH:mm (or a sensible time when it had none); "name" in Hebrew as Israelis would write it; "searchName" = the official English (romaji) name as on maps; "city" in English; approximate "lat"/"lng"; a category; "why" = one short Hebrew sentence on why it is great on a rainy day.
 "reply" is one short Hebrew sentence summing up the rainy-day plan. Plain text, no markdown. Write Hebrew text in Hebrew letters only.`
 
-type ModelKind = 'ask' | 'import' | 'plan' | 'translate' | 'rain'
+const ENTRY_SYSTEM = `You know attractions in Japan well. For the place given, say what visitors need to get in, for "Tabi", a Hebrew trip app.
+Be accurate. When you are not sure of something, say "unknown" (or 0 / "") rather than guess.
+- "entry": "free" (no ticket at all, e.g. most shrine grounds, streets, many parks), "paid" (an entry ticket), "partly" (free to enter, with paid parts such as an inner garden, a treasure hall or an observation deck), or "unknown".
+- "bookAhead": "required" (timed tickets that sell out or are sold only online in advance, e.g. teamLab, Ghibli Museum, Shibuya Sky at sunset), "recommended", "no", or "unknown".
+- "priceYen": the standard adult price in yen for the main ticket; 0 when free or unknown.
+- "priceNote": one short Hebrew line about prices (adults and children, differences between times or days); "" when unknown.
+- "bookAheadNote": one short Hebrew line on how far ahead to book and how; "" when booking isn't needed.
+- "tip": one short Hebrew line with a real way to save or skip lines (free days, a pass that includes it, cheaper online); "" when you don't know one.
+- "soldOnline": true when tickets for it are commonly sold on Klook or KKday.
+- "englishName": the official English name. "confident": false when you are not sure about the place or its prices.
+Hebrew text in Hebrew letters only. Plain text, no markdown.`
+
+type ModelKind = 'ask' | 'import' | 'plan' | 'translate' | 'rain' | 'entry'
 
 /** What a dish is, as far as a menu photo tells (for allergies, kosher and taste). */
 export const FOOD_TAGS = ['spicy', 'pork', 'beef', 'chicken', 'seafood', 'raw', 'vegetarian', 'alcohol', 'sweet'] as const
@@ -161,44 +173,63 @@ function getModels(kind: ModelKind) {
       })
       const instance = ai.getAI(getApp(), { backend: new ai.GoogleAIBackend() })
       const responseSchema =
-        kind === 'translate'
+        kind === 'entry'
           ? Schema.object({
               properties: {
-                kind: Schema.enumString({ enum: ['menu', 'sign', 'product', 'other'] }),
-                title: Schema.string(),
-                summary: Schema.string(),
-                items: Schema.array({
-                  items: Schema.object({
-                    properties: {
-                      original: Schema.string(),
-                      hebrew: Schema.string(),
-                      note: Schema.string(),
-                      price: Schema.string(),
-                      tags: Schema.array({ items: Schema.enumString({ enum: [...FOOD_TAGS] }) }),
-                    },
+                entry: Schema.enumString({ enum: ['free', 'paid', 'partly', 'unknown'] }),
+                bookAhead: Schema.enumString({ enum: ['required', 'recommended', 'no', 'unknown'] }),
+                priceYen: Schema.number(),
+                priceNote: Schema.string(),
+                bookAheadNote: Schema.string(),
+                tip: Schema.string(),
+                soldOnline: Schema.boolean(),
+                englishName: Schema.string(),
+                confident: Schema.boolean(),
+              },
+            })
+          : kind === 'translate'
+            ? Schema.object({
+                properties: {
+                  kind: Schema.enumString({ enum: ['menu', 'sign', 'product', 'other'] }),
+                  title: Schema.string(),
+                  summary: Schema.string(),
+                  items: Schema.array({
+                    items: Schema.object({
+                      properties: {
+                        original: Schema.string(),
+                        hebrew: Schema.string(),
+                        note: Schema.string(),
+                        price: Schema.string(),
+                        tags: Schema.array({ items: Schema.enumString({ enum: [...FOOD_TAGS] }) }),
+                      },
+                    }),
                   }),
-                }),
-              },
-            })
-          : Schema.object({
-              properties: {
-                reply: Schema.string(),
-                places: Schema.array({ items: place }),
-                ...(kind === 'ask' ? { googleQuery: Schema.string(), areaLat: Schema.number(), areaLng: Schema.number() } : {}),
-              },
-            })
+                },
+              })
+            : Schema.object({
+                properties: {
+                  reply: Schema.string(),
+                  places: Schema.array({ items: place }),
+                  ...(kind === 'ask' ? { googleQuery: Schema.string(), areaLat: Schema.number(), areaLng: Schema.number() } : {}),
+                },
+              })
       // Reading text off an image is transcription first: the fast models handle it in seconds.
       const list = kind === 'import' || kind === 'translate' ? IMPORT_MODELS : MODELS.map((model) => ({ model, fast: false }))
       return list.map(({ model, fast }) =>
         ai.getGenerativeModel(instance, {
           model,
-          systemInstruction: { ask: SYSTEM, plan: PLAN_SYSTEM, import: IMPORT_SYSTEM, translate: TRANSLATE_SYSTEM, rain: RAIN_SYSTEM }[
-            kind
-          ],
+          systemInstruction: {
+            ask: SYSTEM,
+            plan: PLAN_SYSTEM,
+            import: IMPORT_SYSTEM,
+            translate: TRANSLATE_SYSTEM,
+            rain: RAIN_SYSTEM,
+            entry: ENTRY_SYSTEM,
+          }[kind],
           generationConfig: {
             responseMimeType: 'application/json',
             responseSchema,
-            temperature: kind === 'plan' ? 0.7 : kind === 'rain' ? 0.5 : kind === 'ask' ? 0.4 : 0.2,
+            temperature: kind === 'plan' ? 0.7 : kind === 'rain' ? 0.5 : kind === 'ask' ? 0.4 : kind === 'entry' ? 0.1 : 0.2,
             ...(fast ? { thinkingConfig: { thinkingLevel: ai.ThinkingLevel.MINIMAL } } : {}),
           },
         }),
@@ -317,6 +348,32 @@ ${text.trim()}`
   }
 }
 
+/** Tickets for a place: free or paid, the usual price, booking ahead, a tip. */
+export async function entryInfoWithAi(place: { name: string; area?: string; type?: string; website?: string }): Promise<EntryInfo> {
+  const lines = [
+    `Place: ${place.name}`,
+    place.area ? `Area: ${place.area}` : '',
+    place.type ? `Kind of place: ${place.type}` : '',
+    place.website ? `Official website: ${place.website}` : '',
+  ]
+  const result = await generate('entry', lines.filter(Boolean).join('\n'))
+  const json = JSON.parse(result.response.text()) as Partial<Omit<EntryInfo, 'checkedAt'>>
+  const pick = <T extends string>(value: unknown, options: readonly T[], fallback: T): T =>
+    options.includes(value as T) ? (value as T) : fallback
+  return {
+    entry: pick(json.entry, ['free', 'paid', 'partly', 'unknown'] as const, 'unknown'),
+    bookAhead: pick(json.bookAhead, ['required', 'recommended', 'no', 'unknown'] as const, 'unknown'),
+    priceYen: Number.isFinite(json.priceYen) && (json.priceYen ?? 0) > 0 ? Math.round(json.priceYen!) : 0,
+    priceNote: cleanText(json.priceNote),
+    bookAheadNote: cleanText(json.bookAheadNote),
+    tip: cleanText(json.tip),
+    soldOnline: Boolean(json.soldOnline),
+    englishName: (json.englishName ?? '').trim() || place.name,
+    confident: json.confident !== false,
+    checkedAt: Date.now(),
+  }
+}
+
 /** One stop of an AI-planned day. `savedId` points at one of the trip's saved places when it picked one. */
 export interface PlannedStop extends AssistantPlace {
   time: string
@@ -369,7 +426,8 @@ const FOREIGN_SCRIPT = /[Ͱ-ϿЀ-ԯ؀-ۿݐ-ݿࢠ-ࣿऀ-෿฀-໿Ⴀ-ჿ가-힯
 
 /** The model's text, or `fallback` when it's empty or has letters of another script mixed in. */
 export function cleanText(text: string | undefined | null, fallback = ''): string {
-  const value = (text ?? '').trim()
+  // A stray letter of another script inside a Hebrew word ("משsתנה") is a slip too: take it out.
+  const value = (text ?? '').trim().replace(/(?<=[א-ת])(?![֐-׿])\p{L}(?=[א-ת])/gu, '')
   return value && !FOREIGN_SCRIPT.test(value) ? value : fallback
 }
 

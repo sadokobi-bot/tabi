@@ -34,9 +34,29 @@ export interface Place {
   hotel?: HotelInfo
   /** Luggage forwarded here from the previous hotel (takkyubin). */
   luggage?: LuggageInfo
+  /** Do they need tickets, about how much, book ahead? (AI facts, kept so they're asked once.) */
+  entry?: EntryInfo
   createdBy: string
   createdAt: number
   updatedAt: number
+}
+
+/** Getting in: ticket or free, the usual price, booking ahead. Facts from the AI, so marked approximate. */
+export interface EntryInfo {
+  entry: 'free' | 'paid' | 'partly' | 'unknown'
+  bookAhead: 'required' | 'recommended' | 'no' | 'unknown'
+  /** Standard adult price in yen (0: free or unknown). */
+  priceYen: number
+  /** Short Hebrew lines; '' when there's nothing to say. */
+  priceNote: string
+  bookAheadNote: string
+  tip: string
+  /** Sold on Klook / KKday. */
+  soldOnline: boolean
+  /** Official English name (for searching the booking sites). */
+  englishName: string
+  confident: boolean
+  checkedAt: number
 }
 
 export interface LuggageInfo {
