@@ -13,7 +13,7 @@ import { isoDateInTz } from '@/lib/dates'
  * (the Ghibli Museum, teamLab, famous restaurants). Optional date when booking opens;
  * the Today screen counts down to it until it's marked as booked.
  */
-export function BookingSection({ place }: { place: Place }) {
+export function BookingSection({ place, cta = 'צריך להזמין מראש? הוסיפו תזכורת' }: { place: Place; cta?: string }) {
   const booking = place.booking
   const [editing, setEditing] = useState(false)
   const [opensOn, setOpensOn] = useState(booking?.opensOn ?? '')
@@ -59,7 +59,7 @@ export function BookingSection({ place }: { place: Place }) {
         className="mt-4 flex w-full items-center gap-2 rounded-control border border-dashed border-line px-4 py-3 text-sm text-muted transition hover:bg-fg/[0.03]"
       >
         <Ticket aria-hidden className="size-4.5 shrink-0" />
-        צריך להזמין מראש? הוסיפו תזכורת
+        {cta}
       </button>
     )
   }

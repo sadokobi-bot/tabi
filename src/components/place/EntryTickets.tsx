@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import clsx from 'clsx'
-import { BellPlus, ExternalLink, Lightbulb, LoaderCircle, RefreshCw, Ticket } from 'lucide-react'
+import { ExternalLink, Lightbulb, LoaderCircle, RefreshCw, Ticket } from 'lucide-react'
 import { hasFirebase } from '@/config/env'
 import { actions } from '@/data/actions'
 import type { EntryInfo, Place } from '@/data/types'
@@ -8,6 +8,7 @@ import { entryInfoWithAi } from '@/lib/assistant'
 import { readCachedRate } from '@/lib/currency'
 import { safeHttpUrl } from '@/lib/deeplinks'
 import { useTripStore } from '@/store/trip'
+import { BookingSection } from './BookingSection'
 
 /** Asked once per session for places that aren't saved (saved ones keep the answer). */
 const sessionCache = new Map<string, Promise<EntryInfo>>()
@@ -65,23 +66,38 @@ export function EntryTickets({ name, saved, website, typeLabel, address }: Entry
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saved?.id])
 
-  if (!hasFirebase) return null
+  // The "book ahead" reminder lives here for attractions: once one is set, or when booking ahead is needed.
+  const latest = saved ? (useTripStore.getState().placesById[saved.id] ?? saved) : undefined
+  const wantsBooking = info?.bookAhead === 'required' || info?.bookAhead === 'recommended'
+  const booking =
+    latest && !latest.visit && (latest.booking || wantsBooking) ? (
+      <BookingSection place={latest} cta="תזכירו לנו להזמין (אפשר גם עם התאריך שבו נפתחות ההזמנות)" />
+    ) : null
+
+  if (!hasFirebase) return booking
 
   if (!info)
     return (
-      <button
-        type="button"
-        disabled={status === 'loading'}
-        onClick={() => load()}
-        className="mt-4 flex w-full items-center gap-2 rounded-control border border-dashed border-line px-4 py-3 text-sm text-muted transition hover:bg-fg/[0.03]"
-      >
-        {status === 'loading' ? (
-          <LoaderCircle aria-hidden className="size-4.5 animate-spin" />
-        ) : (
-          <Ticket aria-hidden className="size-4.5" />
-        )}
-        {status === 'loading' ? 'בודקים כרטיסים ומחירים…' : status === 'error' ? 'לא הצלחנו לבדוק. לנסות שוב?' : 'צריך כרטיס? כמה זה עולה?'}
-      </button>
+      <>
+        <button
+          type="button"
+          disabled={status === 'loading'}
+          onClick={() => load()}
+          className="mt-4 flex w-full items-center gap-2 rounded-control border border-dashed border-line px-4 py-3 text-sm text-muted transition hover:bg-fg/[0.03]"
+        >
+          {status === 'loading' ? (
+            <LoaderCircle aria-hidden className="size-4.5 animate-spin" />
+          ) : (
+            <Ticket aria-hidden className="size-4.5" />
+          )}
+          {status === 'loading'
+            ? 'בודקים כרטיסים ומחירים…'
+            : status === 'error'
+              ? 'לא הצלחנו לבדוק. לנסות שוב?'
+              : 'צריך כרטיס? כמה זה עולה?'}
+        </button>
+        {booking}
+      </>
     )
 
   const official = safeHttpUrl(website)
@@ -90,8 +106,6 @@ export function EntryTickets({ name, saved, website, typeLabel, address }: Entry
   const shekels = info.priceYen && rate ? Math.round(info.priceYen / rate.jpyPerIls) : null
   const showLinks =
     (needsTicket || info.bookAhead === 'required' || info.bookAhead === 'recommended') && (Boolean(official) || info.soldOnline)
-  const canRemind = saved && !saved.booking && (info.bookAhead === 'required' || info.bookAhead === 'recommended')
-
   return (
     <section aria-label="כרטיסים ומחירים" className="surface mt-4 rounded-control p-4">
       <div className="flex items-center gap-2">
@@ -162,19 +176,7 @@ export function EntryTickets({ name, saved, website, typeLabel, address }: Entry
         </div>
       )}
 
-      {canRemind && (
-        <button
-          type="button"
-          onClick={() => {
-            const latest = useTripStore.getState().placesById[saved.id]
-            if (latest) actions.updatePlace(latest, { booking: { booked: false } }, 'נוספה תזכורת להזמנה')
-          }}
-          className="mt-3 flex items-center gap-1.5 text-sm font-semibold text-accent"
-        >
-          <BellPlus aria-hidden className="size-4" />
-          תזכירו לנו להזמין
-        </button>
-      )}
+      {booking}
 
       <p className="mt-3 text-[11px] leading-relaxed text-muted">
         {info.confident ? '' : 'לא בטוחים במידע הזה. '}המחירים משוערים ויכולים להשתנות, והמחיר הסופי מופיע באתר המכירה. באתרי ההזמנות יש

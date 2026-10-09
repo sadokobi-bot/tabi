@@ -114,6 +114,8 @@ export function PlaceView({ subject, onEdit, onSchedule }: PlaceViewProps) {
     ui.moveCamera({ center: subject.location, zoom: 16 })
   }
 
+  const hasEntryInfo = category === 'attraction' || category === 'amusement' || category === 'nature'
+
   const googleLink = data?.googleMapsUri ?? placeUrl({ name, location: subject.location, googlePlaceId: subject.googlePlaceId })
 
   return (
@@ -188,9 +190,9 @@ export function PlaceView({ subject, onEdit, onSchedule }: PlaceViewProps) {
           </a>
         )}
 
-        {(category === 'attraction' || category === 'amusement' || category === 'nature') && (
+        {hasEntryInfo && (
           <EntryTickets
-            key={saved?.id ?? subject.googlePlaceId ?? name}
+            key={`entry-${saved?.id ?? subject.googlePlaceId ?? name}`}
             name={name}
             saved={saved}
             website={website}
@@ -202,7 +204,8 @@ export function PlaceView({ subject, onEdit, onSchedule }: PlaceViewProps) {
           <HotelSection key={`hotel-${saved.id}`} place={saved} />
         )}
         {saved && <VisitSection key={`visit-${saved.id}`} place={saved} />}
-        {saved && !saved.visit && <BookingSection key={saved.id} place={saved} />}
+        {/* Attractions have it inside "tickets and prices"; restaurants keep it here (a table to reserve). */}
+        {saved && !saved.visit && !hasEntryInfo && <BookingSection key={`booking-${saved.id}`} place={saved} />}
         {saved && saved.category !== 'hotel' && <TicketSection key={`tickets-${saved.id}`} place={saved} />}
 
         {schedule.length > 0 && (
