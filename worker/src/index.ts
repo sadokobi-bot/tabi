@@ -6,9 +6,11 @@ interface Env {
 }
 
 interface EmailRequest {
-  type: 'verifyEmail' | 'resetPassword'
+  type: 'verifyEmail' | 'resetPassword' | 'verifyAndChangeEmail'
   email: string
   displayName?: string
+  idToken?: string
+  newEmail?: string
 }
 
 const CORS = {
@@ -27,10 +29,18 @@ export default {
       if (!body.email || !body.type) return new Response('Missing email or type', { status: 400, headers: CORS })
 
       const accessToken = await getAccessToken(env.FIREBASE_SERVICE_ACCOUNT)
-      const link = await generateActionLink(env.FIREBASE_PROJECT_ID, accessToken, body.type, body.email, env.APP_URL)
+      let link: string
+      if (body.type === 'verifyAndChangeEmail') {
+        if (!body.idToken || !body.newEmail) return new Response('Missing idToken or newEmail', { status: 400, headers: CORS })
+        link = await generateChangeEmailLink(env.FIREBASE_PROJECT_ID, accessToken, body.idToken, body.newEmail, env.APP_URL)
+      } else {
+        link = await generateActionLink(env.FIREBASE_PROJECT_ID, accessToken, body.type, body.email, env.APP_URL)
+      }
       const appLink = rewriteLink(link, env.APP_URL)
+      const emailType = body.type === 'verifyAndChangeEmail' ? 'verifyEmail' : body.type
+      const recipient = body.type === 'verifyAndChangeEmail' ? body.newEmail! : body.email
 
-      await sendEmail(env.RESEND_API_KEY, body.email, body.displayName ?? '', body.type, appLink)
+      await sendEmail(env.RESEND_API_KEY, recipient, body.displayName ?? '', emailType, appLink)
 
       return new Response(JSON.stringify({ ok: true }), {
         headers: { 'Content-Type': 'application/json', ...CORS },
@@ -100,6 +110,27 @@ async function generateActionLink(
     method: 'POST',
     headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ requestType, email, returnOobLink: true, continueUrl }),
+  })
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`Firebase: ${error}`)
+  }
+  const data = (await response.json()) as { oobLink: string }
+  return data.oobLink
+}
+
+async function generateChangeEmailLink(
+  projectId: string,
+  accessToken: string,
+  idToken: string,
+  newEmail: string,
+  continueUrl: string,
+): Promise<string> {
+  const url = `https://identitytoolkit.googleapis.com/v1/projects/${projectId}/accounts:sendOobCode`
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ requestType: 'VERIFY_AND_CHANGE_EMAIL', idToken, newEmail, returnOobLink: true, continueUrl }),
   })
   if (!response.ok) {
     const error = await response.text()

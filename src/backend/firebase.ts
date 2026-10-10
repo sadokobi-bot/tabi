@@ -9,7 +9,6 @@ import {
   createUserWithEmailAndPassword,
   deleteUser,
   reauthenticateWithCredential,
-  verifyBeforeUpdateEmail,
   getAuth,
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -272,13 +271,24 @@ export function createFirebaseBackend(): Backend {
     async setRecoveryEmail(_user, email, password) {
       try {
         const current = await reauthenticate(password)
-        auth.languageCode = 'he'
-        await verifyBeforeUpdateEmail(current, email.trim(), { url: 'https://tabijap.com', handleCodeInApp: false })
-        sendStyledEmail('verifyEmail', email.trim(), current.displayName ?? undefined)
+        const idToken = await current.getIdToken()
+        const res = await fetch(EMAIL_WORKER, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'verifyAndChangeEmail',
+            email: current.email ?? '',
+            newEmail: email.trim(),
+            idToken,
+            displayName: current.displayName ?? undefined,
+          }),
+        })
+        if (!res.ok) {
+          const data = (await res.json().catch(() => ({}))) as { error?: string }
+          throw new Error(data.error ?? 'Worker error')
+        }
       } catch (error) {
-        const code = (error as { code?: string } | null)?.code
-        if (code === 'auth/invalid-email') throw new AppError('invalid-email')
-        if (code === 'auth/email-already-in-use') throw new AppError('email-in-use')
+        if (error instanceof Error && error.message.includes('EMAIL_EXISTS')) throw new AppError('email-in-use')
         throw toAppError(error)
       }
     },
