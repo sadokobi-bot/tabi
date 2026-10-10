@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+﻿import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { oniStill } from '@/components/brand/FrameLoop'
 import clsx from 'clsx'
@@ -19,6 +19,7 @@ import {
   planTrip,
   saveTripPlan,
   type PlanProgress,
+  type PlannedHotel,
   type TripPlan,
   type TripPreferences,
 } from '@/lib/tripPlanner'
@@ -51,6 +52,8 @@ const DEFAULTS: TripPreferences = {
   food: [],
   notes: '',
   season: [],
+  hotels: true,
+  hotelZone: 'center',
 }
 
 type Phase =
@@ -71,6 +74,8 @@ function Wizard() {
   const hasPlan = useTripStore((state) => Object.values(state.plan).some((items) => items.length > 0))
   const [prefs, setPrefs] = useState<TripPreferences>(() => ({
     ...DEFAULTS,
+    // Already sleeping somewhere booked: don't suggest hotels unless they ask.
+    hotels: Object.keys(trip.stays).length === 0,
     cities: (() => {
       const existing = [...new Set(Object.values(trip.dayCities).filter(Boolean) as string[])]
       return existing.length > 0 ? existing : [...POPULAR_CITY_IDS]
@@ -180,7 +185,15 @@ function Wizard() {
             />
           )}
           {phase.name === 'planning' && <Planning progress={phase.progress} days={trip.days} finished={phase.finished} />}
-          {phase.name === 'preview' && <Preview plan={phase.plan} kosher={kosherStatus(phase.plan, prefs)} />}
+          {phase.name === 'preview' && (
+            <Preview
+              plan={phase.plan}
+              kosher={kosherStatus(phase.plan, prefs)}
+              onDropHotel={(hotel) =>
+                setPhase({ name: 'preview', plan: { ...phase.plan, hotels: phase.plan.hotels.filter((h) => h !== hotel) } })
+              }
+            />
+          )}
           {phase.name === 'error' && (
             <div className="py-16 text-center">
               <p className="text-sm text-muted">{FAILURE_TEXT[phase.failure]}</p>
@@ -303,6 +316,29 @@ function Questions({
                   value={prefs.budget}
                   onChange={(budget) => set({ budget })}
                 />
+              </Question>
+              <Question title="להציע גם מלונות?" hint="לא חובה: אם כבר סגרתם מלונות, כבו. תמיד אפשר לשנות אחר כך">
+                <Choice
+                  options={[
+                    ['yes', 'כן, הציעו לי'],
+                    ['no', 'לא, סגרנו'],
+                  ]}
+                  value={prefs.hotels ? 'yes' : 'no'}
+                  onChange={(value) => set({ hotels: value === 'yes' })}
+                />
+                {prefs.hotels && (
+                  <div className="mt-2.5">
+                    <Choice
+                      options={[
+                        ['center', 'במרכז'],
+                        ['near', '10-20 דק׳'],
+                        ['far', '30+ דק׳'],
+                      ]}
+                      value={prefs.hotelZone}
+                      onChange={(hotelZone) => set({ hotelZone })}
+                    />
+                  </div>
+                )}
               </Question>
             </>
           )}
@@ -550,7 +586,15 @@ function Planning({ progress, days, finished }: { progress: PlanProgress; days: 
   )
 }
 
-function Preview({ plan, kosher }: { plan: TripPlan; kosher: 'found' | 'none' | null }) {
+function Preview({
+  plan,
+  kosher,
+  onDropHotel,
+}: {
+  plan: TripPlan
+  kosher: 'found' | 'none' | null
+  onDropHotel: (hotel: PlannedHotel) => void
+}) {
   const trip = useTrip()
   const dates = tripDates(trip)
   const [open, setOpen] = useState<string | null>(plan.days[0]?.date ?? null)
@@ -574,6 +618,37 @@ function Preview({ plan, kosher }: { plan: TripPlan; kosher: 'found' | 'none' | 
           {plan.failed.length === 1 ? 'יום אחד לא תוכנן' : `${plan.failed.length} ימים לא תוכננו`}. אפשר לתכנן אותם אחר כך עם ״תכננו לי את
           היום״.
         </p>
+      )}
+
+      {plan.hotels.length > 0 && (
+        <section aria-label="מלונות מוצעים" className="surface mt-3 rounded-control p-3">
+          <p className="text-sm font-semibold">מלונות מוצעים</p>
+          <ul className="mt-2 space-y-2">
+            {plan.hotels.map((hotel) => (
+              <li key={hotel.dates[0]} className="flex items-center gap-2">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold" dir="auto">
+                    {hotel.poi.name}
+                  </span>
+                  <span className="block truncate text-xs text-muted">
+                    {getCity(hotel.city)?.name} · {hotel.dates.length} לילות מ-
+                    {formatDay(hotel.dates[0]!, { day: 'numeric', month: 'short' })}
+                    {hotel.poi.rating ? ` · ★ ${hotel.poi.rating.toFixed(1)}` : ''}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onDropHotel(hotel)}
+                  aria-label="הסרת המלון"
+                  className="grid size-8 shrink-0 place-items-center rounded-full bg-fg/6"
+                >
+                  <X aria-hidden className="size-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-muted">נשמרים כמלון הלינה בלו״ז. אפשר להחליף אחר כך, ובמפה יש עוד מלונות.</p>
+        </section>
       )}
 
       <ol className="mt-4 space-y-2">

@@ -1,11 +1,13 @@
-import { actions } from '@/data/actions'
+﻿import { actions } from '@/data/actions'
 import { CITIES, getCity, nearestCity } from '@/data/cities'
 import { insertByTime, sortedDay } from '@/data/planOps'
 import type { DayPlan, ItineraryItem, Place, Trip } from '@/data/types'
 import type { Poi, PoiProvider } from '@/maps/poi'
+import type { HotelZone } from '@/maps/needs'
+import { stayFor } from '@/data/stays'
 import { useTripStore } from '@/store/trip'
 import { outlineTripWithAi, planDaysWithAi, resolveOnMap, type PlannedStop } from './assistant'
-import { tripDates } from './dates'
+import { addDays, tripDates } from './dates'
 import { distanceMeters } from './geo'
 import { newId } from './ids'
 import { dietOf, findRestaurants, searchOptions, type MapOptions } from './mealOptions'
@@ -28,10 +30,20 @@ export interface TripPreferences {
   notes: string
   /** Seasonal highlights in their dates they want built in (ids from seasons.ts). */
   season: string[]
+  /** Also suggest a hotel for each stretch of nights (optional: some have booked already). */
+  hotels: boolean
+  hotelZone: HotelZone
 }
 
 /** A stop checked on the map (none for places already saved). */
 export type CheckedStop = PlannedStop & { poi?: Poi }
+
+/** A suggested hotel for a run of nights in one city (check in on the first date). */
+export interface PlannedHotel {
+  city: string
+  dates: string[]
+  poi: Poi
+}
 
 export interface PlannedDay {
   date: string
@@ -43,6 +55,7 @@ export interface PlannedDay {
 export interface TripPlan {
   reply: string
   days: PlannedDay[]
+  hotels: PlannedHotel[]
   /** Days that couldn't be planned (the AI didn't answer): left as they were. */
   failed: string[]
 }
@@ -177,6 +190,41 @@ async function check(stops: PlannedStop[], lists: { restaurants: MapOptions; sig
 }
 
 /**
+ * One well-reviewed hotel per stretch of nights in the same city, in their budget and area. Nights that already have a\n * hotel are left alone, and a day trip doesn't move the bed.\n */
+async function suggestHotels(
+  trip: Trip,
+  prefs: TripPreferences,
+  provider: PoiProvider,
+  dates: string[],
+  cityOf: string[],
+): Promise<PlannedHotel[]> {
+  // The last day is the departure: no night.
+  const runs: { city: string; dates: string[] }[] = []
+  dates.slice(0, -1).forEach((date, index) => {
+    if (stayFor(trip.stays, date)) return
+    let city = cityOf[index]!
+    const [before, after] = [cityOf[index - 1], cityOf[index + 1]]
+    if (before && before === after && before !== city) city = before
+    const last = runs.at(-1)
+    if (last && last.city === city && last.dates.at(-1) === addDays(date, -1)) last.dates.push(date)
+    else runs.push({ city, dates: [date] })
+  })
+  const hotels = await Promise.all(
+    runs.map(async (run): Promise<PlannedHotel | null> => {
+      try {
+        const center = getCity(run.city)?.location
+        if (!center) return null
+        const found = await provider.nearby('hotel', center, new AbortController().signal, { budget: prefs.budget, zone: prefs.hotelZone })
+        return found[0] ? { city: run.city, dates: run.dates, poi: found[0] } : null
+      } catch {
+        return null
+      }
+    }),
+  )
+  return hotels.filter((hotel): hotel is PlannedHotel => Boolean(hotel))
+}
+
+/**
  * Plans the whole trip: the route first (a city for every day), then the days of each city, a few
  * at a time, from real places on the map. Days already filled keep their stops (planned around).
  */
@@ -218,6 +266,16 @@ export async function planTrip(
     if (last && last.city === city && last.dates.length < CHUNK && outline.days[index - 1]?.city === city) last.dates.push(date)
     else chunks.push({ city, dates: [date] })
   })
+  const hotelsPromise =
+    prefs.hotels && provider
+      ? suggestHotels(
+          trip,
+          prefs,
+          provider,
+          dates,
+          outline.days.map((day) => day.city),
+        )
+      : Promise.resolve([])
   const daysIn = (city: string) => outline.days.filter((day) => day.city === city).length
 
   const total = chunks.length + 1
@@ -314,9 +372,11 @@ export async function planTrip(
     }),
   )
   onProgress({ done: total, total, label: 'מסיימים…' })
+  const hotels = await hotelsPromise
 
   return {
     reply: outline.reply,
+    hotels,
     days: dates.map((date, index) => ({
       date,
       city: outline.days[index]!.city,
@@ -362,6 +422,26 @@ export function saveTripPlan(trip: Trip, plan: TripPlan): number {
     )
     known.set(key, created.id)
     return created.id
+  }
+
+  for (const hotel of plan.hotels) {
+    const { poi } = hotel
+    const key = poi.googlePlaceId ? `g:${poi.googlePlaceId}` : poi.osmId ? `osm:${poi.osmId}` : poi.key
+    const placeId =
+      known.get(key) ??
+      actions.createPlace(
+        {
+          name: poi.name,
+          category: 'hotel',
+          location: poi.location,
+          ...(poi.googlePlaceId ? { googlePlaceId: poi.googlePlaceId } : {}),
+          ...(poi.osmId ? { osmId: poi.osmId } : {}),
+          ...(poi.address ? { address: poi.address } : {}),
+        },
+        null,
+      ).id
+    known.set(key, placeId)
+    actions.setStay(hotel.dates[0]!, placeId)
   }
 
   const changes: DayPlan = {}
