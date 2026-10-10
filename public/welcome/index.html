@@ -8,56 +8,48 @@
       name="description"
       content="Tabi היא אפליקציה בעברית לתכנון וניהול טיול ליפן: לו״ז יומי, מפה חיה, ניווט בלחיצה, מזג אוויר, תרגום וצ׳אט משותף עם החברים לטיול. בטא חינמית."
     />
-    <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#f6f4f1" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0b0c0f" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0b0c0f" />
     <link rel="canonical" href="https://tabijap.com/welcome/" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Tabi · הטיול שלכם ליפן, במקום אחד" />
     <meta property="og:description" content="לו״ז, מפה, ניווט, תרגום וצ׳אט עם החברים לטיול. בעברית, בטא חינמית." />
     <meta property="og:url" content="https://tabijap.com/welcome/" />
-    <meta property="og:image" content="https://tabijap.com/welcome/map.webp" />
+    <meta property="og:image" content="https://tabijap.com/welcome/phone-today.webp" />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;800;900&display=swap" />
     <style>
       :root {
-        --bg: #f6f4f1;
-        --fg: #15171b;
-        --muted: #6b6f76;
-        --card: #ffffff;
-        --line: rgb(21 23 27 / 0.1);
-        --accent: #cc4329;
-        --accent-fg: #ffffff;
-        --tint: rgb(204 67 41 / 0.09);
-      }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --bg: #0b0c0f;
-          --fg: #f3f3f4;
-          --muted: #9ba0a8;
-          --card: #15171c;
-          --line: rgb(255 255 255 / 0.1);
-          --accent: #ff6a4d;
-          --accent-fg: #15171b;
-          --tint: rgb(255 106 77 / 0.12);
-        }
+        --bg: #0b0c0f;
+        --bg2: #101218;
+        --fg: #f3f3f4;
+        --muted: #9ba0a8;
+        --card: #15171c;
+        --line: rgb(255 255 255 / 0.09);
+        --accent: #ff6a4d;
+        --accent2: #ff8f6b;
+        --sakura: #ff6e96;
+        --ai: #607ce6;
+        --ease: cubic-bezier(0.22, 1, 0.36, 1);
       }
       * {
         box-sizing: border-box;
       }
       html {
         scroll-behavior: smooth;
+        background: var(--bg);
       }
       body {
         margin: 0;
         background: var(--bg);
         color: var(--fg);
         font-family: 'Heebo', system-ui, -apple-system, 'Segoe UI', sans-serif;
-        line-height: 1.6;
+        line-height: 1.65;
         -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
       }
       img {
         max-width: 100%;
@@ -67,88 +59,248 @@
       a {
         color: inherit;
       }
+      .ico {
+        width: 1em;
+        height: 1em;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        flex: none;
+      }
       .wrap {
         width: 100%;
-        max-width: 1040px;
+        max-width: 1120px;
         margin-inline: auto;
         padding-inline: 20px;
+        position: relative;
       }
+
+      /* ── Header ─────────────────────────── */
       header.top {
+        position: fixed;
+        inset: 0 0 auto 0;
+        z-index: 50;
+        transition:
+          background 0.3s,
+          backdrop-filter 0.3s,
+          border-color 0.3s;
+        border-bottom: 1px solid transparent;
+      }
+      header.top.scrolled {
+        background: rgb(11 12 15 / 0.72);
+        backdrop-filter: blur(16px) saturate(1.4);
+        -webkit-backdrop-filter: blur(16px) saturate(1.4);
+        border-color: var(--line);
+      }
+      header.top .wrap {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding-block: 16px;
+        height: 64px;
       }
       .brand {
         display: flex;
         align-items: center;
         gap: 10px;
         font-weight: 800;
-        font-size: 1.25rem;
+        font-size: 1.3rem;
         text-decoration: none;
+        letter-spacing: -0.01em;
       }
       .brand img {
         width: 34px;
         height: 34px;
-        border-radius: 9px;
+        border-radius: 10px;
       }
+      nav.links {
+        display: none;
+        gap: 28px;
+        font-size: 0.95rem;
+        color: var(--muted);
+      }
+      nav.links a {
+        text-decoration: none;
+        transition: color 0.2s;
+      }
+      nav.links a:hover {
+        color: var(--fg);
+      }
+
+      /* ── Buttons ────────────────────────── */
       .btn {
+        position: relative;
+        overflow: hidden;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
-        min-height: 48px;
-        padding: 0 24px;
+        gap: 10px;
+        min-height: 52px;
+        padding: 0 28px;
         border-radius: 999px;
-        background: var(--accent);
-        color: var(--accent-fg);
-        font-weight: 700;
-        font-size: 1rem;
+        border: 0;
+        background: linear-gradient(135deg, #ff6a4d, #e8452a);
+        color: #fff;
+        font: 700 1rem 'Heebo', sans-serif;
         text-decoration: none;
-        transition: transform 0.15s;
+        cursor: pointer;
+        box-shadow: 0 10px 30px -10px rgb(255 106 77 / 0.7);
+        transition:
+          transform 0.25s var(--ease),
+          box-shadow 0.25s;
+      }
+      .btn::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(110deg, transparent 30%, rgb(255 255 255 / 0.35) 50%, transparent 70%);
+        transform: translateX(120%);
+        animation: shimmer 4.5s ease-in-out infinite;
+      }
+      .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 16px 36px -10px rgb(255 106 77 / 0.85);
       }
       .btn:active {
         transform: scale(0.97);
       }
+      .btn .ico {
+        font-size: 1.15em;
+        transition: transform 0.25s var(--ease);
+      }
+      .btn:hover .ico {
+        transform: translateX(-4px);
+      }
       .btn.ghost {
-        background: transparent;
-        color: var(--fg);
+        background: rgb(255 255 255 / 0.06);
         border: 1px solid var(--line);
+        box-shadow: none;
+        backdrop-filter: blur(8px);
+      }
+      .btn.ghost::after {
+        display: none;
       }
       .btn.small {
-        min-height: 40px;
-        padding: 0 18px;
+        min-height: 42px;
+        padding: 0 20px;
         font-size: 0.9rem;
       }
+
+      /* ── Hero ───────────────────────────── */
       .hero {
-        display: grid;
-        gap: 32px;
+        position: relative;
+        min-height: 100svh;
+        display: flex;
         align-items: center;
-        padding-block: 28px 56px;
+        overflow: hidden;
+        padding-block: 110px 70px;
+        isolation: isolate;
+      }
+      .hero-bg {
+        position: absolute;
+        inset: 0;
+        z-index: -2;
+      }
+      .hero-bg img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        opacity: 0;
+        animation: heroFade 24s infinite;
+        transform-origin: 70% 50%;
+      }
+      .hero-bg img:nth-child(2) {
+        animation-delay: 8s;
+      }
+      .hero-bg img:nth-child(3) {
+        animation-delay: 16s;
+      }
+      .hero::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background:
+          linear-gradient(180deg, rgb(11 12 15 / 0.55) 0%, rgb(11 12 15 / 0.72) 55%, var(--bg) 100%),
+          radial-gradient(60% 60% at 80% 40%, rgb(255 106 77 / 0.18), transparent 70%);
+      }
+      .petals {
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        overflow: hidden;
+      }
+      .petal {
+        position: absolute;
+        top: -30px;
+        width: 14px;
+        height: 11px;
+        border-radius: 80% 0 80% 0;
+        background: linear-gradient(135deg, #ffc2d4, var(--sakura));
+        opacity: 0;
+        animation: fall linear infinite;
+      }
+      .hero-grid {
+        display: grid;
+        gap: 40px;
+        align-items: center;
       }
       .pill {
-        display: inline-block;
-        padding: 4px 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 16px;
         border-radius: 999px;
-        background: var(--tint);
-        color: var(--accent);
+        background: rgb(255 106 77 / 0.12);
+        border: 1px solid rgb(255 106 77 / 0.3);
+        color: var(--accent2);
         font-weight: 700;
         font-size: 0.85rem;
       }
-      h1 {
-        margin: 14px 0 12px;
-        font-size: clamp(2rem, 7vw, 3.25rem);
-        line-height: 1.15;
-        font-weight: 800;
+      .pill i {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 0 0 rgb(255 106 77 / 0.7);
+        animation: pulse 2s infinite;
       }
-      h1 span {
-        color: var(--accent);
+      h1 {
+        margin: 18px 0 16px;
+        font-size: clamp(2.4rem, 8.5vw, 4.4rem);
+        line-height: 1.08;
+        font-weight: 900;
+        letter-spacing: -0.02em;
+      }
+      h1 .w {
+        display: inline-block;
+        opacity: 0;
+        transform: translateY(26px);
+        filter: blur(8px);
+        animation: wordIn 0.9s var(--ease) forwards;
+        animation-delay: calc(var(--i) * 0.09s + 0.2s);
+      }
+      h1 .grad {
+        background: linear-gradient(120deg, #ff6a4d, #ff9a76 45%, #ff6e96);
+        background-size: 200% 100%;
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        animation:
+          wordIn 0.9s var(--ease) forwards,
+          gradMove 6s ease-in-out infinite;
+        animation-delay: calc(var(--i) * 0.09s + 0.2s), 0s;
       }
       .lead {
-        margin: 0 0 24px;
-        font-size: 1.1rem;
-        color: var(--muted);
-        max-width: 34em;
+        margin: 0 0 30px;
+        font-size: clamp(1.02rem, 2.6vw, 1.2rem);
+        color: #c9ccd2;
+        max-width: 31em;
+        font-weight: 300;
       }
       .cta {
         display: flex;
@@ -156,329 +308,1078 @@
         gap: 12px;
       }
       .note {
-        margin-top: 14px;
+        margin: 18px 0 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
         font-size: 0.85rem;
         color: var(--muted);
       }
-      .phones {
+      .hero-copy > * {
+        opacity: 0;
+        animation: rise 0.9s var(--ease) forwards;
+      }
+      .hero-copy .pill {
+        animation-delay: 0.05s;
+      }
+      .hero-copy .lead {
+        animation-delay: 0.75s;
+      }
+      .hero-copy .cta {
+        animation-delay: 0.9s;
+      }
+      .hero-copy .note {
+        animation-delay: 1.05s;
+      }
+      .hero-copy h1 {
+        opacity: 1;
+        animation: none;
+      }
+      .stage {
         position: relative;
+        display: grid;
+        place-items: center;
+        min-height: 420px;
+        perspective: 1200px;
+      }
+      .stage::before {
+        content: '';
+        position: absolute;
+        width: 80%;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgb(255 106 77 / 0.35), rgb(96 124 230 / 0.12) 55%, transparent 70%);
+        filter: blur(30px);
+        animation: breathe 7s ease-in-out infinite;
+      }
+      .stage .ph {
+        position: absolute;
+        width: min(62%, 300px);
+        filter: drop-shadow(0 40px 50px rgb(0 0 0 / 0.55));
+        transition: transform 0.25s ease-out;
+        opacity: 0;
+        animation: phoneIn 1.2s var(--ease) forwards;
+      }
+      .stage .ph img {
+        animation: float 7s ease-in-out infinite;
+      }
+      .stage .ph.a {
+        inset-inline-start: 6%;
+        z-index: 2;
+        animation-delay: 0.5s;
+      }
+      .stage .ph.b {
+        inset-inline-end: 0;
+        top: 8%;
+        z-index: 1;
+        width: min(56%, 270px);
+        animation-delay: 0.75s;
+      }
+      .stage .ph.b img {
+        animation-delay: -3.5s;
+      }
+      .stage .chip {
+        position: absolute;
+        z-index: 3;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 14px;
+        background: rgb(21 23 28 / 0.78);
+        border: 1px solid var(--line);
+        backdrop-filter: blur(12px);
+        font-size: 0.82rem;
+        font-weight: 700;
+        box-shadow: 0 14px 30px -14px rgb(0 0 0 / 0.7);
+        opacity: 0;
+        animation:
+          rise 0.8s var(--ease) forwards,
+          bob 5s ease-in-out infinite;
+      }
+      .stage .chip .ico {
+        color: var(--accent);
+        font-size: 1.1rem;
+      }
+      .stage .chip.c1 {
+        top: 6%;
+        inset-inline-end: 4%;
+        animation-delay: 1.3s, 1.3s;
+      }
+      .stage .chip.c2 {
+        bottom: 12%;
+        inset-inline-start: 0;
+        animation-delay: 1.5s, 2s;
+      }
+      .scroll-hint {
+        position: absolute;
+        bottom: 22px;
+        inset-inline: 0;
         display: flex;
         justify-content: center;
+        color: var(--muted);
+        font-size: 1.4rem;
+        animation: nudge 2s ease-in-out infinite;
+      }
+
+      /* ── Marquee ────────────────────────── */
+      .marquee {
+        position: relative;
+        padding-block: 8px 40px;
+        overflow: hidden;
+        direction: ltr;
+        mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+        -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+      }
+      .track {
+        display: flex;
         gap: 14px;
+        width: max-content;
+        animation: slide 60s linear infinite;
       }
-      .phone {
-        width: 44%;
-        max-width: 230px;
-        border-radius: 26px;
-        border: 6px solid var(--card);
-        box-shadow: 0 24px 50px -22px rgb(0 0 0 / 0.5);
-        background: var(--card);
+      .marquee:hover .track {
+        animation-play-state: paused;
       }
-      .phone:nth-child(2) {
-        margin-top: 36px;
+      .track img {
+        width: 230px;
+        height: 150px;
+        object-fit: cover;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        transition: transform 0.4s var(--ease);
       }
+      .track img:nth-child(even) {
+        margin-top: 22px;
+      }
+      .track img:hover {
+        transform: scale(1.06) rotate(-1deg);
+      }
+
+      /* ── Sections ───────────────────────── */
       section {
-        padding-block: 44px;
+        position: relative;
+        padding-block: 70px;
+      }
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--accent);
+        font-weight: 700;
+        font-size: 0.85rem;
+        letter-spacing: 0.04em;
+        margin-bottom: 12px;
       }
       h2 {
-        margin: 0 0 8px;
-        font-size: clamp(1.5rem, 5vw, 2.1rem);
-        font-weight: 800;
-        line-height: 1.2;
+        margin: 0 0 12px;
+        font-size: clamp(1.8rem, 5.5vw, 2.8rem);
+        font-weight: 900;
+        line-height: 1.15;
+        letter-spacing: -0.015em;
       }
       .sub {
-        margin: 0 0 28px;
+        margin: 0 0 40px;
         color: var(--muted);
-        max-width: 38em;
+        max-width: 36em;
+        font-size: 1.05rem;
       }
-      .grid {
+      .reveal {
+        opacity: 0;
+        transform: translateY(34px);
+        transition:
+          opacity 0.9s var(--ease),
+          transform 0.9s var(--ease);
+        transition-delay: var(--d, 0s);
+      }
+      .reveal.in {
+        opacity: 1;
+        transform: none;
+      }
+
+      /* ── Features bento ─────────────────── */
+      .bento {
         display: grid;
         gap: 14px;
         grid-template-columns: 1fr;
       }
       .card {
-        background: var(--card);
+        position: relative;
+        overflow: hidden;
+        border-radius: 24px;
+        padding: 26px;
+        background: linear-gradient(180deg, rgb(255 255 255 / 0.045), rgb(255 255 255 / 0.015));
         border: 1px solid var(--line);
-        border-radius: 20px;
-        padding: 20px;
+        transition:
+          transform 0.4s var(--ease),
+          border-color 0.3s;
+      }
+      .card::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(380px circle at var(--mx, 50%) var(--my, 0%), rgb(255 106 77 / 0.16), transparent 60%);
+        opacity: 0;
+        transition: opacity 0.3s;
+        pointer-events: none;
+      }
+      .card:hover {
+        transform: translateY(-4px);
+        border-color: rgb(255 106 77 / 0.35);
+      }
+      .card:hover::before {
+        opacity: 1;
+      }
+      .card .badge {
+        display: grid;
+        place-items: center;
+        width: 50px;
+        height: 50px;
+        border-radius: 16px;
+        margin-bottom: 18px;
+        font-size: 1.5rem;
+        color: var(--accent);
+        background: rgb(255 106 77 / 0.12);
+        border: 1px solid rgb(255 106 77 / 0.22);
+        transition: transform 0.5s var(--ease);
+      }
+      .card:hover .badge {
+        transform: rotate(-8deg) scale(1.1);
+      }
+      .card.ai .badge {
+        color: #8ea2ff;
+        background: rgb(96 124 230 / 0.14);
+        border-color: rgb(96 124 230 / 0.3);
       }
       .card h3 {
-        margin: 0 0 6px;
-        font-size: 1.1rem;
+        margin: 0 0 8px;
+        font-size: 1.2rem;
+        font-weight: 800;
       }
       .card p {
         margin: 0;
         color: var(--muted);
-        font-size: 0.95rem;
+        font-size: 0.97rem;
       }
-      .icon {
-        font-size: 1.6rem;
-        line-height: 1;
-        margin-bottom: 10px;
-      }
-      .showcase {
+
+      /* ── Spotlight (phones) ─────────────── */
+      .spot {
         display: grid;
+        gap: 30px;
+        align-items: center;
+      }
+      .spot + .spot {
+        margin-top: 60px;
+      }
+      .spot .shot {
+        position: relative;
+        display: grid;
+        place-items: center;
+      }
+      .spot .shot::before {
+        content: '';
+        position: absolute;
+        width: 75%;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgb(255 106 77 / 0.28), transparent 68%);
+        filter: blur(34px);
+      }
+      .spot .shot img {
+        position: relative;
+        width: min(100%, 400px);
+        filter: drop-shadow(0 34px 44px rgb(0 0 0 / 0.55));
+        animation: float 8s ease-in-out infinite;
+      }
+      .spot .bullets {
+        list-style: none;
+        margin: 22px 0 0;
+        padding: 0;
+        display: grid;
+        gap: 12px;
+      }
+      .spot .bullets li {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        color: #c9ccd2;
+      }
+      .spot .bullets .ico {
+        margin-top: 3px;
+        font-size: 1.2rem;
+        color: var(--accent);
+      }
+
+      /* ── Screens carousel ───────────────── */
+      .rail {
+        display: flex;
         gap: 18px;
-        grid-template-columns: repeat(2, 1fr);
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        padding: 10px 20px 30px;
+        margin-inline: -20px;
+        scrollbar-width: none;
       }
-      .showcase figure {
+      .rail::-webkit-scrollbar {
+        display: none;
+      }
+      .rail figure {
+        flex: none;
+        width: min(66vw, 250px);
         margin: 0;
-        text-align: center;
+        scroll-snap-align: center;
+        transition: transform 0.5s var(--ease);
       }
-      .showcase img {
+      .rail figure:hover {
+        transform: translateY(-8px);
+      }
+      .rail img {
         width: 100%;
-        border-radius: 22px;
+        border-radius: 26px;
         border: 1px solid var(--line);
-        box-shadow: 0 18px 40px -26px rgb(0 0 0 / 0.5);
+        box-shadow: 0 26px 50px -28px rgb(0 0 0 / 0.9);
       }
-      .showcase figcaption {
-        margin-top: 10px;
+      .rail figcaption {
+        margin-top: 12px;
+        text-align: center;
         font-weight: 700;
         font-size: 0.95rem;
+        color: #c9ccd2;
       }
+
+      /* ── Steps ──────────────────────────── */
       .steps {
+        position: relative;
         display: grid;
-        gap: 14px;
-        counter-reset: s;
+        gap: 22px;
         padding: 0;
         margin: 0;
         list-style: none;
+        counter-reset: s;
+      }
+      .steps::before {
+        content: '';
+        position: absolute;
+        inset-block: 20px;
+        inset-inline-start: 22px;
+        width: 2px;
+        background: var(--line);
+      }
+      .steps::after {
+        content: '';
+        position: absolute;
+        inset-block-start: 20px;
+        inset-inline-start: 22px;
+        width: 2px;
+        height: var(--p, 0%);
+        max-height: calc(100% - 40px);
+        background: linear-gradient(var(--accent), var(--sakura));
+        transition: height 0.2s linear;
       }
       .steps li {
         counter-increment: s;
+        position: relative;
         display: flex;
-        gap: 14px;
+        gap: 18px;
         align-items: flex-start;
       }
       .steps li::before {
         content: counter(s);
+        position: relative;
+        z-index: 1;
         flex: none;
-        width: 34px;
-        height: 34px;
+        width: 46px;
+        height: 46px;
         display: grid;
         place-items: center;
         border-radius: 50%;
-        background: var(--accent);
-        color: var(--accent-fg);
-        font-weight: 800;
+        background: var(--bg2);
+        border: 2px solid var(--accent);
+        color: var(--accent);
+        font-weight: 900;
+        font-size: 1.1rem;
       }
       .steps b {
         display: block;
+        font-size: 1.15rem;
+        margin-top: 8px;
       }
       .steps span {
         color: var(--muted);
-        font-size: 0.95rem;
       }
+
+      /* ── FAQ ────────────────────────────── */
+      details {
+        border-bottom: 1px solid var(--line);
+        padding-block: 18px;
+      }
+      summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 1.05rem;
+        list-style: none;
+      }
+      summary::-webkit-details-marker {
+        display: none;
+      }
+      summary .ico {
+        font-size: 1.3rem;
+        color: var(--muted);
+        transition: transform 0.35s var(--ease);
+      }
+      details[open] summary .ico {
+        transform: rotate(180deg);
+        color: var(--accent);
+      }
+      details p {
+        margin: 10px 0 0;
+        color: var(--muted);
+        max-width: 44em;
+      }
+      details a {
+        color: var(--accent2);
+      }
+
+      /* ── Final CTA ──────────────────────── */
       .final {
+        position: relative;
+        overflow: hidden;
         text-align: center;
-        background: var(--tint);
-        border-radius: 28px;
-        padding: 36px 20px;
+        border-radius: 32px;
+        padding: 64px 22px 56px;
+        border: 1px solid var(--line);
+        isolation: isolate;
       }
-      .final img {
-        width: 120px;
-        margin: 0 auto 8px;
+      .final > img.bg {
+        position: absolute;
+        inset: 0;
+        z-index: -2;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        animation: kenburns 30s ease-in-out infinite alternate;
+      }
+      .final::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background: linear-gradient(180deg, rgb(11 12 15 / 0.62), rgb(11 12 15 / 0.88));
+      }
+      .final .mascot {
+        width: 128px;
+        margin: 0 auto 6px;
+        transform-origin: 50% 100%;
+        animation: wave 3.6s ease-in-out infinite;
+        filter: drop-shadow(0 14px 18px rgb(0 0 0 / 0.5));
       }
       .final p {
-        color: var(--muted);
-        max-width: 32em;
-        margin: 0 auto 22px;
+        color: #c9ccd2;
+        max-width: 31em;
+        margin: 0 auto 28px;
       }
       .final .cta {
         justify-content: center;
       }
-      details {
-        border-bottom: 1px solid var(--line);
-        padding-block: 14px;
-      }
-      summary {
-        cursor: pointer;
-        font-weight: 700;
-      }
-      details p {
-        margin: 8px 0 0;
-        color: var(--muted);
-        font-size: 0.95rem;
-      }
       footer {
-        padding-block: 28px 40px;
+        padding-block: 36px 48px;
         color: var(--muted);
-        font-size: 0.85rem;
+        font-size: 0.88rem;
         text-align: center;
       }
       footer a {
-        color: var(--accent);
+        color: var(--accent2);
       }
-      @media (min-width: 760px) {
-        .hero {
-          grid-template-columns: 1.1fr 1fr;
-          padding-block: 40px 72px;
+
+      /* ── Keyframes ──────────────────────── */
+      @keyframes wordIn {
+        to {
+          opacity: 1;
+          transform: none;
+          filter: none;
         }
-        .grid {
-          grid-template-columns: repeat(3, 1fr);
+      }
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(22px);
         }
-        .showcase {
-          grid-template-columns: repeat(4, 1fr);
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      @keyframes phoneIn {
+        from {
+          opacity: 0;
+          transform: translateY(80px) rotate(6deg) scale(0.92);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      @keyframes float {
+        0%,
+        100% {
+          transform: translateY(0) rotate(0);
+        }
+        50% {
+          transform: translateY(-14px) rotate(0.6deg);
+        }
+      }
+      @keyframes bob {
+        0%,
+        100% {
+          translate: 0 0;
+        }
+        50% {
+          translate: 0 -8px;
+        }
+      }
+      @keyframes breathe {
+        0%,
+        100% {
+          transform: scale(0.92);
+          opacity: 0.8;
+        }
+        50% {
+          transform: scale(1.08);
+          opacity: 1;
+        }
+      }
+      @keyframes heroFade {
+        0% {
+          opacity: 0;
+          transform: scale(1.02);
+        }
+        8%,
+        33% {
+          opacity: 1;
+        }
+        41% {
+          opacity: 0;
+          transform: scale(1.14);
+        }
+        100% {
+          opacity: 0;
+          transform: scale(1.14);
+        }
+      }
+      @keyframes kenburns {
+        from {
+          transform: scale(1);
+        }
+        to {
+          transform: scale(1.12) translateX(-2%);
+        }
+      }
+      @keyframes fall {
+        0% {
+          transform: translate3d(0, -30px, 0) rotate(0);
+          opacity: 0;
+        }
+        10% {
+          opacity: 0.85;
+        }
+        100% {
+          transform: translate3d(var(--dx, 80px), 105vh, 0) rotate(540deg);
+          opacity: 0;
+        }
+      }
+      @keyframes pulse {
+        0% {
+          box-shadow: 0 0 0 0 rgb(255 106 77 / 0.65);
+        }
+        70%,
+        100% {
+          box-shadow: 0 0 0 10px rgb(255 106 77 / 0);
+        }
+      }
+      @keyframes shimmer {
+        0%,
+        55% {
+          transform: translateX(120%);
+        }
+        100% {
+          transform: translateX(-120%);
+        }
+      }
+      @keyframes gradMove {
+        0%,
+        100% {
+          background-position: 0% 50%;
+        }
+        50% {
+          background-position: 100% 50%;
+        }
+      }
+      @keyframes slide {
+        to {
+          transform: translateX(-50%);
+        }
+      }
+      @keyframes nudge {
+        0%,
+        100% {
+          transform: translateY(0);
+          opacity: 0.5;
+        }
+        50% {
+          transform: translateY(8px);
+          opacity: 1;
+        }
+      }
+      @keyframes wave {
+        0%,
+        100% {
+          transform: rotate(-3deg) translateY(0);
+        }
+        50% {
+          transform: rotate(4deg) translateY(-8px);
+        }
+      }
+
+      /* ── Responsive ─────────────────────── */
+      @media (min-width: 860px) {
+        nav.links {
+          display: flex;
+        }
+        .hero-grid {
+          grid-template-columns: 1.05fr 1fr;
+        }
+        .stage {
+          min-height: 600px;
+        }
+        .bento {
+          grid-template-columns: repeat(6, 1fr);
+        }
+        .bento .card {
+          grid-column: span 2;
+        }
+        .bento .card.wide {
+          grid-column: span 3;
+        }
+        .spot {
+          grid-template-columns: 1fr 1fr;
+          gap: 60px;
+        }
+        .spot.flip .shot {
+          order: 2;
+        }
+        .rail {
+          justify-content: center;
+          overflow: visible;
+          margin: 0;
+          padding-inline: 0;
+        }
+        .rail figure {
+          width: 22%;
+        }
+        .rail figure:nth-child(even) {
+          margin-top: 28px;
+        }
+        .steps {
+          max-width: 640px;
+        }
+        .final {
+          padding-block: 90px 80px;
+        }
+      }
+      @media (max-width: 859px) {
+        .stage {
+          min-height: 380px;
+        }
+        .stage .chip {
+          display: none;
         }
       }
       @media (prefers-reduced-motion: reduce) {
         html {
           scroll-behavior: auto;
         }
-        .btn {
-          transition: none;
+        *,
+        *::before,
+        *::after {
+          animation: none !important;
+          transition: none !important;
+        }
+        .reveal,
+        h1 .w,
+        .hero-copy > *,
+        .stage .ph,
+        .stage .chip {
+          opacity: 1 !important;
+          transform: none !important;
+          filter: none !important;
+        }
+        .hero-bg img:first-child {
+          opacity: 1;
+        }
+        .petals {
+          display: none;
         }
       }
     </style>
   </head>
   <body>
-    <div class="wrap">
-      <header class="top">
+    <!-- Icon set (Lucide-style, 24px stroke) -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M8 2v4M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/></symbol>
+        <symbol id="i-map" viewBox="0 0 24 24"><path d="M14.1 5.55a2 2 0 0 0 1.79 0l3.66-1.83A1 1 0 0 1 21 4.62v12.76a1 1 0 0 1-.55.9l-4.55 2.27a2 2 0 0 1-1.79 0l-4.21-2.1a2 2 0 0 0-1.79 0l-3.66 1.83A1 1 0 0 1 3 19.38V6.62a1 1 0 0 1 .55-.9l4.55-2.27a2 2 0 0 1 1.79 0z"/><path d="M15 5.76v15M9 3.24v15"/></symbol>
+        <symbol id="i-nav" viewBox="0 0 24 24"><path d="M3 11 22 2l-9 19-2-8z"/></symbol>
+        <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+        <symbol id="i-sun" viewBox="0 0 24 24"><path d="M12 2v2M4.93 4.93l1.41 1.41M20 12h2M19.07 4.93l-1.41 1.41M15.95 12.65a4 4 0 0 0-5.93-4.13"/><path d="M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6z"/></symbol>
+        <symbol id="i-lang" viewBox="0 0 24 24"><path d="m5 8 6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/></symbol>
+        <symbol id="i-spark" viewBox="0 0 24 24"><path d="M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.14-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.14a.5.5 0 0 1 .96 0L14.06 8.5a2 2 0 0 0 1.44 1.44l6.14 1.58a.5.5 0 0 1 0 .96l-6.14 1.58a2 2 0 0 0-1.44 1.44l-1.58 6.14a.5.5 0 0 1-.96 0z"/><path d="M20 3v4M22 5h-4M4 17v2M5 18H3"/></symbol>
+        <symbol id="i-arrow" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></symbol>
+        <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+        <symbol id="i-phone" viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></symbol>
+        <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+        <symbol id="i-umbrella" viewBox="0 0 24 24"><path d="M22 12a10.06 10.06 0 0 0-20 0z"/><path d="M12 12v8a2 2 0 0 0 4 0M12 2v1"/></symbol>
+        <symbol id="i-hotel" viewBox="0 0 24 24"><path d="M10 22v-6.57M12 11h.01M12 7h.01M14 15.43V22M15 16a5 5 0 0 0-6 0"/><path d="M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/><rect width="16" height="20" x="4" y="2" rx="2"/></symbol>
+        <symbol id="i-mail" viewBox="0 0 24 24"><path d="m22 7-8.99 5.73a2 2 0 0 1-2.01 0L2 7"/><rect x="2" y="4" width="20" height="16" rx="2"/></symbol>
+        <symbol id="i-yen" viewBox="0 0 24 24"><path d="M12 9.5V21m0-11.5L6 3m6 6.5L18 3M6 15h12M6 11h12"/></symbol>
+      </defs>
+    </svg>
+
+    <header class="top" id="top">
+      <div class="wrap">
         <a class="brand" href="/welcome/">
           <img src="/pwa-64x64.png" alt="" width="34" height="34" />
           Tabi
         </a>
+        <nav class="links" aria-label="ראשי">
+          <a href="#features">יכולות</a>
+          <a href="#screens">מסכים</a>
+          <a href="#start">איך מתחילים</a>
+          <a href="#faq">שאלות</a>
+        </nav>
         <a class="btn small" href="/">כניסה לאפליקציה</a>
-      </header>
+      </div>
+    </header>
 
-      <main>
-        <div class="hero">
-          <div>
-            <span class="pill">בטא חינמית</span>
-            <h1>הטיול שלכם ליפן, <span>במקום אחד</span></h1>
+    <main>
+      <!-- Hero -->
+      <div class="hero">
+        <div class="hero-bg" aria-hidden="true">
+          <img src="/photos/shibuya-night.webp" alt="" fetchpriority="high" />
+          <img src="/photos/fushimi-inari.webp" alt="" />
+          <img src="/photos/chureito-dusk.webp" alt="" />
+        </div>
+        <div class="petals" id="petals" aria-hidden="true"></div>
+
+        <div class="wrap hero-grid">
+          <div class="hero-copy">
+            <span class="pill"><i></i>בטא חינמית</span>
+            <h1>
+              <span class="w" style="--i: 0">הטיול</span>
+              <span class="w" style="--i: 1">שלכם</span>
+              <span class="w" style="--i: 2">ליפן,</span><br />
+              <span class="w grad" style="--i: 3">במקום</span>
+              <span class="w grad" style="--i: 4">אחד</span>
+            </h1>
             <p class="lead">
-              לו״ז יומי, מפה חיה, ניווט בלחיצה, מזג אוויר, תרגום וצ׳אט עם החברים לטיול. הכול בעברית, בלי לקפוץ בין עשר אפליקציות
-              ובלי גיליון אקסל.
+              לו״ז יומי, מפה חיה, ניווט בלחיצה, מזג אוויר, תרגום וצ׳אט עם החברים לטיול. הכול בעברית, בלי לקפוץ בין עשר אפליקציות ובלי
+              גיליון אקסל.
             </p>
             <div class="cta">
-              <a class="btn" href="/">פתחו את האפליקציה</a>
+              <a class="btn" href="/">פתחו את האפליקציה <svg class="ico"><use href="#i-arrow" /></svg></a>
               <a class="btn ghost" href="#features">מה יש בפנים</a>
             </div>
-            <p class="note">עובדת בדפדפן ואפשר להוסיף למסך הבית, בלי הורדה מחנות האפליקציות.</p>
+            <p class="note"><svg class="ico"><use href="#i-phone" /></svg>עובדת בדפדפן, אפשר להוסיף למסך הבית. בלי הורדה מהחנות.</p>
           </div>
-          <div class="phones" aria-hidden="true">
-            <img class="phone" src="today.webp" alt="" width="560" height="1212" />
-            <img class="phone" src="trip.webp" alt="" width="560" height="1212" />
+
+          <div class="stage" id="stage">
+            <div class="ph a" data-depth="18"><img src="phone-today.webp" alt="מסך היום באפליקציה" width="933" height="1282" /></div>
+            <div class="ph b" data-depth="-12"><img src="phone-plan.webp" alt="תכנון טיול מלא באפליקציה" width="933" height="1282" /></div>
+            <div class="chip c1"><svg class="ico"><use href="#i-spark" /></svg>תכנון כל הטיול בלחיצה</div>
+            <div class="chip c2"><svg class="ico"><use href="#i-nav" /></svg>קח אותי לשם</div>
           </div>
         </div>
+        <div class="scroll-hint" aria-hidden="true"><svg class="ico"><use href="#i-down" /></svg></div>
+      </div>
 
-        <section id="features">
-          <h2>כל מה שצריך בטיול, בכיס</h2>
-          <p class="sub">נבנתה בשביל מי שמתכנן טיול ארוך ליפן ורוצה שיהיה סדר, גם כשכבר עומדים באמצע שיבויה.</p>
-          <div class="grid">
-            <div class="card">
-              <div class="icon">🗓️</div>
+      <!-- Photo marquee -->
+      <div class="marquee" aria-hidden="true">
+        <div class="track" id="track"></div>
+      </div>
+
+      <!-- Features -->
+      <section id="features">
+        <div class="wrap">
+          <div class="eyebrow reveal"><svg class="ico"><use href="#i-spark" /></svg>יכולות</div>
+          <h2 class="reveal">כל מה שצריך בטיול, בכיס</h2>
+          <p class="sub reveal">נבנתה בשביל מי שמתכנן טיול ארוך ליפן ורוצה שיהיה סדר, גם כשכבר עומדים באמצע שיבויה.</p>
+
+          <div class="bento">
+            <div class="card wide reveal">
+              <div class="badge"><svg class="ico"><use href="#i-calendar" /></svg></div>
               <h3>לו״ז לכל יום</h3>
-              <p>בונים את הימים לפי ערים, מוסיפים מקומות ושעות, וגוררים כדי לסדר מחדש. מסך "היום" מראה מה הדבר הבא.</p>
+              <p>בונים את הימים לפי ערים, מוסיפים מקומות ושעות, וגוררים כדי לסדר מחדש. מסך "היום" תמיד מראה מה הדבר הבא.</p>
             </div>
-            <div class="card">
-              <div class="icon">🗺️</div>
+            <div class="card wide reveal" style="--d: 0.08s">
+              <div class="badge"><svg class="ico"><use href="#i-map" /></svg></div>
               <h3>מפה חיה</h3>
               <p>מסעדות, אטרקציות, בתי מלון וצרכים יומיומיים סביבכם, עם חיפוש ושמירת מקומות לטיול.</p>
             </div>
-            <div class="card">
-              <div class="icon">🧭</div>
+            <div class="card reveal">
+              <div class="badge"><svg class="ico"><use href="#i-nav" /></svg></div>
               <h3>ניווט בלחיצה</h3>
-              <p>כפתור "קח אותי לשם" פותח את הניווט באפליקציית המפות שלכם, כולל שם וכתובת ביפנית להראות למונית.</p>
+              <p>"קח אותי לשם" פותח את הניווט באפליקציית המפות שלכם, כולל שם וכתובת ביפנית להראות למונית.</p>
             </div>
-            <div class="card">
-              <div class="icon">👥</div>
+            <div class="card reveal" style="--d: 0.08s">
+              <div class="badge"><svg class="ico"><use href="#i-users" /></svg></div>
               <h3>טיול משותף</h3>
-              <p>מזמינים חברים לאותו טיול, מתכננים יחד, מצביעים בסקר ומתאמים נקודות מפגש בצ׳אט.</p>
+              <p>מזמינים חברים, מתכננים יחד, מצביעים בסקר ומתאמים נקודות מפגש בצ׳אט.</p>
             </div>
-            <div class="card">
-              <div class="icon">🌦️</div>
+            <div class="card reveal" style="--d: 0.16s">
+              <div class="badge"><svg class="ico"><use href="#i-sun" /></svg></div>
               <h3>מזג אוויר ותוכנית לגשם</h3>
-              <p>תחזית לכל עיר ביום שלכם, ואם יורד גשם אפשר לקבל הצעות לחלופות מקורות.</p>
+              <p>תחזית לכל עיר, ואם יורד גשם אפשר לקבל הצעות לחלופות מקורות.</p>
             </div>
-            <div class="card">
-              <div class="icon">🈂️</div>
-              <h3>תרגום, שער ועוזר</h3>
-              <p>תרגום מהיר ליפנית וממנה, המרת ין לשקל ועוזר חכם לשאלות. התשובות של ה-AI עלולות להיות לא מדויקות, כדאי לוודא.</p>
+            <div class="card ai wide reveal">
+              <div class="badge"><svg class="ico"><use href="#i-spark" /></svg></div>
+              <h3>תכנון, תרגום ועוזר חכם</h3>
+              <p>הצעת מסלול לכל הטיול, תרגום מהיר ליפנית וממנה ועוזר לשאלות. התשובות של ה-AI עלולות להיות לא מדויקות, כדאי לוודא.</p>
+            </div>
+            <div class="card wide reveal" style="--d: 0.08s">
+              <div class="badge"><svg class="ico"><use href="#i-yen" /></svg></div>
+              <h3>שער הין ובתי מלון</h3>
+              <p>המרת ין לשקל בשער חי, והצעות מלונות לפי אזור ותקציב עם קישור להשוואת מחירים.</p>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section>
-          <h2>איך זה נראה</h2>
-          <p class="sub">צילומי מסך אמיתיים מהאפליקציה.</p>
-          <div class="showcase">
-            <figure>
-              <img src="today.webp" alt="מסך היום: מזג אוויר, הדבר הבא בלו״ז והמרת מטבע" loading="lazy" width="560" height="1212" />
-              <figcaption>היום</figcaption>
-            </figure>
-            <figure>
-              <img src="trip.webp" alt="מסך הטיול: ימים וערים" loading="lazy" width="560" height="1212" />
-              <figcaption>הטיול</figcaption>
-            </figure>
-            <figure>
-              <img src="map.webp" alt="המפה עם מקומות מומלצים" loading="lazy" width="560" height="1212" />
-              <figcaption>המפה</figcaption>
-            </figure>
-            <figure>
-              <img src="chat.webp" alt="צ׳אט הטיול המשותף" loading="lazy" width="560" height="1212" />
-              <figcaption>צ׳אט</figcaption>
-            </figure>
+      <!-- Spotlights -->
+      <section>
+        <div class="wrap">
+          <div class="spot">
+            <div class="shot reveal"><img src="phone-today.webp" alt="מסך היום" loading="lazy" width="933" height="1282" /></div>
+            <div class="reveal" style="--d: 0.1s">
+              <div class="eyebrow"><svg class="ico"><use href="#i-sun" /></svg>היום</div>
+              <h2>מה עכשיו? התשובה כבר שם</h2>
+              <p class="sub" style="margin-bottom: 0">
+                פותחים את האפליקציה בבוקר ורואים את מזג האוויר, את הדבר הבא בלו״ז, כמה זמן נשאר, ואיך מגיעים לשם.
+              </p>
+              <ul class="bullets">
+                <li><svg class="ico"><use href="#i-check" /></svg>ספירה לאחור לפעילות הבאה, וכפתור ניווט אחד</li>
+                <li><svg class="ico"><use href="#i-check" /></svg>חזרה למלון בלחיצה, גם בלילה</li>
+                <li><svg class="ico"><use href="#i-check" /></svg>שעון יפן, שער הין והלו״ז של כל היום</li>
+              </ul>
+            </div>
           </div>
-        </section>
 
-        <section>
-          <h2>מתחילים בשלוש דקות</h2>
-          <ol class="steps">
-            <li>
-              <div><b>נרשמים</b><span>עם מייל וסיסמה, בלי כרטיס אשראי.</span></div>
+          <div class="spot flip">
+            <div class="shot reveal"><img src="phone-plan.webp" alt="תכנון כל הטיול" loading="lazy" width="933" height="1282" /></div>
+            <div class="reveal" style="--d: 0.1s">
+              <div class="eyebrow"><svg class="ico"><use href="#i-spark" /></svg>תכנון</div>
+              <h2>טיול שלם, בהצעה אחת</h2>
+              <p class="sub" style="margin-bottom: 0">
+                בוחרים תאריכים וערים, ומקבלים מסלול מאוזן עם ימים, פעילויות, שעות והצעות למלונות. אפשר לשנות כל פרט או לבקש הצעה חדשה.
+              </p>
+              <ul class="bullets">
+                <li><svg class="ico"><use href="#i-hotel" /></svg>מלונות מוצעים עם קישור לבדיקת מחיר וזמינות</li>
+                <li><svg class="ico"><use href="#i-calendar" /></svg>כל יום מפורט, ואפשר לשמור את הכול בלחיצה</li>
+                <li><svg class="ico"><use href="#i-umbrella" /></svg>תוכנית חלופית כשיורד גשם</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Screens -->
+      <section id="screens">
+        <div class="wrap">
+          <div class="eyebrow reveal"><svg class="ico"><use href="#i-phone" /></svg>מסכים</div>
+          <h2 class="reveal">איך זה נראה</h2>
+          <p class="sub reveal">צילומי מסך אמיתיים מהאפליקציה.</p>
+          <div class="rail">
+            <figure class="reveal"><img src="today.webp" alt="מסך היום" loading="lazy" width="560" height="1212" /><figcaption>היום</figcaption></figure>
+            <figure class="reveal" style="--d: 0.08s"><img src="trip.webp" alt="מסך הטיול" loading="lazy" width="560" height="1212" /><figcaption>הטיול</figcaption></figure>
+            <figure class="reveal" style="--d: 0.16s"><img src="map.webp" alt="המפה" loading="lazy" width="560" height="1212" /><figcaption>המפה</figcaption></figure>
+            <figure class="reveal" style="--d: 0.24s"><img src="chat.webp" alt="צ׳אט הטיול" loading="lazy" width="560" height="1212" /><figcaption>צ׳אט</figcaption></figure>
+          </div>
+        </div>
+      </section>
+
+      <!-- Steps -->
+      <section id="start">
+        <div class="wrap">
+          <div class="eyebrow reveal"><svg class="ico"><use href="#i-arrow" /></svg>איך מתחילים</div>
+          <h2 class="reveal">מתחילים בשלוש דקות</h2>
+          <p class="sub reveal">בלי כרטיס אשראי, בלי התקנה.</p>
+          <ol class="steps" id="steps">
+            <li class="reveal">
+              <div><b>נרשמים</b><span>עם מייל וסיסמה.</span></div>
             </li>
-            <li>
-              <div><b>יוצרים טיול</b><span>תאריך יציאה, כמה ימים, ואילו ערים. אפשר גם לקבל הצעת מסלול ולשנות אותה.</span></div>
+            <li class="reveal" style="--d: 0.1s">
+              <div><b>יוצרים טיול</b><span>תאריך יציאה, כמה ימים ואילו ערים. אפשר גם לקבל הצעת מסלול ולשנות אותה.</span></div>
             </li>
-            <li>
+            <li class="reveal" style="--d: 0.2s">
               <div><b>מזמינים את החברים</b><span>ומתכננים ביחד, כל אחד מהטלפון שלו.</span></div>
             </li>
           </ol>
-        </section>
+        </div>
+      </section>
 
-        <section>
-          <h2>שאלות נפוצות</h2>
-          <details>
-            <summary>כמה זה עולה?</summary>
-            <p>בתקופת הבטא האפליקציה חינמית. אם בעתיד יתווספו תשלומים על חלק מהיכולות, נעדכן מראש.</p>
-          </details>
-          <details>
-            <summary>צריך להוריד מחנות האפליקציות?</summary>
-            <p>לא. פותחים את האתר בדפדפן, ובאייפון או באנדרואיד אפשר "להוסיף למסך הבית" והיא תיראה ותעבוד כמו אפליקציה.</p>
-          </details>
-          <details>
-            <summary>האם זה קשור לגוגל, Booking או Agoda?</summary>
-            <p>
-              לא. אין לנו קשר רשמי איתם. מקומות ומלונות שמוצגים באפליקציה הם לא המלצה, ומחירים וזמינות צריך לבדוק באתר המתאים.
-            </p>
-          </details>
-          <details>
-            <summary>מה קורה עם המידע שלי?</summary>
-            <p>המדיניות מפורטת באפליקציה, בתפריט הפרופיל, תחת "מדיניות פרטיות" ו"תנאי שימוש". אנחנו לא מוכרים מידע אישי.</p>
-          </details>
-          <details>
-            <summary>מצאתי באג או יש לי רעיון</summary>
-            <p>נשמח לשמוע: <a href="mailto:app.tabij@gmail.com">app.tabij@gmail.com</a>. זו בטא, ומשוב עוזר לנו מאוד.</p>
-          </details>
-        </section>
+      <!-- FAQ -->
+      <section id="faq">
+        <div class="wrap" style="max-width: 800px">
+          <div class="eyebrow reveal"><svg class="ico"><use href="#i-check" /></svg>שאלות</div>
+          <h2 class="reveal">שאלות נפוצות</h2>
+          <div class="reveal" style="margin-top: 24px">
+            <details>
+              <summary>כמה זה עולה?<svg class="ico"><use href="#i-down" /></svg></summary>
+              <p>בתקופת הבטא האפליקציה חינמית. אם בעתיד יתווספו תשלומים על חלק מהיכולות, נעדכן מראש.</p>
+            </details>
+            <details>
+              <summary>צריך להוריד מחנות האפליקציות?<svg class="ico"><use href="#i-down" /></svg></summary>
+              <p>לא. פותחים את האתר בדפדפן, ובאייפון או באנדרואיד אפשר "להוסיף למסך הבית" והיא תיראה ותעבוד כמו אפליקציה.</p>
+            </details>
+            <details>
+              <summary>האם זה קשור לגוגל, Booking או Agoda?<svg class="ico"><use href="#i-down" /></svg></summary>
+              <p>לא. אין לנו קשר רשמי איתם. מקומות ומלונות שמוצגים באפליקציה הם לא המלצה, ומחירים וזמינות צריך לבדוק באתר המתאים.</p>
+            </details>
+            <details>
+              <summary>מה קורה עם המידע שלי?<svg class="ico"><use href="#i-down" /></svg></summary>
+              <p>המדיניות מפורטת באפליקציה, בתפריט הפרופיל, תחת "מדיניות פרטיות" ו"תנאי שימוש". אנחנו לא מוכרים מידע אישי.</p>
+            </details>
+            <details>
+              <summary>מצאתי באג או יש לי רעיון<svg class="ico"><use href="#i-down" /></svg></summary>
+              <p>נשמח לשמוע: <a href="mailto:app.tabij@gmail.com">app.tabij@gmail.com</a>. זו בטא, ומשוב עוזר לנו מאוד.</p>
+            </details>
+          </div>
+        </div>
+      </section>
 
-        <section>
-          <div class="final">
-            <img src="mascot.webp" alt="" width="120" height="120" />
+      <!-- Final CTA -->
+      <section style="padding-top: 20px">
+        <div class="wrap">
+          <div class="final reveal">
+            <img class="bg" src="/photos/fuji.webp" alt="" loading="lazy" />
+            <img class="mascot" src="mascot.webp" alt="" width="128" height="128" loading="lazy" />
             <h2>מתכננים טיול ליפן?</h2>
             <p>נשמח שתנסו ותגידו לנו מה חסר. כל משוב בבטא משפיע על מה שנבנה הלאה.</p>
             <div class="cta">
-              <a class="btn" href="/">פתחו את האפליקציה</a>
-              <a class="btn ghost" href="mailto:app.tabij@gmail.com">כתבו לנו</a>
+              <a class="btn" href="/">פתחו את האפליקציה <svg class="ico"><use href="#i-arrow" /></svg></a>
+              <a class="btn ghost" href="mailto:app.tabij@gmail.com"><svg class="ico"><use href="#i-mail" /></svg>כתבו לנו</a>
             </div>
           </div>
-        </section>
-      </main>
+        </div>
+      </section>
+    </main>
 
-      <footer>
-        Tabi · בטא · <a href="mailto:app.tabij@gmail.com">app.tabij@gmail.com</a>
-      </footer>
-    </div>
+    <footer>
+      <div class="wrap">Tabi · בטא · <a href="mailto:app.tabij@gmail.com">app.tabij@gmail.com</a></div>
+    </footer>
+
+    <script>
+      ;(function () {
+        var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+        // Sticky header
+        var header = document.getElementById('top')
+        var onScroll = function () {
+          header.classList.toggle('scrolled', window.scrollY > 24)
+          var steps = document.getElementById('steps')
+          if (steps) {
+            var r = steps.getBoundingClientRect()
+            var p = (window.innerHeight * 0.7 - r.top) / r.height
+            steps.style.setProperty('--p', Math.max(0, Math.min(1, p)) * 100 + '%')
+          }
+        }
+        window.addEventListener('scroll', onScroll, { passive: true })
+        onScroll()
+
+        // Photo marquee (list doubled for a seamless loop)
+        var photos = ['tokyo-tower', 'fushimi-inari', 'nara-deer', 'shibuya-crossing', 'kiyomizu', 'okinawa-beach', 'itsukushima', 'chureito', 'shinsekai', 'disneyland', 'nara-torii', 'super-nintendo-world']
+        var track = document.getElementById('track')
+        if (track) {
+          for (var k = 0; k < 2; k++)
+            photos.forEach(function (name) {
+              var img = new Image()
+              img.src = '/photos/' + name + '.webp'
+              img.alt = ''
+              img.loading = 'lazy'
+              img.width = 230
+              img.height = 150
+              track.appendChild(img)
+            })
+        }
+
+        if (reduce) {
+          document.querySelectorAll('.reveal').forEach(function (el) {
+            el.classList.add('in')
+          })
+          return
+        }
+
+        // Falling sakura petals
+        var petals = document.getElementById('petals')
+        if (petals) {
+          for (var i = 0; i < 14; i++) {
+            var p = document.createElement('span')
+            p.className = 'petal'
+            p.style.left = Math.random() * 100 + '%'
+            p.style.setProperty('--dx', Math.random() * 160 - 80 + 'px')
+            p.style.animationDuration = 9 + Math.random() * 9 + 's'
+            p.style.animationDelay = -Math.random() * 14 + 's'
+            p.style.transform = 'scale(' + (0.6 + Math.random() * 0.9) + ')'
+            petals.appendChild(p)
+          }
+        }
+
+        // Scroll reveal
+        var io = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (e) {
+              if (e.isIntersecting) {
+                e.target.classList.add('in')
+                io.unobserve(e.target)
+              }
+            })
+          },
+          { threshold: 0.15, rootMargin: '0px 0px -6% 0px' },
+        )
+        document.querySelectorAll('.reveal').forEach(function (el) {
+          io.observe(el)
+        })
+
+        // Card spotlight follows the pointer
+        document.querySelectorAll('.card').forEach(function (card) {
+          card.addEventListener('pointermove', function (e) {
+            var r = card.getBoundingClientRect()
+            card.style.setProperty('--mx', e.clientX - r.left + 'px')
+            card.style.setProperty('--my', e.clientY - r.top + 'px')
+          })
+        })
+
+        // Hero phones: pointer parallax
+        var stage = document.getElementById('stage')
+        if (stage && window.matchMedia('(hover: hover)').matches) {
+          var phones = stage.querySelectorAll('.ph')
+          stage.addEventListener('pointermove', function (e) {
+            var r = stage.getBoundingClientRect()
+            var x = (e.clientX - r.left) / r.width - 0.5
+            var y = (e.clientY - r.top) / r.height - 0.5
+            phones.forEach(function (ph) {
+              var d = parseFloat(ph.dataset.depth || '10')
+              ph.style.transform = 'translate3d(' + x * d * 2 + 'px,' + y * d * 2 + 'px,0) rotateY(' + x * d * 0.6 + 'deg) rotateX(' + -y * d * 0.6 + 'deg)'
+            })
+          })
+          stage.addEventListener('pointerleave', function () {
+            phones.forEach(function (ph) {
+              ph.style.transform = ''
+            })
+          })
+        }
+      })()
+    </script>
   </body>
 </html>
