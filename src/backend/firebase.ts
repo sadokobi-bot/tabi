@@ -2,6 +2,10 @@ import { initializeApp } from 'firebase/app'
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check'
 import {
   EmailAuthProvider,
+  applyActionCode,
+  checkActionCode,
+  confirmPasswordReset,
+  verifyPasswordResetCode,
   createUserWithEmailAndPassword,
   deleteUser,
   reauthenticateWithCredential,
@@ -97,6 +101,8 @@ function toAppError(error: unknown): AppError {
   const map: Record<string, ErrorCode> = {
     'auth/email-already-in-use': 'username-taken',
     'auth/requires-recent-login': 'invalid-credentials',
+    'auth/expired-action-code': 'link-expired',
+    'auth/invalid-action-code': 'link-invalid',
     'auth/invalid-credential': 'invalid-credentials',
     'auth/invalid-login-credentials': 'invalid-credentials',
     'auth/wrong-password': 'invalid-credentials',
@@ -262,6 +268,27 @@ export function createFirebaseBackend(): Backend {
         const code = (error as { code?: string } | null)?.code
         if (code === 'auth/invalid-email') throw new AppError('invalid-email')
         if (code === 'auth/email-already-in-use') throw new AppError('email-in-use')
+        throw toAppError(error)
+      }
+    },
+
+    async checkEmailLink(mode, code) {
+      try {
+        if (mode === 'resetPassword') return { email: await verifyPasswordResetCode(auth, code) }
+        const info = await checkActionCode(auth, code)
+        return { email: info.data.email ?? null }
+      } catch (error) {
+        throw toAppError(error)
+      }
+    },
+
+    async completeEmailLink(mode, code, newPassword) {
+      try {
+        if (mode === 'resetPassword') {
+          if (!newPassword || newPassword.length < 6) throw new AppError('weak-password')
+          await confirmPasswordReset(auth, code, newPassword)
+        } else await applyActionCode(auth, code)
+      } catch (error) {
         throw toAppError(error)
       }
     },

@@ -207,6 +207,15 @@ export function createLocalBackend(): Backend {
       return false
     },
 
+    // E-mail links come from the cloud accounts only.
+    async checkEmailLink() {
+      throw new AppError('link-invalid')
+    },
+
+    async completeEmailLink() {
+      throw new AppError('link-invalid')
+    },
+
     async acceptTerms(user, version) {
       const users = read<Record<string, LocalUser>>('users', {})
       const entry = Object.entries(users).find(([, u]) => u.uid === user.uid)

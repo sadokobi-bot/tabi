@@ -71,6 +71,8 @@ export type ErrorCode =
   | 'invalid-email'
   | 'email-in-use'
   | 'too-fast'
+  | 'link-expired'
+  | 'link-invalid'
   | 'unknown'
 
 export class AppError extends Error {
@@ -96,6 +98,8 @@ const MESSAGES: Record<ErrorCode, string> = {
   'invalid-email': 'כתובת המייל לא תקינה',
   'email-in-use': 'המייל הזה כבר משמש חשבון אחר',
   'too-fast': 'רגע, אפשר לשלוח הודעה לקהילה פעם בכמה שניות',
+  'link-expired': 'הקישור הזה כבר פג תוקף. אפשר לבקש קישור חדש',
+  'link-invalid': 'הקישור הזה כבר שומש או שאינו תקין. אפשר לבקש קישור חדש',
   unknown: 'משהו השתבש. נסו שוב',
 }
 
@@ -130,6 +134,10 @@ export interface Backend {
   /** Adds (or changes) the recovery e-mail: a link is sent there, and the e-mail is set once it's opened. */
   setRecoveryEmail(user: SessionUser, email: string, password: string): Promise<void>
   acceptTerms(user: SessionUser, version: number): Promise<void>
+  /** A link from one of our e-mails (password reset, confirming an e-mail): checks it, and says which e-mail it's for. */
+  checkEmailLink(mode: EmailLinkMode, code: string): Promise<{ email: string | null }>
+  /** Acts on the link: sets the new password (reset), or confirms the e-mail. */
+  completeEmailLink(mode: EmailLinkMode, code: string, newPassword?: string): Promise<void>
   /** Deletes the account: leaves (or hands over, or deletes) every trip, then removes the user's data. */
   deleteAccount(user: SessionUser, password: string, trips: Trip[]): Promise<void>
   /** Counts one use of an AI feature today; false when the daily limit is already reached. */
@@ -223,6 +231,9 @@ export interface Backend {
   /** Moderators may remove any message. */
   isCommunityModerator(uid: string): Promise<boolean>
 }
+
+/** What a link in one of our e-mails does (Firebase's "mode"). */
+export type EmailLinkMode = 'resetPassword' | 'verifyEmail' | 'verifyAndChangeEmail' | 'recoverEmail'
 
 /** One page per Firestore document, which holds at most 1 MiB. */
 export const TICKET_PAGE_MAX_CHARS = 900_000

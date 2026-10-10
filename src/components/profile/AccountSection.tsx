@@ -38,6 +38,23 @@ export function AccountSection({ user, cloud }: { user: SessionUser; cloud: bool
 const passwordError = (error: unknown) =>
   error instanceof AppError && error.code === 'invalid-credentials' ? 'הסיסמה שגויה' : errorMessage(error)
 
+const pendingKey = (uid: string) => `tabi:pendingEmail:${uid}`
+function readPending(uid: string, confirmed: string | null | undefined): string | null {
+  try {
+    const pending = localStorage.getItem(pendingKey(uid))
+    return pending && pending !== confirmed ? pending : null
+  } catch {
+    return null
+  }
+}
+function writePending(uid: string, email: string) {
+  try {
+    localStorage.setItem(pendingKey(uid), email)
+  } catch {
+    // Not remembered (private mode).
+  }
+}
+
 const looksLikeEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
 
 /** Adds or changes the e-mail a password-reset link can be sent to. Asks for the password first. */
@@ -47,7 +64,8 @@ function RecoveryEmail({ user }: { user: SessionUser }) {
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
   const [busy, setBusy] = useState(false)
-  const [sentTo, setSentTo] = useState<string | null>(null)
+  // Sent and not confirmed yet (remembered on this device until the e-mail shows up on the account).
+  const [sentTo, setSentTo] = useState<string | null>(() => readPending(user.uid, user.email))
 
   const save = async (event: FormEvent) => {
     event.preventDefault()
@@ -61,6 +79,7 @@ function RecoveryEmail({ user }: { user: SessionUser }) {
     try {
       await getBackend().setRecoveryEmail(user, email, password)
       setSentTo(email.trim())
+      writePending(user.uid, email.trim())
       setEditing(false)
       setPassword('')
     } catch (error) {
@@ -95,7 +114,8 @@ function RecoveryEmail({ user }: { user: SessionUser }) {
           role="status"
           className="mt-3 rounded-control bg-green-500/10 px-3 py-2 text-xs leading-relaxed text-green-800 dark:text-green-300"
         >
-          שלחנו קישור אימות ל-<bdi dir="ltr">{sentTo}</bdi>. אחרי שתלחצו עליו, המייל יתווסף לחשבון, ומאז נכנסים איתו (במקום שם המשתמש).
+          ממתין לאישור: שלחנו קישור ל-<bdi dir="ltr">{sentTo}</bdi>. אחרי שתלחצו עליו, המייל יתווסף לחשבון ומאז נכנסים איתו (במקום שם
+          המשתמש). לא הגיע? בדקו בספאם, או לחצו ״שינוי״ ושלחו שוב.
         </p>
       )}
       {editing && (

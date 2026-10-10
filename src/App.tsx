@@ -14,6 +14,7 @@ import { AuthScreen } from '@/screens/AuthScreen'
 import { OnboardingScreen } from '@/screens/OnboardingScreen'
 import { ProfileSetupScreen } from '@/screens/ProfileSetupScreen'
 import { TermsScreen } from '@/screens/TermsScreen'
+import { EmailLinkScreen, readEmailLink } from '@/screens/EmailLinkScreen'
 import { recallPendingJoin, rememberPendingJoin } from '@/store/joins'
 import { ui } from '@/store/ui'
 import { startSession, useSession } from '@/store/session'
@@ -39,12 +40,17 @@ export default function App() {
 }
 
 /** Auth → trip selection → app. */
+/** Read once, when the app opens. */
+const emailLink = readEmailLink()
+
 function SessionGate() {
   const status = useSession((state) => state.status)
   const introDone = useIntroDone()
 
   if (status === 'loading') return <SplashScreen />
   if (status === 'error') return <SplashScreen failed message="לא הצלחנו לטעון את האפליקציה. בדקו את החיבור ונסו לרענן." />
+  // A link from one of our e-mails (new password, confirming an e-mail), signed in or not.
+  if (emailLink) return <EmailLinkScreen mode={emailLink.mode} code={emailLink.code} />
   if (status === 'signedOut') return introDone ? <AuthScreen /> : <SplashScreen />
   return (
     <>
