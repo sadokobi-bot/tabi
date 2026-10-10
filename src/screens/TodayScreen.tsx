@@ -22,7 +22,7 @@ import { PinnedMeet } from '@/components/chat/ChatStatus'
 import { hasFirebase } from '@/config/env'
 import { CheckoutRow, TonightRow } from '@/components/today/TonightRow'
 import { Avatar } from '@/components/ui/Avatar'
-import { DEFAULT_CITY, getCity } from '@/data/cities'
+import { DEFAULT_CITY, getCity, nearestCity } from '@/data/cities'
 import { sortedDay } from '@/data/planOps'
 import { stayFor } from '@/data/stays'
 import { useNow } from '@/hooks/useNow'
@@ -129,7 +129,15 @@ export default function TodayScreen() {
       )}
 
       <motion.div variants={RISE} className="mt-5">
-        <TodayHero trip={trip} timeline={timeline} now={now} placeName={placeName} location={weatherLocation} />
+        <TodayHero
+          trip={trip}
+          timeline={timeline}
+          now={now}
+          placeName={placeName}
+          location={weatherLocation}
+          cityId={city?.id ?? (firstPlace ? nearestCity(firstPlace.location)?.id : DEFAULT_CITY.id)}
+          stops={items.flatMap((item) => placesById[item.placeId]?.name ?? [])}
+        />
       </motion.div>
 
       {phase !== 'after' && (

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Droplets } from 'lucide-react'
+import clsx from 'clsx'
+import { Clock3, Droplets, MapPin } from 'lucide-react'
 import type { LatLng, Trip } from '@/data/types'
+import { photoFor, photoUrl } from '@/data/photos'
 import { TRIP_TZ, minutesInTz, type TripTimeline } from '@/lib/dates'
 import { describeWeather, fetchWeather, type Weather } from '@/lib/weather'
 
@@ -10,40 +12,56 @@ interface TodayHeroProps {
   now: Date
   placeName: string
   location: LatLng
+  /** Today's city (cities.ts), for its photo. */
+  cityId?: string
+  /** Names of today's stops: a landmark among them gets its own photo. */
+  stops: string[]
 }
 
-type Sky = 'dawn' | 'day' | 'dusk' | 'night' | 'rain'
-
-/** Sky gradients: the card looks like the sky over Japan right now. */
-const SKIES: Record<Sky, { background: string; glow: string }> = {
-  dawn: { background: 'linear-gradient(160deg, #f0876a 0%, #d6587c 48%, #5d4bb8 100%)', glow: 'rgb(255 228 196 / 0.45)' },
-  day: { background: 'linear-gradient(160deg, #3d8ef0 0%, #2a6be0 50%, #2347b8 100%)', glow: 'rgb(255 255 255 / 0.32)' },
-  dusk: { background: 'linear-gradient(160deg, #ee7a55 0%, #cd4675 48%, #5a37a3 100%)', glow: 'rgb(255 208 164 / 0.42)' },
-  night: { background: 'linear-gradient(160deg, #26346e 0%, #172054 55%, #0d1233 100%)', glow: 'rgb(170 190 255 / 0.25)' },
-  rain: { background: 'linear-gradient(160deg, #6f819c 0%, #526480 55%, #384660 100%)', glow: 'rgb(255 255 255 / 0.18)' },
-}
-
-function skyFor(japanMinutes: number, weather: Weather | null): Sky {
-  if (weather && (weather.code >= 51 || weather.code === 45 || weather.code === 48)) return 'rain'
+/** Under the photo while it loads (or offline): the colours of the sky over Japan right now. */
+function skyFor(japanMinutes: number) {
   const hour = japanMinutes / 60
-  if (hour >= 5 && hour < 8) return 'dawn'
-  if (hour >= 8 && hour < 16.5) return 'day'
-  if (hour >= 16.5 && hour < 19) return 'dusk'
-  return 'night'
+  if (hour >= 5 && hour < 8) return 'linear-gradient(160deg, #f0876a 0%, #d6587c 48%, #5d4bb8 100%)'
+  if (hour >= 8 && hour < 16.5) return 'linear-gradient(160deg, #3d8ef0 0%, #2a6be0 50%, #2347b8 100%)'
+  if (hour >= 16.5 && hour < 19) return 'linear-gradient(160deg, #ee7a55 0%, #cd4675 48%, #5a37a3 100%)'
+  return 'linear-gradient(160deg, #26346e 0%, #172054 55%, #0d1233 100%)'
 }
 
 const clock = (timeZone: string) => new Intl.DateTimeFormat('he-IL', { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
 const japanClock = clock(TRIP_TZ)
 const homeClock = clock('Asia/Jerusalem')
 
+function JapanFlag() {
+  return (
+    <svg viewBox="0 0 30 20" aria-hidden className="h-3 w-[1.15rem] shrink-0 rounded-[2px] shadow-sm">
+      <rect width="30" height="20" fill="#fff" />
+      <circle cx="15" cy="10" r="6" fill="#bc002d" />
+    </svg>
+  )
+}
+
+function IsraelFlag() {
+  return (
+    <svg viewBox="0 0 220 160" aria-hidden className="h-3 w-[1.15rem] shrink-0 rounded-[2px] shadow-sm">
+      <rect width="220" height="160" fill="#fff" />
+      <rect y="15" width="220" height="25" fill="#0038b8" />
+      <rect y="120" width="220" height="25" fill="#0038b8" />
+      <path d="M110 50 136 95H84ZM110 110 84 65h52Z" fill="none" stroke="#0038b8" strokeWidth="6" />
+    </svg>
+  )
+}
+
 /**
- * The day at a glance: where we are in the trip, the weather at today's stop and the time
- * in Japan next to the time at home, on a card painted like the current sky in Japan.
+ * The day at a glance, on a photo of where we are: the day of the trip, the city, the weather and
+ * the time in Japan next to the time at home. The photo's own place shows in its corner.
  */
-export function TodayHero({ trip, timeline, now, placeName, location }: TodayHeroProps) {
+export function TodayHero({ trip, timeline, now, placeName, location, cityId, stops }: TodayHeroProps) {
   const weather = useWeather(location)
-  const sky = SKIES[skyFor(minutesInTz(now), weather)]
+  const japanMinutes = minutesInTz(now)
+  const night = japanMinutes < 6 * 60 || japanMinutes >= 18 * 60
   const { phase, dayNumber, daysUntil } = timeline
+  const photo = photoFor({ cityId, stops, day: Math.max(0, dayNumber - 1), night })
+  const [loaded, setLoaded] = useState<string | null>(null)
   const conditions = weather ? describeWeather(weather.code, weather.isDay) : null
   const WeatherIcon = conditions?.icon
 
@@ -55,64 +73,73 @@ export function TodayHero({ trip, timeline, now, placeName, location }: TodayHer
       : phase === 'during'
         ? `יום ${dayNumber} מתוך ${trip.days}`
         : 'הטיול הסתיים'
-  const progress = phase === 'before' ? 0 : phase === 'during' ? dayNumber / trip.days : 1
 
   return (
     <section
       aria-label="היום בטיול"
-      className="relative isolate overflow-hidden rounded-card p-5 text-white shadow-[0_16px_36px_-22px_rgb(30_50_120/0.6)] ring-1 ring-white/10 ring-inset transition-[background] duration-700 text-shadow-xs text-shadow-black/25"
-      style={{ background: sky.background }}
+      className="relative isolate overflow-hidden rounded-card text-white shadow-[0_16px_36px_-22px_rgb(20_30_60/0.7)] ring-1 ring-white/10 ring-inset text-shadow-xs text-shadow-black/35"
+      style={{ background: skyFor(japanMinutes) }}
     >
-      {/* Keeps small white text readable on the lighter skies (dawn, day, dusk). */}
-      <span aria-hidden className="pointer-events-none absolute inset-0 bg-linear-to-b from-black/12 via-black/0 to-black/18" />
-      {/* sun / moon glow */}
-      <span
+      <img
+        key={photo.id}
+        src={photoUrl(photo)}
+        alt=""
         aria-hidden
-        className="pointer-events-none absolute -end-16 -top-20 size-56 rounded-full"
-        style={{ background: `radial-gradient(closest-side, ${sky.glow}, transparent)` }}
-      />
-
-      <div className="relative flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="inline-flex items-center rounded-full bg-black/18 px-2.5 py-1 text-xs font-semibold backdrop-blur-sm">{status}</p>
-          <p className="mt-2 truncate text-sm font-semibold">{placeName}</p>
-        </div>
-        {WeatherIcon && <WeatherIcon aria-hidden className="size-11 shrink-0 drop-shadow" strokeWidth={1.6} />}
-      </div>
-
-      <div className="relative mt-1 flex items-end justify-between gap-3">
-        <p className="text-[4rem] leading-none font-semibold tracking-tighter tabular-nums" dir="ltr">
-          {weather ? `${Math.round(weather.temperature)}°` : <span className="inline-block h-14 w-24 animate-pulse rounded-control bg-white/20 align-bottom" />}
-        </p>
-        {weather && conditions && (
-          <div className="mb-1.5 text-end text-sm">
-            <p className="font-semibold">{conditions.label}</p>
-            <p className="text-white/90">
-              <span dir="ltr">
-                {Math.round(weather.max)}° / {Math.round(weather.min)}°
-              </span>
-              {weather.rainChance != null && weather.rainChance > 0 && (
-                <span className="ms-2 inline-flex items-center gap-0.5">
-                  <Droplets aria-hidden className="size-3.5" />
-                  {weather.rainChance}%
-                </span>
-              )}
-            </p>
-          </div>
+        draggable={false}
+        onLoad={() => setLoaded(photo.id)}
+        className={clsx(
+          'absolute inset-0 -z-10 size-full object-cover transition-opacity duration-700',
+          loaded === photo.id ? 'opacity-100' : 'opacity-0',
         )}
+        style={{ objectPosition: photo.focus ?? 'center' }}
+      />
+      {/* Darker behind the text (the start side), clear over the rest of the photo. */}
+      <span aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-linear-to-l from-black/70 via-black/35 to-black/0" />
+      <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-16 bg-linear-to-t from-black/45 to-black/0" />
+
+      <div className="flex min-h-44 flex-col items-start px-4 pt-3.5 pb-3">
+        <p className="inline-flex items-center rounded-full bg-black/30 px-2.5 py-0.5 text-xs font-semibold backdrop-blur-sm">{status}</p>
+        <p className="mt-1.5 max-w-[60%] truncate text-xl leading-tight font-bold">{placeName}</p>
+        <div className="mt-0.5 flex items-center gap-2">
+          <p className="text-[3.25rem] leading-none font-semibold tracking-tighter tabular-nums" dir="ltr">
+            {weather ? (
+              `${Math.round(weather.temperature)}°`
+            ) : (
+              <span className="inline-block h-12 w-20 animate-pulse rounded-control bg-white/20 align-bottom" />
+            )}
+          </p>
+          {WeatherIcon && <WeatherIcon aria-hidden className="size-8 shrink-0 drop-shadow" strokeWidth={1.7} />}
+        </div>
+        {weather && conditions && (
+          <p className="mt-1 flex items-center gap-1.5 border-b border-white/45 pb-1 text-sm font-semibold">
+            {conditions.label}
+            <span className="font-normal text-white/90" dir="ltr">
+              {Math.round(weather.max)}° / {Math.round(weather.min)}°
+            </span>
+            {weather.rainChance != null && weather.rainChance > 0 && (
+              <span className="inline-flex items-center gap-0.5 font-normal text-white/90">
+                <Droplets aria-hidden className="size-3.5" />
+                {weather.rainChance}%
+              </span>
+            )}
+          </p>
+        )}
+        <p className="mt-2 flex items-center gap-2 text-xs font-semibold tabular-nums">
+          <span className="inline-flex items-center gap-1.5" aria-label={`ביפן ${japanClock.format(now)}`}>
+            <JapanFlag />
+            {japanClock.format(now)}
+          </span>
+          <Clock3 aria-hidden className="size-3.5 text-white/75" />
+          <span className="inline-flex items-center gap-1.5" aria-label={`בבית ${homeClock.format(now)}`}>
+            <IsraelFlag />
+            {homeClock.format(now)}
+          </span>
+        </p>
       </div>
 
-      <div className="relative mt-4 h-1 overflow-hidden rounded-full bg-white/22" role="presentation">
-        <div className="h-full rounded-full bg-white" style={{ width: `${Math.max(progress * 100, phase === 'before' ? 0 : 3)}%` }} />
-      </div>
-
-      <p className="relative mt-3 flex items-center justify-between text-xs text-white/90 tabular-nums">
-        <span>
-          ביפן <span className="font-semibold text-white">{japanClock.format(now)}</span>
-        </span>
-        <span>
-          בבית <span className="font-semibold text-white">{homeClock.format(now)}</span>
-        </span>
+      <p className="absolute end-3 bottom-3 inline-flex max-w-[45%] items-center gap-1 rounded-full bg-black/35 px-2 py-1 text-[11px] font-medium backdrop-blur-sm">
+        <MapPin aria-hidden className="size-3 shrink-0" />
+        <span className="truncate">{photo.place}</span>
       </p>
     </section>
   )

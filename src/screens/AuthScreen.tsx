@@ -144,7 +144,7 @@ export function AuthScreen() {
   const reset = mode === 'reset'
   const details = mode === 'signUp' && step === 1
 
-  // What the cat does and says follows the form.
+  // What Oni does and says follows the form.
   const name = profile.firstName.trim()
   const catMood: CatMood = details ? 'wave' : passwordFocused ? (showPassword ? 'peek' : 'cover') : 'eat'
   const catLine = details
@@ -155,7 +155,7 @@ export function AuthScreen() {
       ? showPassword
         ? 'טוב, רק הצצה קטנה 👀'
         : 'אני לא מציץ, מבטיח 🙈'
-      : `${name}, עוד רגע מסיימים! 🍜`
+      : `${name}, עוד רגע מסיימים! 🍙`
 
   return (
     // Pinned to the screen like the app shell (AppLayout): on iOS home-screen apps 100dvh can exceed
@@ -164,7 +164,7 @@ export function AuthScreen() {
       {/* Warm haze behind the sun, as on the launch screen */}
       <div
         aria-hidden
-        className="pointer-events-none absolute top-0 left-1/2 size-[36rem] -translate-x-1/2 -translate-y-1/3 rounded-full bg-accent/14 blur-3xl"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[36rem] -translate-y-1/3 rounded-full bg-accent/14 blur-3xl"
       />
       {/* Petals start once the intro has settled. */}
       <motion.div
@@ -178,7 +178,7 @@ export function AuthScreen() {
       </motion.div>
       <div aria-hidden className="status-blend absolute inset-x-0 top-0 h-24" />
 
-      {/* Sign-up keeps the padding tight so the cat can be big. */}
+      {/* Sign-up keeps the padding tight so Oni can be big. */}
       <header
         className={clsx(
           'relative flex min-h-0 flex-1 flex-col items-center justify-center text-center',
@@ -191,7 +191,7 @@ export function AuthScreen() {
             <SunGate className="size-24" />
           </motion.div>
         ) : (
-          // Sign-up has a guide: a ramen-eating cat that says hello and looks away from passwords.
+          // Sign-up has a guide: Oni the onigiri, who waves hello and looks away from passwords.
           <motion.div
             initial={{ opacity: 0, scale: 0.85, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}

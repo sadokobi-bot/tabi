@@ -4,6 +4,7 @@ import clsx from 'clsx'
 import { Check, CircleCheckBig, KeyRound, LoaderCircle, Luggage, MapPin, MessageCircle, type LucideIcon } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import type { DeletePhase } from '@/backend'
+import { FrameLoop, ONI_CLIPS } from '@/components/brand/FrameLoop'
 import { Button } from '@/components/ui/Button'
 import { closeDeletion, useDeletion } from '@/store/deletion'
 
@@ -18,25 +19,8 @@ const PHASES: { phase: DeletePhase; label: string; icon: LucideIcon }[] = [
 const TICK_MS = 550
 const SUCCESS_MS = 1900
 
-/** Bits of eraser rubbing off the list while the cat works. */
-function Crumbs() {
-  return (
-    <span aria-hidden className="pointer-events-none absolute top-[62%] left-[31%]">
-      {[0, 1, 2, 3, 4, 5].map((index) => (
-        <motion.span
-          key={index}
-          className={clsx('absolute size-1.5 rounded-full', index % 2 ? 'bg-pink-300' : 'bg-neutral-400')}
-          initial={{ x: 0, y: 0, opacity: 0 }}
-          animate={{ x: [0, (index - 2.5) * 7], y: [0, 26 + (index % 3) * 8], opacity: [0, 1, 0] }}
-          transition={{ duration: 0.9, repeat: Infinity, delay: index * 0.15, ease: 'easeOut' }}
-        />
-      ))}
-    </span>
-  )
-}
-
 /**
- * Full screen while a trip is deleted: the cat erasing its list, each part checked off as it goes,
+ * Full screen while a trip is deleted: Oni sweeping it all up, each part checked off as it goes,
  * then "deleted" and on to the welcome screen. Lives above the app, which changes under it.
  */
 export function DeletionScreen() {
@@ -82,29 +66,7 @@ function Deleting({ name }: { name: string }) {
       exit={{ opacity: 0, transition: { duration: 0.4 } }}
     >
       <div className="relative size-56">
-        {/* Two frames of the same drawing: the list whole, and erased. It fades from one to the other
-            as the parts are deleted. */}
-        <motion.div
-          className="relative size-full"
-          style={{ originY: 1 }}
-          animate={success || error ? { rotate: 0, x: 0 } : { rotate: [0, -1.5, 0, 1.5, 0], x: [0, -1.5, 0, 1.5, 0] }}
-          transition={success || error ? { duration: 0.3 } : { duration: 0.45, repeat: Infinity, ease: 'easeInOut' }}
-        >
-          {['delete-1', 'delete-2'].map((frame, index) => (
-            <motion.img
-              key={frame}
-              src={`${import.meta.env.BASE_URL}mascot/${frame}.png`}
-              alt=""
-              aria-hidden
-              draggable={false}
-              className="absolute inset-0 size-full object-contain select-none"
-              initial={false}
-              animate={{ opacity: index === 0 ? 1 : success ? 1 : shown / PHASES.length }}
-              transition={{ duration: 0.5 }}
-            />
-          ))}
-        </motion.div>
-        {!success && !error && <Crumbs />}
+        <FrameLoop clip={ONI_CLIPS.sweep} className="size-full" />
         <AnimatePresence>
           {success && (
             <motion.span

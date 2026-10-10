@@ -44,6 +44,12 @@ export default defineConfig({
         // (Google Maps Platform ToS; tiles are large). Firestore keeps its own offline cache.
         runtimeCaching: [
           {
+            // Mascot frames and the city photos: too many to precache; kept once seen, so they also show offline.
+            urlPattern: ({ sameOrigin, url }) => sameOrigin && /\/(mascot|photos)\/.*\.webp$/.test(url.pathname),
+            handler: 'CacheFirst',
+            options: { cacheName: 'artwork', expiration: { maxEntries: 600, maxAgeSeconds: 60 * 60 * 24 * 90 } },
+          },
+          {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: 'StaleWhileRevalidate',
             options: { cacheName: 'google-fonts-css' },

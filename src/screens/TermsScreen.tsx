@@ -33,7 +33,7 @@ export function TermsScreen() {
     <div className="fixed inset-0 overflow-x-hidden overflow-y-auto">
       <div
         aria-hidden
-        className="pointer-events-none absolute top-0 left-1/2 size-[36rem] -translate-x-1/2 -translate-y-1/3 rounded-full bg-accent/14 blur-3xl"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[36rem] -translate-y-1/3 rounded-full bg-accent/14 blur-3xl"
       />
       <div className="relative mx-auto flex min-h-full w-full max-w-md flex-col px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[max(env(safe-area-inset-bottom),1.5rem)]">
         <nav className="flex h-10 items-center justify-end">

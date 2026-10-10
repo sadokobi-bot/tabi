@@ -20,7 +20,7 @@ interface Step {
 }
 
 const welcomeSteps = (name: string): Step[] => [
-  { target: null, title: `היי ${name}! 👋`, text: 'אני החתול של Tabi. בואו נעשה סיבוב קצר באפליקציה, זה לוקח חצי דקה.' },
+  { target: null, title: `היי ${name}! 👋`, text: 'אני אוני, האוניגירי של Tabi 🍙 בואו נעשה סיבוב קצר באפליקציה, זה לוקח חצי דקה.' },
   { target: { tab: 0 }, title: 'היום', text: 'כל מה שחשוב היום: מזג האוויר, הדבר הבא בלו״ז, המלון והכרטיסים.' },
   {
     target: { tab: 1 },
@@ -91,8 +91,8 @@ const mapSteps = (): Step[] =>
   ).filter((step): step is Step => Boolean(step))
 
 const TOURS: Record<TourId, { label: string; image: string; path: string }> = {
-  welcome: { label: 'סיור באפליקציה', image: 'guide.png', path: '/' },
-  map: { label: 'סיור במפה', image: 'map.png', path: '/map' },
+  welcome: { label: 'סיור באפליקציה', image: 'oni/guide.webp', path: '/' },
+  map: { label: 'סיור במפה', image: 'oni/map.webp', path: '/map' },
 }
 
 /** The element a step points at, if it's on screen (inactive tabs keep their screens, hidden). */
@@ -135,7 +135,7 @@ function useTargetRect(target: Target): DOMRect | null {
   return rect
 }
 
-/** The tours: the cat walks the user through the app, or through the map, in short steps. */
+/** The tours: Oni walks the user through the app, or through the map, in short steps. */
 export function Tour() {
   const open = useTour((state) => state.open)
   return createPortal(<AnimatePresence>{open && <TourSteps key={open} tour={open} />}</AnimatePresence>, document.body)

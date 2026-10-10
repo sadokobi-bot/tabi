@@ -133,7 +133,7 @@ export function OnboardingScreen() {
     <div className="fixed inset-0 overflow-x-hidden overflow-y-auto">
       <div
         aria-hidden
-        className="pointer-events-none absolute top-0 left-1/2 size-[36rem] -translate-x-1/2 -translate-y-1/3 rounded-full bg-accent/14 blur-3xl"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[36rem] -translate-y-1/3 rounded-full bg-accent/14 blur-3xl"
       />
       <div aria-hidden className="pointer-events-none absolute inset-0">
         <SakuraDrift count={8} />

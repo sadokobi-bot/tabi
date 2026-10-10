@@ -92,7 +92,7 @@ function Wizard() {
         setPhase({ name: 'error', failure: 'other' })
         return
       }
-      // A moment for the cat to set off with its backpack before the plan shows.
+      // A moment to cheer before the plan shows.
       setPhase({ name: 'planning', progress: { done: 1, total: 1, label: 'הטיול מוכן! 🎒' }, finished: true })
       await new Promise((resolve) => setTimeout(resolve, CREATOR_DONE_MS))
       setPhase({ name: 'preview', plan })
@@ -236,7 +236,7 @@ function Questions({
         >
           {page === 0 && (
             <>
-              <Intro image="map.png" title="כמה שאלות קצרות, ואנחנו נבנה לכם את כל הטיול">
+              <Intro image="oni/map.webp" title="כמה שאלות קצרות, ואנחנו נבנה לכם את כל הטיול">
                 לו״ז מלא לכל יום, עם אטרקציות ומסעדות. אחר כך אפשר לשנות הכול.
                 {hasPlan && ' פעילויות שכבר בלו״ז יישארו, והתכנון ייבנה סביבן.'}
               </Intro>
@@ -478,10 +478,9 @@ function Chips({ options, selected, onToggle }: { options: [string, string][]; s
 
 function Planning({ progress, days, finished }: { progress: PlanProgress; days: number; finished?: boolean }) {
   const share = Math.max(0.04, Math.min(1, progress.done / progress.total))
-  const stage = finished ? 'done' : 'working'
   return (
     <div className="flex flex-col items-center pt-4 pb-12 text-center">
-      <TripCreatorCat stage={stage} />
+      <TripCreatorCat />
       <p role="status" className={clsx('mt-6 font-semibold', finished && 'text-lg text-accent')}>
         {progress.label}
       </p>
