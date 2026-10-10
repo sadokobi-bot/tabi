@@ -57,6 +57,12 @@ export function FrameLoop({ clip, className }: { clip: FrameClip; className?: st
     const canvas = canvasRef.current
     const context = canvas?.getContext('2d')
     if (!canvas || !context) return
+    const dpr = Math.min(window.devicePixelRatio || 1, 3)
+    const drawSize = Math.round(clip.size * dpr)
+    canvas.width = drawSize
+    canvas.height = drawSize
+    context.imageSmoothingEnabled = true
+    context.imageSmoothingQuality = 'high'
     const images = preloadClip(clip)
     const ready = (n: number) => images[n]!.complete && images[n]!.naturalWidth > 0
     let frame = 0
@@ -67,8 +73,8 @@ export function FrameLoop({ clip, className }: { clip: FrameClip; className?: st
       raf = requestAnimationFrame(tick)
       if (now - last < 1000 / clip.fps || !ready(frame)) return
       last = now
-      context.clearRect(0, 0, canvas.width, canvas.height)
-      context.drawImage(images[frame]!, 0, 0, canvas.width, canvas.height)
+      context.clearRect(0, 0, drawSize, drawSize)
+      context.drawImage(images[frame]!, 0, 0, drawSize, drawSize)
       if (reduceMotion) return
       frame = (frame + 1) % clip.frames
     }
@@ -76,5 +82,5 @@ export function FrameLoop({ clip, className }: { clip: FrameClip; className?: st
     return () => cancelAnimationFrame(raf)
   }, [clip, reduceMotion])
 
-  return <canvas ref={canvasRef} width={clip.size} height={clip.size} aria-hidden className={clsx('select-none', className)} />
+  return <canvas ref={canvasRef} aria-hidden className={clsx('select-none', className)} />
 }
