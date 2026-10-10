@@ -6,7 +6,6 @@ import { Avatar } from '@/components/ui/Avatar'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
-import { hasGoogleMaps } from '@/config/env'
 import { actions } from '@/data/actions'
 import { getBackend, useCurrentUser, useSession } from '@/store/session'
 import { rememberActiveTrip, useTrip, useTripStore } from '@/store/trip'
@@ -140,7 +139,7 @@ function ProfileBody({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="px-5 pt-1 pb-4">
-      <div className="flex items-center gap-3">
+      <div className="surface flex items-center gap-3 rounded-card p-4">
         <Avatar name={firstName(user)} className="size-12 text-lg" />
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 text-lg font-bold">
@@ -361,21 +360,6 @@ function ProfileBody({ onClose }: { onClose: () => void }) {
 
       <Section title="החשבון שלי">
         <AccountSection user={user} cloud={mode === 'cloud'} />
-      </Section>
-
-      <Section title="חיבורים">
-        <ul className="surface divide-y divide-line rounded-card text-sm">
-          <li className="flex items-center gap-3 px-4 py-3">
-            <MapIcon aria-hidden className="size-4.5 text-muted" />
-            <span className="flex-1">מפה וחיפוש</span>
-            <span className="font-medium">{hasGoogleMaps ? 'Google Maps' : 'OpenStreetMap (חינמי)'}</span>
-          </li>
-          <li className="flex items-center gap-3 px-4 py-3">
-            <Cloud aria-hidden className="size-4.5 text-muted" />
-            <span className="flex-1">חשבונות וסנכרון</span>
-            <span className="font-medium">{mode === 'cloud' ? 'Firebase' : 'מקומי'}</span>
-          </li>
-        </ul>
       </Section>
     </div>
   )
