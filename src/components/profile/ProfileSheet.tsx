@@ -263,45 +263,47 @@ function ProfileBody({ onClose }: { onClose: () => void }) {
         </div>
       </Section>
 
-      <Section title="טיסות">
-        <FlightsEditor flights={trip.flights} />
-      </Section>
+      <div className="mt-6 rounded-card border border-line p-4 [&>section:first-child]:mt-0">
+        <Section title="טיסות">
+          <FlightsEditor flights={trip.flights} />
+        </Section>
 
-      <Section title="פרטי הטיול">
-        {!isOwner ? (
-          <div className="surface rounded-card p-4 text-sm">
-            <p className="font-semibold">{trip.name}</p>
-            <p className="mt-0.5 text-muted">
-              {trip.days} ימים, מ-{trip.startDate.split('-').reverse().join('.')}
-            </p>
-            <p className="mt-3 flex items-center gap-1.5 text-xs text-muted">
-              <Lock aria-hidden className="size-3.5" />
-              רק {ownerName} {byGender(ownerGender, { male: 'יכול', female: 'יכולה' })} לשנות את שם הטיול ואת התאריכים
-            </p>
-          </div>
-        ) : (
-          <form onSubmit={saveTrip} className="surface space-y-3 rounded-card p-4" noValidate>
-            <TextField label="שם הטיול" value={name} onChange={(event) => setName(event.target.value)} maxLength={40} />
-            <div className="grid grid-cols-[1fr_6rem] gap-3">
-              <TextField label="יום ראשון ביפן" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
-              <TextField
-                label="ימים"
-                type="number"
-                min={1}
-                max={90}
-                value={days}
-                onChange={(event) => setDays(event.target.value)}
-                dir="ltr"
-              />
+        <Section title="פרטי הטיול">
+          {!isOwner ? (
+            <div className="surface rounded-card p-4 text-sm">
+              <p className="font-semibold">{trip.name}</p>
+              <p className="mt-0.5 text-muted">
+                {trip.days} ימים, מ-{trip.startDate.split('-').reverse().join('.')}
+              </p>
+              <p className="mt-3 flex items-center gap-1.5 text-xs text-muted">
+                <Lock aria-hidden className="size-3.5" />
+                רק {ownerName} {byGender(ownerGender, { male: 'יכול', female: 'יכולה' })} לשנות את שם הטיול ואת התאריכים
+              </p>
             </div>
-            <Button type="submit" variant="secondary" className="w-full">
-              שמירת פרטי הטיול
-            </Button>
-          </form>
-        )}
-        <LeaveTrip key={`leave-${trip.id}`} trip={trip} uid={user.uid} onLeft={onClose} />
-        {isOwner && <DeleteTrip key={trip.id} trip={trip} onDeleted={onClose} />}
-      </Section>
+          ) : (
+            <form onSubmit={saveTrip} className="surface space-y-3 rounded-card p-4" noValidate>
+              <TextField label="שם הטיול" value={name} onChange={(event) => setName(event.target.value)} maxLength={40} />
+              <div className="grid grid-cols-[1fr_6rem] gap-3">
+                <TextField label="יום ראשון ביפן" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+                <TextField
+                  label="ימים"
+                  type="number"
+                  min={1}
+                  max={90}
+                  value={days}
+                  onChange={(event) => setDays(event.target.value)}
+                  dir="ltr"
+                />
+              </div>
+              <Button type="submit" variant="secondary" className="w-full">
+                שמירת פרטי הטיול
+              </Button>
+            </form>
+          )}
+          <LeaveTrip key={`leave-${trip.id}`} trip={trip} uid={user.uid} onLeft={onClose} />
+        </Section>
+      </div>
+      {isOwner && <DeleteTrip key={trip.id} trip={trip} onDeleted={onClose} />}
 
       <Section title="הטיולים שלי">
         <div className="space-y-2">
