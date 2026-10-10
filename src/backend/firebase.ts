@@ -274,6 +274,7 @@ export function createFirebaseBackend(): Backend {
         const current = await reauthenticate(password)
         auth.languageCode = 'he'
         await verifyBeforeUpdateEmail(current, email.trim(), { url: 'https://tabijap.com', handleCodeInApp: false })
+        sendStyledEmail('verifyEmail', email.trim(), current.displayName ?? undefined)
       } catch (error) {
         const code = (error as { code?: string } | null)?.code
         if (code === 'auth/invalid-email') throw new AppError('invalid-email')
