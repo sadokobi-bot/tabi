@@ -30,7 +30,12 @@ export default {
     try {
       const body = (await request.json()) as EmailRequest
       if (!body.email || !body.type) return new Response('Missing email or type', { status: 400, headers: CORS })
-      if (!['resetPassword', 'verifyAndChangeEmail'].includes(body.type) || body.email.length > 254) {
+      const looksLikeEmail = (value: unknown) => typeof value === 'string' && value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+      if (
+        !['resetPassword', 'verifyAndChangeEmail'].includes(body.type) ||
+        !looksLikeEmail(body.email) ||
+        (body.type === 'verifyAndChangeEmail' && !looksLikeEmail(body.newEmail))
+      ) {
         return new Response('Bad request', { status: 400, headers: CORS })
       }
       // At most one mail per address and kind a minute, so this can't be used to flood someone's inbox.
@@ -63,6 +68,10 @@ export default {
       console.error('[email worker]', error)
       const message = error instanceof Error ? error.message : ''
       // Only what the app acts on goes back; Firebase's own messages stay in the logs.
+      // A reset for an address with no account answers like a successful one, so this can't be used to find out who has an account.
+      if (message.includes('EMAIL_NOT_FOUND')) {
+        return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json', ...CORS } })
+      }
       const safe = message === 'EMAIL_EXISTS' ? 'EMAIL_EXISTS' : 'FAILED'
       return new Response(JSON.stringify({ ok: false, error: safe }), {
         status: safe === 'EMAIL_EXISTS' ? 409 : 500,
@@ -107,6 +116,7 @@ async function getAccessToken(serviceAccountJson: string): Promise<string> {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
   })
+  if (!response.ok) throw new Error('Google token request failed')
   const data = (await response.json()) as { access_token: string }
   return data.access_token
 }
