@@ -21,8 +21,11 @@ export const ONI_CLIPS = {
   plan: { id: 'plan', frames: 120, fps: 12, size: 360 },
 } satisfies Record<string, FrameClip>
 
+/** Bumped when the artwork is redrawn: the service worker keeps frames by URL, so new ones get a new URL. */
+const ART_VERSION = 2
+
 /** Oni's still poses, in public/mascot/oni/. */
-export const oniStill = (pose: 'guide' | 'map' | 'cover' | 'peek') => `${import.meta.env.BASE_URL}mascot/oni/${pose}.webp`
+export const oniStill = (pose: 'guide' | 'map' | 'cover' | 'peek') => `${import.meta.env.BASE_URL}mascot/oni/${pose}.webp?v=${ART_VERSION}`
 
 const loaded = new Map<string, HTMLImageElement[]>()
 
@@ -33,7 +36,7 @@ export function preloadClip(clip: FrameClip): HTMLImageElement[] {
     images = Array.from({ length: clip.frames }, (_, n) => {
       const image = new Image()
       image.decoding = 'async'
-      image.src = `${import.meta.env.BASE_URL}mascot/oni/${clip.id}/${String(n).padStart(3, '0')}.webp`
+      image.src = `${import.meta.env.BASE_URL}mascot/oni/${clip.id}/${String(n).padStart(3, '0')}.webp?v=${ART_VERSION}`
       return image
     })
     loaded.set(clip.id, images)

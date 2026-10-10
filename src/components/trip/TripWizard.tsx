@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { oniStill } from '@/components/brand/FrameLoop'
 import clsx from 'clsx'
 import { CalendarCheck, ChevronDown, ChevronRight, RefreshCw, Sparkles, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
@@ -245,7 +246,7 @@ function Questions({
         >
           {page === 0 && (
             <>
-              <Intro image="oni/map.webp" title="כמה שאלות קצרות, ואנחנו נבנה לכם את כל הטיול">
+              <Intro image={oniStill('map')} title="כמה שאלות קצרות, ואנחנו נבנה לכם את כל הטיול">
                 לו״ז מלא לכל יום, עם אטרקציות ומסעדות. אחר כך אפשר לשנות הכול.
                 {hasPlan && ' פעילויות שכבר בלו״ז יישארו, והתכנון ייבנה סביבן.'}
               </Intro>
@@ -423,7 +424,7 @@ function SeasonCard({ events, selected, onToggle }: { events: SeasonEvent[]; sel
 function Intro({ image, title, children }: { image: string; title: string; children: ReactNode }) {
   return (
     <div className="flex items-center gap-3">
-      <img src={`${import.meta.env.BASE_URL}mascot/${image}`} alt="" aria-hidden className="size-24 shrink-0 object-contain" />
+      <img src={image} alt="" aria-hidden className="size-24 shrink-0 object-contain" />
       <div>
         <p className="font-semibold leading-snug">{title}</p>
         <p className="mt-1 text-sm leading-relaxed text-muted">{children}</p>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { oniStill } from '@/components/brand/FrameLoop'
 import clsx from 'clsx'
 import { AnimatePresence, motion } from 'motion/react'
 import { useNavigate } from 'react-router'
@@ -91,8 +92,8 @@ const mapSteps = (): Step[] =>
   ).filter((step): step is Step => Boolean(step))
 
 const TOURS: Record<TourId, { label: string; image: string; path: string }> = {
-  welcome: { label: 'סיור באפליקציה', image: 'oni/guide.webp', path: '/' },
-  map: { label: 'סיור במפה', image: 'oni/map.webp', path: '/map' },
+  welcome: { label: 'סיור באפליקציה', image: oniStill('guide'), path: '/' },
+  map: { label: 'סיור במפה', image: oniStill('map'), path: '/map' },
 }
 
 /** The element a step points at, if it's on screen (inactive tabs keep their screens, hidden). */
@@ -211,7 +212,7 @@ function TourSteps({ tour }: { tour: TourId }) {
             className="surface relative rounded-card p-5 pt-6 shadow-2xl"
           >
             <motion.img
-              src={`${import.meta.env.BASE_URL}mascot/${config.image}`}
+              src={config.image}
               alt=""
               aria-hidden
               draggable={false}
