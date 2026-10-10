@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import clsx from 'clsx'
 import { CircleCheck, ChevronRight, Footprints, Lightbulb, LoaderCircle } from 'lucide-react'
+import { CITIES, DEFAULT_CITY, getCity, nearestCity } from '@/data/cities'
+import { useTrip } from '@/store/trip'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import type { LatLng } from '@/data/types'
 import { agodaUrl, bookingComUrl, directionsUrl } from '@/lib/deeplinks'
@@ -21,6 +23,8 @@ import type { Poi, PoiProvider } from '@/maps/poi'
 export interface NeedResult {
   need: NeedId
   pois: Poi[]
+  /** Where the search was made from. */
+  origin: LatLng
 }
 
 interface NeedsSheetProps {
@@ -54,11 +58,24 @@ function readBudget(): HotelBudget {
  * "I need … now": one tap finds the closest toilets, ATMs, convenience stores, lockers or
  * pharmacies, with the walk to each and one-tap walking directions.
  */
-export function NeedsSheet({ open, onClose, provider, origin, fromGps, initialNeed, onResult, onPick }: NeedsSheetProps) {
+export function NeedsSheet({ open, onClose, provider, origin: here, fromGps, initialNeed, onResult, onPick }: NeedsSheetProps) {
   const [need, setNeed] = useState<NeedId | null>(initialNeed)
   const [status, setStatus] = useState<Status>('idle')
   const [pois, setPois] = useState<Poi[]>([])
   const [attempt, setAttempt] = useState(0)
+  const trip = useTrip()
+  const [hotelCityId, setHotelCityId] = useState<string | null>(null)
+  // Hotels are for planning from anywhere: the city is picked, not taken from the GPS.
+  const tripCityIds = [
+    ...new Set(
+      Object.entries(trip.dayCities)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([, id]) => id),
+    ),
+  ]
+  const cityChoices = [...tripCityIds.flatMap((id) => getCity(id) ?? []), ...CITIES.filter((city) => !tripCityIds.includes(city.id))]
+  const hotelCity = getCity(hotelCityId) ?? (here ? nearestCity(here) : undefined) ?? cityChoices[0] ?? DEFAULT_CITY
+  const origin = need === 'hotel' ? hotelCity.location : here
   const [budget, setBudgetState] = useState<HotelBudget>(readBudget)
   const setBudget = (next: HotelBudget) => {
     setBudgetState(next)
@@ -83,7 +100,7 @@ export function NeedsSheet({ open, onClose, provider, origin, fromGps, initialNe
       (found) => {
         setPois(found)
         setStatus('ok')
-        onResult({ need, pois: found })
+        onResult({ need, pois: found, origin })
       },
       (error: unknown) => {
         if (controller.signal.aborted) return
@@ -139,7 +156,7 @@ export function NeedsSheet({ open, onClose, provider, origin, fromGps, initialNe
               </button>
               <NeedIcon need={config} className="size-9" />
               <h2 className="text-xl font-bold tracking-tight">
-                {config.plural} {fromGps ? 'בסביבה' : 'ליד מרכז המפה'}
+                {config.plural} {need === 'hotel' ? `ב${hotelCity.name}` : fromGps ? 'בסביבה' : 'ליד מרכז המפה'}
               </h2>
             </div>
             <p className="mt-3 flex gap-2 rounded-control bg-amber-400/12 px-3.5 py-2.5 text-xs leading-relaxed">
@@ -147,6 +164,24 @@ export function NeedsSheet({ open, onClose, provider, origin, fromGps, initialNe
               {config.tip}
             </p>
 
+            {need === 'hotel' && (
+              <div role="group" aria-label="עיר" className="no-scrollbar -mx-5 mt-3 flex gap-2 overflow-x-auto px-5">
+                {cityChoices.map((city) => (
+                  <button
+                    key={city.id}
+                    type="button"
+                    aria-pressed={hotelCity.id === city.id}
+                    onClick={() => setHotelCityId(city.id)}
+                    className={clsx(
+                      'shrink-0 rounded-full px-3.5 py-1.5 text-sm font-semibold transition active:scale-95',
+                      hotelCity.id === city.id ? 'bg-fg text-bg' : 'surface',
+                    )}
+                  >
+                    {city.name}
+                  </button>
+                ))}
+              </div>
+            )}
             {need === 'hotel' && (
               <div role="group" aria-label="תקציב" className="mt-3 flex gap-2">
                 {(Object.keys(HOTEL_BUDGETS) as HotelBudget[]).map((key) => (

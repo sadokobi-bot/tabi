@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState, type ComponentType } from 'react'
+﻿import { lazy, Suspense, useEffect, useMemo, useState, type ComponentType } from 'react'
 import { LoaderCircle, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useTabActive } from '@/app/tabActive'
@@ -67,9 +67,9 @@ export default function MapScreen() {
   // Frame the results together with where they were searched from.
   const showNeedResult = (result: NeedResult | null) => {
     setNeedResult(result)
-    if (!result?.pois.length || !needOrigin) return
+    if (!result?.pois.length) return
     setFollowing(false)
-    const points = [needOrigin, ...result.pois.slice(0, 5).map((poi) => poi.location)]
+    const points = [result.origin, ...result.pois.slice(0, 5).map((poi) => poi.location)]
     const lats = points.map((point) => point.lat)
     const lngs = points.map((point) => point.lng)
     ui.moveCamera({ bounds: { north: Math.max(...lats), south: Math.min(...lats), east: Math.max(...lngs), west: Math.min(...lngs) } })
