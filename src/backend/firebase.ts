@@ -287,6 +287,8 @@ export function createFirebaseBackend(): Backend {
           const data = (await res.json().catch(() => ({}))) as { error?: string }
           throw new Error(data.error ?? 'Worker error')
         }
+        await current.reload()
+        await current.getIdToken(true)
       } catch (error) {
         if (error instanceof Error && error.message.includes('EMAIL_EXISTS')) throw new AppError('email-in-use')
         throw toAppError(error)

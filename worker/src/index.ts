@@ -32,7 +32,7 @@ export default {
       let link: string
       if (body.type === 'verifyAndChangeEmail') {
         if (!body.idToken || !body.newEmail) return new Response('Missing idToken or newEmail', { status: 400, headers: CORS })
-        link = await generateChangeEmailLink(env.FIREBASE_PROJECT_ID, accessToken, body.idToken, body.newEmail, env.APP_URL)
+        link = await changeEmailAndGenerateLink(env.FIREBASE_PROJECT_ID, accessToken, body.idToken, body.newEmail, env.APP_URL)
       } else {
         link = await generateActionLink(env.FIREBASE_PROJECT_ID, accessToken, body.type, body.email, env.APP_URL)
       }
@@ -119,25 +119,37 @@ async function generateActionLink(
   return data.oobLink
 }
 
-async function generateChangeEmailLink(
+async function changeEmailAndGenerateLink(
   projectId: string,
   accessToken: string,
   idToken: string,
   newEmail: string,
   continueUrl: string,
 ): Promise<string> {
-  const url = `https://identitytoolkit.googleapis.com/v1/projects/${projectId}/accounts:sendOobCode`
-  const response = await fetch(url, {
+  const lookupUrl = `https://identitytoolkit.googleapis.com/v1/projects/${projectId}/accounts:lookup`
+  const lookupRes = await fetch(lookupUrl, {
     method: 'POST',
     headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ requestType: 'VERIFY_AND_CHANGE_EMAIL', idToken, newEmail, returnOobLink: true, continueUrl }),
+    body: JSON.stringify({ idToken }),
   })
-  if (!response.ok) {
-    const error = await response.text()
-    throw new Error(`Firebase: ${error}`)
+  if (!lookupRes.ok) throw new Error(`Firebase lookup: ${await lookupRes.text()}`)
+  const lookupData = (await lookupRes.json()) as { users: { localId: string }[] }
+  const uid = lookupData.users?.[0]?.localId
+  if (!uid) throw new Error('User not found')
+
+  const updateUrl = `https://identitytoolkit.googleapis.com/v1/projects/${projectId}/accounts:update`
+  const updateRes = await fetch(updateUrl, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ localId: uid, email: newEmail, emailVerified: false }),
+  })
+  if (!updateRes.ok) {
+    const error = await updateRes.text()
+    if (error.includes('EMAIL_EXISTS')) throw new Error('EMAIL_EXISTS')
+    throw new Error(`Firebase update: ${error}`)
   }
-  const data = (await response.json()) as { oobLink: string }
-  return data.oobLink
+
+  return generateActionLink(projectId, accessToken, 'verifyEmail', newEmail, continueUrl)
 }
 
 function rewriteLink(firebaseLink: string, appUrl: string): string {
