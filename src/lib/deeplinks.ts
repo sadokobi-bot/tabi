@@ -49,11 +49,13 @@ export function safeHttpUrl(value: string | undefined | null): string | undefine
 }
 
 /** Booking.com search for a hotel by name (opens its page and prices in the app or the site). */
-export function bookingComUrl(hotelName: string): string {
-  return `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(hotelName)}&lang=he`
+export function bookingComUrl(hotelName: string, stay?: { checkIn: string; checkOut: string }): string {
+  const dates = stay ? `&checkin=${stay.checkIn}&checkout=${stay.checkOut}` : ''
+  return `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(hotelName)}&lang=he${dates}`
 }
 
 /** Agoda search for a hotel by name. */
-export function agodaUrl(hotelName: string): string {
-  return `https://www.agoda.com/search?text=${encodeURIComponent(hotelName)}`
+export function agodaUrl(hotelName: string, stay?: { checkIn: string; checkOut: string }): string {
+  const dates = stay ? `&checkIn=${stay.checkIn}&checkOut=${stay.checkOut}` : ''
+  return `https://www.agoda.com/search?text=${encodeURIComponent(hotelName)}${dates}`
 }
