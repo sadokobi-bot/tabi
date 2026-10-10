@@ -100,7 +100,7 @@ export default function TodayScreen() {
   })
 
   return (
-    <motion.div variants={STAGGER} initial="hidden" animate="shown" className="pt-screen mx-auto w-full max-w-md px-5">
+    <motion.div variants={STAGGER} initial="hidden" animate="shown" className="pt-screen mx-auto w-full max-w-md lg:max-w-2xl px-5">
       <motion.header variants={RISE} className="flex items-center justify-between gap-4">
         <div className="min-w-0">
           <h1 className="truncate text-[1.85rem] leading-tight font-bold tracking-tight">

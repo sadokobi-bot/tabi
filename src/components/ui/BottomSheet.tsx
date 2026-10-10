@@ -74,7 +74,7 @@ export function BottomSheet({ open, onClose, label, children }: BottomSheetProps
             aria-modal="true"
             aria-label={label}
             tabIndex={-1}
-            className="glass fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[90dvh] w-full max-w-lg flex-col rounded-t-sheet outline-none"
+            className="glass fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[90dvh] w-full max-w-lg flex-col rounded-t-sheet lg:max-w-xl outline-none"
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}

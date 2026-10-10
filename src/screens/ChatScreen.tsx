@@ -275,7 +275,7 @@ function TripChat({ switcher }: { switcher: ReactNode }) {
   return (
     <div className="relative isolate flex h-full flex-col">
       <ChatWallpaper />
-      <header className="pt-screen mx-auto w-full max-w-md px-5 pb-3">
+      <header className="pt-screen mx-auto w-full max-w-md lg:max-w-2xl px-5 pb-3">
         {switcher}
         <div className="mt-3 flex items-center gap-2.5">
           <div aria-hidden className="flex shrink-0 [&>*+*]:-ms-2">
@@ -319,7 +319,7 @@ function TripChat({ switcher }: { switcher: ReactNode }) {
         }}
         className="no-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
       >
-        <div className="mx-auto flex min-h-full w-full max-w-md flex-col justify-end px-4 pt-14 pb-3">
+        <div className="mx-auto flex min-h-full w-full max-w-md lg:max-w-2xl flex-col justify-end px-4 pt-14 pb-3">
           {messagesLoaded && messages.length === 0 && (
             <div className="my-auto flex flex-col items-center px-6 py-10 text-center">
               <span className="grid size-14 place-items-center rounded-full bg-accent/12 text-accent">
@@ -367,7 +367,7 @@ function TripChat({ switcher }: { switcher: ReactNode }) {
       <TypingIndicator trip={trip} uid={user.uid} />
       <form
         onSubmit={send}
-        className="mx-auto w-full max-w-md px-4 pt-1 transition-[padding] duration-200"
+        className="mx-auto w-full max-w-md lg:max-w-2xl px-4 pt-1 transition-[padding] duration-200"
         style={{
           paddingBottom: composing
             ? 'max(0.5rem, env(safe-area-inset-bottom))'

@@ -35,7 +35,7 @@ export function BottomTabBar({ activeId }: BottomTabBarProps) {
     >
       <nav
         aria-label="ניווט ראשי"
-        className="glass pointer-events-auto flex h-(--tabbar-height) w-full max-w-sm gap-1 rounded-card p-1.5 select-none"
+        className="glass pointer-events-auto flex h-(--tabbar-height) w-full max-w-sm gap-1 lg:max-w-md rounded-card p-1.5 select-none"
       >
         {TABS.map((tab) => {
           const isActive = tab.id === activeId
@@ -77,16 +77,8 @@ export function BottomTabBar({ activeId }: BottomTabBarProps) {
                 transition={PRESS_SPRING}
                 className="absolute inset-0 flex flex-col items-center justify-center gap-1"
               >
-                <motion.span
-                  animate={{ y: isActive ? -1 : 0, scale: isActive ? 1.08 : 1 }}
-                  transition={PRESS_SPRING}
-                  className="relative"
-                >
-                  <Icon
-                    aria-hidden
-                    className={clsx('size-[22px]', isActive && 'text-accent')}
-                    strokeWidth={isActive ? 2.25 : 1.75}
-                  />
+                <motion.span animate={{ y: isActive ? -1 : 0, scale: isActive ? 1.08 : 1 }} transition={PRESS_SPRING} className="relative">
+                  <Icon aria-hidden className={clsx('size-[22px]', isActive && 'text-accent')} strokeWidth={isActive ? 2.25 : 1.75} />
                   {badge > 0 && (
                     <span
                       aria-hidden
@@ -96,9 +88,7 @@ export function BottomTabBar({ activeId }: BottomTabBarProps) {
                     </span>
                   )}
                 </motion.span>
-                <span className={clsx('text-[11px] leading-none', isActive ? 'font-semibold' : 'font-medium')}>
-                  {tab.label}
-                </span>
+                <span className={clsx('text-[11px] leading-none', isActive ? 'font-semibold' : 'font-medium')}>{tab.label}</span>
               </motion.span>
             </Link>
           )

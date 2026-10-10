@@ -30,7 +30,7 @@ export default function TripScreen() {
   }
 
   return (
-    <div className="pt-screen mx-auto w-full max-w-md px-4">
+    <div className="pt-screen mx-auto w-full max-w-md lg:max-w-2xl px-4">
       <div className="px-1">
         <ScreenHeader
           title={trip.name}
