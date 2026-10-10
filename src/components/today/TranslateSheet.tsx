@@ -1,6 +1,22 @@
 import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Camera, ImagePlus, Languages, LoaderCircle, RotateCcw } from 'lucide-react'
+import {
+  Beef,
+  Beer,
+  CakeSlice,
+  Camera,
+  Drumstick,
+  Fish,
+  Flame,
+  Ham,
+  ImagePlus,
+  Languages,
+  Leaf,
+  LoaderCircle,
+  RotateCcw,
+  Shrimp,
+  type LucideIcon,
+} from 'lucide-react'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
@@ -15,16 +31,16 @@ import {
 } from '@/lib/assistant'
 import { prepareImage } from '@/lib/image'
 
-const TAGS: Record<FoodTag, { label: string; emoji: string; warn?: boolean }> = {
-  spicy: { label: 'חריף', emoji: '🌶️', warn: true },
-  pork: { label: 'חזיר', emoji: '🐖', warn: true },
-  beef: { label: 'בקר', emoji: '🐄' },
-  chicken: { label: 'עוף', emoji: '🐔' },
-  seafood: { label: 'פירות ים / דגים', emoji: '🦐', warn: true },
-  raw: { label: 'נא', emoji: '🍣', warn: true },
-  vegetarian: { label: 'צמחוני', emoji: '🥬' },
-  alcohol: { label: 'אלכוהול', emoji: '🍺' },
-  sweet: { label: 'מתוק', emoji: '🍰' },
+const TAGS: Record<FoodTag, { label: string; icon: LucideIcon; warn?: boolean }> = {
+  spicy: { label: 'חריף', icon: Flame, warn: true },
+  pork: { label: 'חזיר', icon: Ham, warn: true },
+  beef: { label: 'בקר', icon: Beef },
+  chicken: { label: 'עוף', icon: Drumstick },
+  seafood: { label: 'פירות ים / דגים', icon: Shrimp, warn: true },
+  raw: { label: 'נא', icon: Fish, warn: true },
+  vegetarian: { label: 'צמחוני', icon: Leaf },
+  alcohol: { label: 'אלכוהול', icon: Beer },
+  sweet: { label: 'מתוק', icon: CakeSlice },
 }
 
 type Phase =
@@ -175,18 +191,22 @@ function Translate() {
                   {item.note && <p className="mt-1.5 text-sm leading-relaxed text-muted">{item.note}</p>}
                   {item.tags.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1.5">
-                      {item.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className={
-                            TAGS[tag].warn
-                              ? 'rounded-full bg-amber-400/15 px-2 py-0.5 text-xs font-medium text-amber-800 dark:text-amber-300'
-                              : 'rounded-full bg-fg/6 px-2 py-0.5 text-xs font-medium'
-                          }
-                        >
-                          {TAGS[tag].emoji} {TAGS[tag].label}
-                        </span>
-                      ))}
+                      {item.tags.map((tag) => {
+                        const { label, icon: Icon, warn } = TAGS[tag]
+                        return (
+                          <span
+                            key={tag}
+                            className={
+                              warn
+                                ? 'inline-flex items-center gap-1 rounded-full bg-amber-400/15 py-0.5 ps-1.5 pe-2 text-xs font-medium text-amber-800 dark:text-amber-300'
+                                : 'inline-flex items-center gap-1 rounded-full bg-fg/6 py-0.5 ps-1.5 pe-2 text-xs font-medium'
+                            }
+                          >
+                            <Icon aria-hidden className="size-3.5 shrink-0" strokeWidth={2.2} />
+                            {label}
+                          </span>
+                        )
+                      })}
                     </div>
                   )}
                 </li>
