@@ -26,8 +26,7 @@ export function DeleteTrip({ trip, onDeleted }: { trip: Trip; onDeleted: () => v
   if (!open)
     return (
       <div className="mt-4 rounded-card border border-red-500/30 p-4">
-        <p className="text-xs font-bold tracking-wide text-red-600 dark:text-red-400">אזור מסוכן</p>
-        <p className="mt-1 text-sm text-muted">מחיקת הטיול מוחקת אותו לכל השותפים ואי אפשר לשחזר.</p>
+        <p className="text-sm text-muted">מחיקת הטיול מוחקת אותו לכל השותפים ואי אפשר לשחזר.</p>
         <Button variant="danger" className="mt-3 w-full" icon={<Trash2 aria-hidden className="size-4" />} onClick={() => setOpen(true)}>
           מחיקת הטיול
         </Button>
