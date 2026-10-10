@@ -249,7 +249,7 @@ export function createFirebaseBackend(): Backend {
         // The link goes to the recovery e-mail, so that's what they type.
         if (!typed.includes('@')) throw new AppError('no-recovery-email')
         auth.languageCode = 'he'
-        await sendPasswordResetEmail(auth, typed)
+        await sendPasswordResetEmail(auth, typed, { url: 'https://tabijap.com', handleCodeInApp: false })
       } catch (error) {
         const code = (error as { code?: string } | null)?.code
         if (code === 'auth/invalid-email') throw new AppError('invalid-email')
@@ -263,7 +263,7 @@ export function createFirebaseBackend(): Backend {
       try {
         const current = await reauthenticate(password)
         auth.languageCode = 'he'
-        await verifyBeforeUpdateEmail(current, email.trim())
+        await verifyBeforeUpdateEmail(current, email.trim(), { url: 'https://tabijap.com', handleCodeInApp: false })
       } catch (error) {
         const code = (error as { code?: string } | null)?.code
         if (code === 'auth/invalid-email') throw new AppError('invalid-email')
