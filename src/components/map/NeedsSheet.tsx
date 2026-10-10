@@ -10,11 +10,13 @@ import { distanceMeters, formatDistance } from '@/lib/geo'
 import { haptic } from '@/lib/haptics'
 import {
   HOTEL_BUDGETS,
+  HOTEL_ZONES,
   NEED_BY_ID,
   NEEDS,
   takesForeignCards,
   walkMinutes,
   type HotelBudget,
+  type HotelZone,
   type NeedConfig,
   type NeedId,
 } from '@/maps/needs'
@@ -76,6 +78,7 @@ export function NeedsSheet({ open, onClose, provider, origin: here, fromGps, ini
   const cityChoices = [...tripCityIds.flatMap((id) => getCity(id) ?? []), ...CITIES.filter((city) => !tripCityIds.includes(city.id))]
   const hotelCity = getCity(hotelCityId) ?? (here ? nearestCity(here) : undefined) ?? cityChoices[0] ?? DEFAULT_CITY
   const origin = need === 'hotel' ? hotelCity.location : here
+  const [zone, setZone] = useState<HotelZone>('center')
   const [budget, setBudgetState] = useState<HotelBudget>(readBudget)
   const setBudget = (next: HotelBudget) => {
     setBudgetState(next)
@@ -96,7 +99,7 @@ export function NeedsSheet({ open, onClose, provider, origin: here, fromGps, ini
     if (!open || !need || !provider || !origin) return
     const controller = new AbortController()
     setStatus('loading')
-    provider.nearby(need, origin, controller.signal, budget).then(
+    provider.nearby(need, origin, controller.signal, { budget, zone }).then(
       (found) => {
         setPois(found)
         setStatus('ok')
@@ -110,7 +113,7 @@ export function NeedsSheet({ open, onClose, provider, origin: here, fromGps, ini
     )
     return () => controller.abort()
     // onResult is a fresh closure on every render of the map; the search depends on what's asked only.
-  }, [open, need, provider, originKey, attempt, budget])
+  }, [open, need, provider, originKey, attempt, budget, zone])
 
   const config = need ? NEED_BY_ID[need] : null
 
@@ -179,6 +182,24 @@ export function NeedsSheet({ open, onClose, provider, origin: here, fromGps, ini
                     )}
                   >
                     {city.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            {need === 'hotel' && (
+              <div role="group" aria-label="מרחק מהמרכז" className="mt-3 flex gap-2">
+                {(Object.keys(HOTEL_ZONES) as HotelZone[]).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    aria-pressed={zone === key}
+                    onClick={() => setZone(key)}
+                    className={clsx(
+                      'flex-1 rounded-full px-2 py-2 text-xs font-semibold transition active:scale-95',
+                      zone === key ? 'bg-fg text-bg' : 'surface',
+                    )}
+                  >
+                    {HOTEL_ZONES[key].label}
                   </button>
                 ))}
               </div>

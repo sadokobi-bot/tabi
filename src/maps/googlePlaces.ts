@@ -1,9 +1,9 @@
-import { CATEGORIES, categoryFromGoogleTypes } from '@/data/categories'
+﻿import { CATEGORIES, categoryFromGoogleTypes } from '@/data/categories'
 import type { CategoryId } from '@/data/types'
 import { safeHttpUrl } from '@/lib/deeplinks'
 import { boundsKey, boundsToCircle, distanceMeters } from '@/lib/geo'
 import { sameName } from '@/lib/names'
-import { HOTEL_BUDGETS, HOTEL_MIN_RATING, HOTEL_MIN_REVIEWS, HOTEL_RADIUS_M, NEED_BY_ID, NEED_LIMIT, NEED_RADIUS_M } from './needs'
+import { HOTEL_BUDGETS, HOTEL_MIN_RATING, HOTEL_MIN_REVIEWS, HOTEL_ZONES, NEED_BY_ID, NEED_LIMIT, NEED_RADIUS_M } from './needs'
 import { dedupePois, type Poi, type PoiDetails, type PoiProvider, type Suggestion } from './poi'
 
 /** Above this search radius the viewport is too large for meaningful "nearby" recommendations. */
@@ -201,15 +201,16 @@ export function createGoogleProvider(places: google.maps.PlacesLibrary): PoiProv
       })
     },
 
-    async nearby(need, near, signal, budget = 'mid') {
+    async nearby(need, near, signal, hotel = { budget: 'mid', zone: 'center' }) {
+      const zone = HOTEL_ZONES[hotel.zone]
       const config = NEED_BY_ID[need]
       if (need === 'hotel') {
         // Recommended, not nearest: well-reviewed hotels of the chosen tier, best first.
         const { places: found } = await Place.searchByText({
-          textQuery: HOTEL_BUDGETS[budget].query,
+          textQuery: HOTEL_BUDGETS[hotel.budget].query,
           includedType: 'lodging',
           fields: [...BASIC_FIELDS, 'rating', 'userRatingCount'],
-          locationBias: { center: near, radius: HOTEL_RADIUS_M },
+          locationBias: { center: near, radius: zone.maxM },
           maxResultCount: 20,
           language: 'en',
           region: 'jp',
@@ -225,7 +226,8 @@ export function createGoogleProvider(places: google.maps.PlacesLibrary): PoiProv
           })
           .filter(
             (poi) =>
-              distanceMeters(near, poi.location) <= HOTEL_RADIUS_M * 1.5 &&
+              distanceMeters(near, poi.location) >= zone.minM &&
+              distanceMeters(near, poi.location) <= zone.maxM &&
               (poi.rating ?? 0) >= HOTEL_MIN_RATING &&
               (poi.ratingCount ?? 0) >= HOTEL_MIN_REVIEWS,
           )

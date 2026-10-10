@@ -1,4 +1,4 @@
-import {
+﻿import {
   Banknote,
   BedDouble,
   Luggage,
@@ -25,8 +25,19 @@ export const HOTEL_BUDGETS: Record<HotelBudget, { label: string; query: string }
   luxury: { label: 'יוקרתי', query: 'best rated luxury 5 star hotel' },
 }
 
-/** Hotels are picked by reviews within a few kilometres, not by the nearest walk. */
-export const HOTEL_RADIUS_M = 3000
+export type HotelZone = 'center' | 'near' | 'far'
+
+/** How far from the city centre: a walk or short ride, 10-20 minutes by train or taxi, or 30+ minutes out. */
+export const HOTEL_ZONES: Record<HotelZone, { label: string; minM: number; maxM: number }> = {
+  center: { label: 'במרכז', minM: 0, maxM: 2500 },
+  near: { label: '10-20 דק׳ מהמרכז', minM: 2500, maxM: 8000 },
+  far: { label: '30+ דק׳ מהמרכז', minM: 8000, maxM: 25000 },
+}
+
+export interface HotelFilter {
+  budget: HotelBudget
+  zone: HotelZone
+}
 export const HOTEL_MIN_RATING = 4.0
 export const HOTEL_MIN_REVIEWS = 150
 
