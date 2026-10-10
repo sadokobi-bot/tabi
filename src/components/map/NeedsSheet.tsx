@@ -3,10 +3,19 @@ import clsx from 'clsx'
 import { CircleCheck, ChevronRight, Footprints, Lightbulb, LoaderCircle } from 'lucide-react'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import type { LatLng } from '@/data/types'
-import { directionsUrl } from '@/lib/deeplinks'
+import { agodaUrl, bookingComUrl, directionsUrl } from '@/lib/deeplinks'
 import { distanceMeters, formatDistance } from '@/lib/geo'
 import { haptic } from '@/lib/haptics'
-import { NEED_BY_ID, NEEDS, takesForeignCards, walkMinutes, type NeedConfig, type NeedId } from '@/maps/needs'
+import {
+  HOTEL_BUDGETS,
+  NEED_BY_ID,
+  NEEDS,
+  takesForeignCards,
+  walkMinutes,
+  type HotelBudget,
+  type NeedConfig,
+  type NeedId,
+} from '@/maps/needs'
 import type { Poi, PoiProvider } from '@/maps/poi'
 
 export interface NeedResult {
@@ -29,6 +38,18 @@ interface NeedsSheetProps {
 
 type Status = 'idle' | 'loading' | 'ok' | 'error'
 
+const BUDGET_KEY = 'tabi.hotelBudget'
+
+function readBudget(): HotelBudget {
+  try {
+    const saved = localStorage.getItem(BUDGET_KEY)
+    if (saved === 'budget' || saved === 'mid' || saved === 'luxury') return saved
+  } catch {
+    // Storage blocked: use the default.
+  }
+  return 'mid'
+}
+
 /**
  * "I need … now": one tap finds the closest toilets, ATMs, convenience stores, lockers or
  * pharmacies, with the walk to each and one-tap walking directions.
@@ -38,6 +59,15 @@ export function NeedsSheet({ open, onClose, provider, origin, fromGps, initialNe
   const [status, setStatus] = useState<Status>('idle')
   const [pois, setPois] = useState<Poi[]>([])
   const [attempt, setAttempt] = useState(0)
+  const [budget, setBudgetState] = useState<HotelBudget>(readBudget)
+  const setBudget = (next: HotelBudget) => {
+    setBudgetState(next)
+    try {
+      localStorage.setItem(BUDGET_KEY, next)
+    } catch {
+      // Private mode: the choice just isn't remembered.
+    }
+  }
 
   useEffect(() => {
     if (open) setNeed(initialNeed)
@@ -49,7 +79,7 @@ export function NeedsSheet({ open, onClose, provider, origin, fromGps, initialNe
     if (!open || !need || !provider || !origin) return
     const controller = new AbortController()
     setStatus('loading')
-    provider.nearby(need, origin, controller.signal).then(
+    provider.nearby(need, origin, controller.signal, budget).then(
       (found) => {
         setPois(found)
         setStatus('ok')
@@ -63,7 +93,7 @@ export function NeedsSheet({ open, onClose, provider, origin, fromGps, initialNe
     )
     return () => controller.abort()
     // onResult is a fresh closure on every render of the map; the search depends on what's asked only.
-  }, [open, need, provider, originKey, attempt])
+  }, [open, need, provider, originKey, attempt, budget])
 
   const config = need ? NEED_BY_ID[need] : null
 
@@ -117,6 +147,25 @@ export function NeedsSheet({ open, onClose, provider, origin, fromGps, initialNe
               {config.tip}
             </p>
 
+            {need === 'hotel' && (
+              <div role="group" aria-label="תקציב" className="mt-3 flex gap-2">
+                {(Object.keys(HOTEL_BUDGETS) as HotelBudget[]).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    aria-pressed={budget === key}
+                    onClick={() => setBudget(key)}
+                    className={clsx(
+                      'flex-1 rounded-full px-3 py-2 text-sm font-semibold transition active:scale-95',
+                      budget === key ? 'bg-accent text-white' : 'surface',
+                    )}
+                  >
+                    {HOTEL_BUDGETS[key].label}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {status === 'loading' && (
               <div className="grid place-items-center py-10">
                 <LoaderCircle aria-label="מחפשים" className="size-6 animate-spin text-muted" />
@@ -131,7 +180,9 @@ export function NeedsSheet({ open, onClose, provider, origin, fromGps, initialNe
               </div>
             )}
             {status === 'ok' && pois.length === 0 && (
-              <p className="py-8 text-center text-sm text-muted">לא מצאנו {config.plural} בהליכה של עד רבע שעה</p>
+              <p className="py-8 text-center text-sm text-muted">
+                {need === 'hotel' ? 'לא מצאנו מלונות מומלצים באזור. נסו להזיז את המפה' : `לא מצאנו ${config.plural} בהליכה של עד רבע שעה`}
+              </p>
             )}
             {status === 'ok' && pois.length > 0 && origin && (
               <ul className="mt-3 space-y-2">
@@ -151,9 +202,16 @@ export function NeedsSheet({ open, onClose, provider, origin, fromGps, initialNe
                             {poi.name}
                           </span>
                           <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted">
-                            <span>
-                              {formatDistance(meters)} · {walkMinutes(meters)} דק׳ הליכה
-                            </span>
+                            {need === 'hotel' ? (
+                              <span>
+                                {poi.rating ? `★ ${poi.rating.toFixed(1)} (${poi.ratingCount?.toLocaleString('he-IL')}) · ` : ''}
+                                {formatDistance(meters)} מהמרכז
+                              </span>
+                            ) : (
+                              <span>
+                                {formatDistance(meters)} · {walkMinutes(meters)} דק׳ הליכה
+                              </span>
+                            )}
                             {foreign && (
                               <span className="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
                                 <CircleCheck aria-hidden className="size-3.5" />
@@ -163,19 +221,39 @@ export function NeedsSheet({ open, onClose, provider, origin, fromGps, initialNe
                           </span>
                         </span>
                       </button>
-                      <a
-                        href={directionsUrl(poi.location, { placeId: poi.googlePlaceId, mode: 'walking' })}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={`הליכה אל ${poi.name}`}
-                        className={clsx(
-                          'me-2 flex shrink-0 items-center gap-1 rounded-full bg-accent/12 px-3 py-2 text-xs font-semibold text-accent',
-                          'transition active:scale-95',
-                        )}
-                      >
-                        <Footprints aria-hidden className="size-4" />
-                        ניווט
-                      </a>
+                      {need === 'hotel' ? (
+                        <span className="me-2 flex shrink-0 flex-col gap-1">
+                          {[
+                            ['Booking', bookingComUrl(poi.name)],
+                            ['Agoda', agodaUrl(poi.name)],
+                          ].map(([label, href]) => (
+                            <a
+                              key={label}
+                              href={href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              aria-label={`הזמנת ${poi.name} ב-${label}`}
+                              className="rounded-full bg-accent/12 px-3 py-1 text-center text-xs font-semibold text-accent transition active:scale-95"
+                            >
+                              {label}
+                            </a>
+                          ))}
+                        </span>
+                      ) : (
+                        <a
+                          href={directionsUrl(poi.location, { placeId: poi.googlePlaceId, mode: 'walking' })}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`הליכה אל ${poi.name}`}
+                          className={clsx(
+                            'me-2 flex shrink-0 items-center gap-1 rounded-full bg-accent/12 px-3 py-2 text-xs font-semibold text-accent',
+                            'transition active:scale-95',
+                          )}
+                        >
+                          <Footprints aria-hidden className="size-4" />
+                          ניווט
+                        </a>
+                      )}
                     </li>
                   )
                 })}

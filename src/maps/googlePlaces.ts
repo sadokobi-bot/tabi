@@ -3,7 +3,7 @@ import type { CategoryId } from '@/data/types'
 import { safeHttpUrl } from '@/lib/deeplinks'
 import { boundsKey, boundsToCircle, distanceMeters } from '@/lib/geo'
 import { sameName } from '@/lib/names'
-import { NEED_BY_ID, NEED_LIMIT, NEED_RADIUS_M } from './needs'
+import { HOTEL_BUDGETS, HOTEL_MIN_RATING, HOTEL_MIN_REVIEWS, HOTEL_RADIUS_M, NEED_BY_ID, NEED_LIMIT, NEED_RADIUS_M } from './needs'
 import { dedupePois, type Poi, type PoiDetails, type PoiProvider, type Suggestion } from './poi'
 
 /** Above this search radius the viewport is too large for meaningful "nearby" recommendations. */
@@ -201,8 +201,37 @@ export function createGoogleProvider(places: google.maps.PlacesLibrary): PoiProv
       })
     },
 
-    async nearby(need, near, signal) {
+    async nearby(need, near, signal, budget = 'mid') {
       const config = NEED_BY_ID[need]
+      if (need === 'hotel') {
+        // Recommended, not nearest: well-reviewed hotels of the chosen tier, best first.
+        const { places: found } = await Place.searchByText({
+          textQuery: HOTEL_BUDGETS[budget].query,
+          includedType: 'lodging',
+          fields: [...BASIC_FIELDS, 'rating', 'userRatingCount'],
+          locationBias: { center: near, radius: HOTEL_RADIUS_M },
+          maxResultCount: 20,
+          language: 'en',
+          region: 'jp',
+        })
+        if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
+        const score = (poi: Poi) => (poi.rating ?? 0) * Math.log10((poi.ratingCount ?? 0) + 10)
+        return found
+          .flatMap((place) => {
+            const poi = toPoi(place)
+            return poi
+              ? [{ ...poi, category: config.category, rating: place.rating ?? undefined, ratingCount: place.userRatingCount ?? undefined }]
+              : []
+          })
+          .filter(
+            (poi) =>
+              distanceMeters(near, poi.location) <= HOTEL_RADIUS_M * 1.5 &&
+              (poi.rating ?? 0) >= HOTEL_MIN_RATING &&
+              (poi.ratingCount ?? 0) >= HOTEL_MIN_REVIEWS,
+          )
+          .sort((a, b) => score(b) - score(a))
+          .slice(0, 8)
+      }
       // English names: they say "Seven Bank" / "Japan Post", which tells which ATMs take foreign cards.
       const byType = async () =>
         config.googleTypes

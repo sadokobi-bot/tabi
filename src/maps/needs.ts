@@ -1,8 +1,34 @@
-import { Banknote, Luggage, Pill, ShieldCheck, Stethoscope, Store, Toilet, TrainFront, WashingMachine, type LucideIcon } from 'lucide-react'
+import {
+  Banknote,
+  BedDouble,
+  Luggage,
+  Pill,
+  ShieldCheck,
+  Stethoscope,
+  Store,
+  Toilet,
+  TrainFront,
+  WashingMachine,
+  type LucideIcon,
+} from 'lucide-react'
 import type { CategoryId } from '@/data/types'
 
 /** Everyday needs on the street, found around the user ("I need … now"). */
-export type NeedId = 'toilet' | 'atm' | 'konbini' | 'station' | 'locker' | 'pharmacy' | 'clinic' | 'laundry' | 'police'
+export type NeedId = 'toilet' | 'atm' | 'konbini' | 'station' | 'locker' | 'pharmacy' | 'clinic' | 'laundry' | 'police' | 'hotel'
+
+export type HotelBudget = 'budget' | 'mid' | 'luxury'
+
+/** Hotel tiers: the label, and the Google text search that finds well-reviewed places of that kind. */
+export const HOTEL_BUDGETS: Record<HotelBudget, { label: string; query: string }> = {
+  budget: { label: 'חסכוני', query: 'best rated budget business hotel or hostel' },
+  mid: { label: 'בינוני', query: 'best rated 3 or 4 star hotel' },
+  luxury: { label: 'יוקרתי', query: 'best rated luxury 5 star hotel' },
+}
+
+/** Hotels are picked by reviews within a few kilometres, not by the nearest walk. */
+export const HOTEL_RADIUS_M = 3000
+export const HOTEL_MIN_RATING = 4.0
+export const HOTEL_MIN_REVIEWS = 150
 
 export interface NeedConfig {
   id: NeedId
@@ -135,6 +161,18 @@ export const NEEDS: NeedConfig[] = [
     category: 'other',
     googleTypes: ['police'],
     osmFilters: ['["amenity"="police"]'],
+  },
+  {
+    id: 'hotel',
+    icon: BedDouble,
+    color: '#7c3aed',
+    label: 'מלונות',
+    plural: 'מלונות מומלצים',
+    noun: 'מלון',
+    tip: 'מלונות עם דירוג גבוה באזור, לפי רמת התקציב. חדרים ביפן קטנים, אז בחרו מלון קרוב לתחנת רכבת. המחירים וההזמנה באתרי ההזמנות',
+    category: 'hotel',
+    googleTypes: ['lodging'],
+    osmFilters: ['["tourism"~"^(hotel|hostel|guest_house)$"]'],
   },
 ]
 

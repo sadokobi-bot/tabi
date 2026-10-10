@@ -1,5 +1,5 @@
 import type { Bounds, CategoryId, LatLng } from '@/data/types'
-import type { NeedId } from './needs'
+import type { HotelBudget, NeedId } from './needs'
 
 /** A point of interest from an external source (Google Places or OpenStreetMap), not yet saved. */
 export interface Poi {
@@ -83,7 +83,7 @@ export interface PoiProvider {
    */
   verify?(name: string, near: LatLng, signal: AbortSignal, area?: string): Promise<Poi | null>
   /** The closest toilets / ATMs / convenience stores… around `near`, nearest first. */
-  nearby(need: NeedId, near: LatLng, signal: AbortSignal): Promise<Poi[]>
+  nearby(need: NeedId, near: LatLng, signal: AbortSignal, budget?: HotelBudget): Promise<Poi[]>
 }
 
 export function dedupePois(pois: Poi[]): Poi[] {

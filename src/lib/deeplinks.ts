@@ -47,3 +47,13 @@ export function safeHttpUrl(value: string | undefined | null): string | undefine
     return undefined
   }
 }
+
+/** Booking.com search for a hotel by name (opens its page and prices in the app or the site). */
+export function bookingComUrl(hotelName: string): string {
+  return `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(hotelName)}&lang=he`
+}
+
+/** Agoda search for a hotel by name. */
+export function agodaUrl(hotelName: string): string {
+  return `https://www.agoda.com/search?text=${encodeURIComponent(hotelName)}`
+}
