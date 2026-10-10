@@ -180,9 +180,8 @@ async function sendEmail(apiKey: string, to: string, name: string, type: string,
     <tr><td align="center">
       <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;max-width:480px;width:100%">
         <!-- Header -->
-        <tr><td style="background:linear-gradient(135deg,#c0552c 0%,#d4734f 100%);padding:32px 24px;text-align:center">
-          <p style="margin:0;font-size:32px;font-weight:800;color:#ffffff;letter-spacing:1px">Tabi <span style="opacity:0.85">旅</span></p>
-          <p style="margin:8px 0 0;font-size:14px;color:rgba(255,255,255,0.85)">הטיול שלכם ליפן</p>
+        <tr><td style="padding:0;text-align:center">
+          <img src="https://tabijap.com/mail-header.png" alt="Tabi — הטיול שלך ליפן" width="480" style="display:block;width:100%;max-width:480px;height:auto;border-radius:16px 16px 0 0" />
         </td></tr>
         <!-- Body -->
         <tr><td style="padding:32px 28px;text-align:right;direction:rtl">
