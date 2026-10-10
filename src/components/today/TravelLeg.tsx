@@ -4,6 +4,7 @@ import type { ItineraryItem, Place } from '@/data/types'
 import { parseHm } from '@/lib/dates'
 import { directionsUrl } from '@/lib/deeplinks'
 import { estimateLeg } from '@/lib/travel'
+import { openRoute } from './TransitSheets'
 
 /** Closer than this the two stops are the same spot (e.g. lunch inside the museum). */
 const SAME_SPOT_M = 60
@@ -23,8 +24,8 @@ interface TravelLegProps {
 
 /**
  * The trip between two stops on the timeline: an estimate (walk or train), when to leave for a
- * timed stop, and a warning when the gap is shorter than the ride. Taps open the real connection
- * in Google Maps, which has Japan's train timetables.
+ * timed stop, and a warning when the gap is shorter than the ride. A walk opens straight in Google
+ * Maps; a ride opens how to make it (step by step, and the real connection in Google Maps).
  */
 export function TravelLeg({ from, to }: TravelLegProps) {
   const leg = estimateLeg(from.place.location, to.place.location)
@@ -41,28 +42,36 @@ export function TravelLeg({ from, to }: TravelLegProps) {
     ...(to.place.googlePlaceId ? { placeId: to.place.googlePlaceId } : {}),
   })
 
+  const className = clsx(
+    'flex min-w-0 flex-1 items-center gap-1.5 rounded-inner py-1 text-start text-xs transition active:opacity-60',
+    tooTight ? 'font-medium text-amber-700 dark:text-amber-400' : 'text-muted',
+  )
+  const label = (
+    <>
+      {tooTight ? <TriangleAlert aria-hidden className="size-3.5 shrink-0" /> : <Icon aria-hidden className="size-3.5 shrink-0" />}
+      <span className="truncate">
+        ≈ {durationLabel(leg.minutes)} {how}
+        {tooTight
+          ? ` · רק ${durationLabel(arriveBy - departAt)} בין הפעילויות`
+          : arriveBy != null && ` · לצאת עד ${hm(arriveBy - leg.minutes)}`}
+      </span>
+      <ChevronLeft aria-hidden className="size-3.5 shrink-0 opacity-60" />
+    </>
+  )
+
   return (
     <li className="relative flex items-center gap-3">
       <span aria-hidden className="w-11 shrink-0" />
       <span aria-hidden className="size-3 shrink-0" />
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={clsx(
-          'flex min-w-0 flex-1 items-center gap-1.5 rounded-inner py-1 text-xs transition active:opacity-60',
-          tooTight ? 'font-medium text-amber-700 dark:text-amber-400' : 'text-muted',
-        )}
-      >
-        {tooTight ? <TriangleAlert aria-hidden className="size-3.5 shrink-0" /> : <Icon aria-hidden className="size-3.5 shrink-0" />}
-        <span className="truncate">
-          ≈ {durationLabel(leg.minutes)} {how}
-          {tooTight
-            ? ` · רק ${durationLabel(arriveBy - departAt)} בין הפעילויות`
-            : arriveBy != null && ` · לצאת עד ${hm(arriveBy - leg.minutes)}`}
-        </span>
-        <ChevronLeft aria-hidden className="size-3.5 shrink-0 opacity-60" />
-      </a>
+      {leg.mode === 'walk' ? (
+        <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
+          {label}
+        </a>
+      ) : (
+        <button type="button" onClick={() => openRoute(from.place, to.place)} className={className}>
+          {label}
+        </button>
+      )}
     </li>
   )
 }

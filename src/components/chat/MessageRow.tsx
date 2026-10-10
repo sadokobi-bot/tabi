@@ -151,7 +151,7 @@ export function MessageRow(props: MessageRowProps) {
             card
               ? clsx('surface', mine ? 'rounded-ee-sm ring-1 ring-accent/35' : 'rounded-es-sm')
               : mine
-                ? 'rounded-ee-sm bg-accent-fill text-accent-fg'
+                ? 'rounded-ee-sm bubble-mine'
                 : 'surface rounded-es-sm',
             message.deleted && mine && 'opacity-75',
             (reacting || flash) && 'ring-2 ring-accent/50',
@@ -163,21 +163,16 @@ export function MessageRow(props: MessageRowProps) {
             <button
               type="button"
               onClick={() => onJumpToQuote(message.replyTo!.id)}
-              className={clsx(
-                'mb-1.5 block w-full rounded-inner border-s-[3px] px-2.5 py-1.5 text-start',
-                mine && !card ? 'border-white/70 bg-white/15' : 'border-accent bg-fg/[0.05]',
-              )}
+              className="mb-1.5 block w-full rounded-inner border-s-[3px] border-accent bg-fg/[0.05] px-2.5 py-1.5 text-start"
             >
-              <span className={clsx('block text-xs font-semibold', mine && !card ? 'text-accent-fg' : 'text-accent')}>
-                {message.replyTo.authorName}
-              </span>
-              <span className={clsx('line-clamp-2 block text-[13px] leading-snug', mine && !card ? 'text-accent-fg/85' : 'text-muted')}>
+              <span className="block text-xs font-semibold text-accent">{message.replyTo.authorName}</span>
+              <span className="line-clamp-2 block text-[13px] leading-snug text-muted">
                 {quoteDeleted ? 'ההודעה נמחקה' : <bdi>{message.replyTo.text}</bdi>}
               </span>
             </button>
           )}
           {message.deleted && (
-            <p className={clsx('flex items-center gap-1.5 text-[14px] italic', mine ? 'text-accent-fg/80' : 'text-muted')}>
+            <p className="flex items-center gap-1.5 text-[14px] italic text-muted">
               <Ban aria-hidden className="size-4 shrink-0" />
               {mine ? 'מחקת את ההודעה הזו' : 'ההודעה נמחקה'}
             </p>
@@ -192,7 +187,7 @@ export function MessageRow(props: MessageRowProps) {
               {message.text}
             </p>
           )}
-          <p className={clsx('mt-0.5 flex items-center justify-end gap-1 text-[10px]', mine && !card ? 'text-accent-fg/75' : 'text-muted')}>
+          <p className="mt-0.5 flex items-center justify-end gap-1 text-[10px] text-muted">
             {message.pending && (
               <>
                 <Clock3 aria-hidden className="size-3" />

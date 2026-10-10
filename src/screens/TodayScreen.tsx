@@ -15,6 +15,7 @@ import { LuggageRow } from '@/components/today/LuggageRow'
 import { LuggageSheet } from '@/components/place/LuggageSheet'
 import { moveOn, type HotelMove } from '@/data/luggage'
 import { TodayHero } from '@/components/today/TodayHero'
+import { TransitGuideRow } from '@/components/today/TransitSheets'
 import { TranslateSheet } from '@/components/today/TranslateSheet'
 import { PlanDaySheet } from '@/components/trip/PlanDaySheet'
 import { RainPlanSheet } from '@/components/trip/RainPlan'
@@ -204,6 +205,10 @@ export default function TodayScreen() {
 
       <motion.div variants={RISE} className="mt-3">
         <CurrencyCard />
+      </motion.div>
+
+      <motion.div variants={RISE} className="mt-3">
+        <TransitGuideRow />
       </motion.div>
 
       <motion.section variants={RISE} className="mt-7">

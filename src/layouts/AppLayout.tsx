@@ -14,6 +14,7 @@ import { useUi } from '@/store/ui'
 import { useCurrentUser } from '@/store/session'
 import { startTour, tourPending } from '@/store/tour'
 import { ProfileSheet } from '@/components/profile/ProfileSheet'
+import { TransitSheets } from '@/components/today/TransitSheets'
 import { PresenceSync } from '@/app/PresenceSync'
 import TodayScreen from '@/screens/TodayScreen'
 
@@ -52,9 +53,7 @@ export function AppLayout() {
   const activeIndex = findTabIndex(pathname)
   const activeTab = TABS[activeIndex]
 
-  const [visited, setVisited] = useState<ReadonlySet<TabId>>(
-    () => new Set(activeTab ? [activeTab.id] : []),
-  )
+  const [visited, setVisited] = useState<ReadonlySet<TabId>>(() => new Set(activeTab ? [activeTab.id] : []))
 
   useEffect(() => {
     if (!activeTab) return
@@ -114,6 +113,7 @@ export function AppLayout() {
       {/* Global overlays: place details (from the map, timeline, board) and profile / trip settings. */}
       <PlaceSheet />
       <ProfileSheet />
+      <TransitSheets />
       <TicketViewer />
       <Tour />
       <TripWizard />

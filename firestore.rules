@@ -3,6 +3,8 @@ rules_version = '2';
 // Security rules for the cloud (Firebase) mode. Paste into Firebase console → Firestore → Rules.
 //
 //   users/{uid}                        your own profile (and daily AI use) only; deleted with the account
+//   community/{room}/messages|reports  the rooms every user shares (after agreeing to the rules)
+//   communityPosters/{uid}, admins/{uid}  the posting rate limit; moderators (added in the console)
 //   trips/{tripId}                     members read; only the owner renames / resizes the trip and
 //                                      decides who's in it; members plan together (cities, hotels, flights)
 //   trips/{tripId}/requests/{uid}      join requests: you ask for yourself, the owner approves or declines
@@ -51,7 +53,7 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if signedIn() && request.auth.uid == uid;
       allow create, update: if signedIn() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['firstName', 'lastName', 'gender', 'updatedAt', 'termsVersion', 'termsAt'])
+        && request.resource.data.keys().hasOnly(['firstName', 'lastName', 'gender', 'updatedAt', 'termsVersion', 'termsAt', 'communityAt'])
         && shortText(request.resource.data.firstName, 30)
         && shortText(request.resource.data.lastName, 30)
         && request.resource.data.gender in ['male', 'female', 'other'];
@@ -85,6 +87,57 @@ service cloud.firestore {
           && counter(request.resource.data, 'search') >= counter(resource.data, 'search');
         // Never deleted (that would reset the count); they hold nothing but numbers.
       }
+    }
+
+    // ── Community: rooms for everyone who uses Tabi ─────────────────────────────
+    // Moderators are added by hand in the console (admins/{uid}); they may remove any message.
+    function isModerator() {
+      return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    match /admins/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+    // When each person last posted: written together with every message, at most once in 8 seconds.
+    match /communityPosters/{uid} {
+      allow read: if false;
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['last'])
+        && request.resource.data.last == request.time;
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['last'])
+        && request.resource.data.last == request.time
+        && request.time > resource.data.last + duration.value(8, 's');
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+    match /community/{channel}/messages/{messageId} {
+      function me() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      }
+      allow read: if signedIn() && channel in ['general', 'tips'];
+      // Only after agreeing to the rules, under their own first name, and with the poster's
+      // "last sent" moving in the same write (the rate limit above).
+      allow create: if signedIn() && channel in ['general', 'tips']
+        && request.resource.data.keys().hasOnly(['uid', 'name', 'text', 'at'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.at == request.time
+        && request.resource.data.text is string
+        && request.resource.data.text.size() >= 1 && request.resource.data.text.size() <= 1000
+        && me().get('communityAt', 0) > 0
+        && request.resource.data.name == me().firstName
+        && getAfter(/databases/$(database)/documents/communityPosters/$(request.auth.uid)).data.last == request.time;
+      allow update: if false;
+      allow delete: if signedIn() && (resource.data.uid == request.auth.uid || isModerator());
+    }
+    match /community/{channel}/reports/{reportId} {
+      allow create: if signedIn() && channel in ['general', 'tips']
+        && request.resource.data.keys().hasOnly(['messageId', 'authorId', 'text', 'reporter', 'reason', 'at'])
+        && request.resource.data.reporter == request.auth.uid
+        && request.resource.data.at == request.time
+        && request.resource.data.text is string && request.resource.data.text.size() <= 1000
+        && request.resource.data.reason is string && request.resource.data.reason.size() <= 200;
+      allow read, delete: if isModerator();
+      allow update: if false;
     }
 
     match /trips/{tripId} {

@@ -26,7 +26,10 @@ import {
   getDocs,
   runTransaction,
   initializeFirestore,
+  limit,
   limitToLast,
+  serverTimestamp,
+  Timestamp,
   onSnapshot,
   orderBy,
   persistentLocalCache,
@@ -38,7 +41,19 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { firebaseConfig, RECAPTCHA_SITE_KEY } from '@/config/env'
-import type { ChatMessage, ChatMeta, DayPlan, Gender, JoinRequest, Place, Presence, Ticket, Trip } from '@/data/types'
+import type {
+  ChatMessage,
+  ChatMeta,
+  CommunityChannel,
+  CommunityMessage,
+  DayPlan,
+  Gender,
+  JoinRequest,
+  Place,
+  Presence,
+  Ticket,
+  Trip,
+} from '@/data/types'
 import { newInviteCode, normalizeInviteCode } from '@/lib/ids'
 import { AppError, displayName, memberOf, type Backend, type ErrorCode, type Profile, type SessionUser } from './types'
 import { checkUsername, emailToUsername, isUsernameEmail, usernameToEmail } from './username'
@@ -71,6 +86,10 @@ function toProfile(data: Record<string, unknown> | undefined): Profile | null {
 
 /** How many recent chat messages are kept in sync. */
 const MESSAGE_LIMIT = 300
+
+const COMMUNITY_CHANNELS: CommunityChannel[] = ['general', 'tips']
+/** How many of a community room's latest messages are shown. */
+const COMMUNITY_LIMIT = 150
 
 function toAppError(error: unknown): AppError {
   if (error instanceof AppError) return error
@@ -162,10 +181,11 @@ export function createFirebaseBackend(): Backend {
       // null = the server says there is none: an account from before profiles).
       let profile: Profile | null | undefined
       let termsVersion: number | null | undefined
+      let communityAt: number | null | undefined
       let stopProfile: (() => void) | null = null
       const emit = () => {
         const user = auth.currentUser
-        callback(user ? { ...toSession(user), profile, termsVersion } : null)
+        callback(user ? { ...toSession(user), profile, termsVersion, communityAt } : null)
       }
       reemitters.add(emit)
       const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -183,6 +203,8 @@ export function createFirebaseBackend(): Backend {
             profile = toProfile(snapshot.data())
             const accepted = snapshot.data()?.termsVersion
             termsVersion = typeof accepted === 'number' ? accepted : null
+            const joined = snapshot.data()?.communityAt
+            communityAt = typeof joined === 'number' ? joined : null
             emit()
           },
           (error) => {
@@ -269,6 +291,12 @@ export function createFirebaseBackend(): Backend {
     async deleteAccount(user, password, trips) {
       try {
         const current = await reauthenticate(password)
+        // Their community messages go with the account.
+        for (const channel of COMMUNITY_CHANNELS) {
+          const mine = await getDocs(query(collection(db, 'community', channel, 'messages'), where('uid', '==', user.uid)))
+          await Promise.all(mine.docs.map((d) => deleteDoc(d.ref)))
+        }
+        await deleteDoc(doc(db, 'communityPosters', user.uid)).catch(() => undefined)
         for (const trip of trips) {
           if (trip.ownerId !== user.uid) await this.leaveTrip(trip, user.uid)
           else {
@@ -571,6 +599,90 @@ export function createFirebaseBackend(): Backend {
         await setDoc(planRef(tripId), { days: changes }, { merge: true })
       } catch (error) {
         throw toAppError(error)
+      }
+    },
+
+    watchCommunity(channel, callback, onError) {
+      const q = query(collection(db, 'community', channel, 'messages'), orderBy('at', 'desc'), limit(COMMUNITY_LIMIT))
+      return onSnapshot(
+        q,
+        { includeMetadataChanges: true },
+        (snapshot) =>
+          callback(
+            snapshot.docs
+              .map((d): CommunityMessage => {
+                const data = d.data()
+                return {
+                  id: d.id,
+                  channel,
+                  authorId: String(data.uid ?? ''),
+                  authorName: String(data.name ?? ''),
+                  text: String(data.text ?? ''),
+                  // A message just sent has no server time yet.
+                  createdAt: data.at instanceof Timestamp ? data.at.toMillis() : Date.now(),
+                  pending: d.metadata.hasPendingWrites,
+                }
+              })
+              .reverse(),
+          ),
+        (error) => onError(toAppError(error)),
+      )
+    },
+
+    async joinCommunity(user) {
+      try {
+        await setDoc(profileRef(user.uid), { communityAt: Date.now() }, { merge: true })
+      } catch (error) {
+        throw toAppError(error)
+      }
+    },
+
+    async postCommunity(user, channel, text) {
+      try {
+        // The poster's "last sent" moves with every message: the rules allow one every few seconds.
+        const batch = writeBatch(db)
+        batch.set(doc(db, 'communityPosters', user.uid), { last: serverTimestamp() })
+        batch.set(doc(collection(db, 'community', channel, 'messages')), {
+          uid: user.uid,
+          name: user.profile?.firstName ?? user.username,
+          text,
+          at: serverTimestamp(),
+        })
+        await batch.commit()
+      } catch (error) {
+        const appError = toAppError(error)
+        throw appError.code === 'permission-denied' ? new AppError('too-fast') : appError
+      }
+    },
+
+    async deleteCommunityMessage(message) {
+      try {
+        await deleteDoc(doc(db, 'community', message.channel, 'messages', message.id))
+      } catch (error) {
+        throw toAppError(error)
+      }
+    },
+
+    async reportCommunityMessage(user, message, reason) {
+      try {
+        await setDoc(doc(collection(db, 'community', message.channel, 'reports')), {
+          messageId: message.id,
+          authorId: message.authorId,
+          text: message.text.slice(0, 1000),
+          reporter: user.uid,
+          reason: reason.slice(0, 200),
+          at: serverTimestamp(),
+        })
+      } catch (error) {
+        throw toAppError(error)
+      }
+    },
+
+    async isCommunityModerator(uid) {
+      try {
+        return (await getDoc(doc(db, 'admins', uid))).exists()
+      } catch {
+        return false
       }
     },
 

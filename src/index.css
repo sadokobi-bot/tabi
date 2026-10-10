@@ -19,6 +19,9 @@
   /* Filled surfaces with white text (buttons, badges, own chat bubbles). Same as the accent in light
      mode; in dark mode the accent is brighter for text on dark, so fills keep the deeper shade. */
   --app-accent-fill: #cc4329;
+  /* The user's own chat messages: a soft tint of the accent, with ordinary text. */
+  --app-bubble-mine: #fbe6de;
+  --app-bubble-mine-line: rgb(204 67 41 / 0.14);
   /* Live location (blue dot, "following" control) and the map canvas behind the tiles. */
   --app-location: #2f7cf6;
   --app-map-bg: #e8ece4;
@@ -53,6 +56,8 @@
     --app-line: rgb(255 255 255 / 0.06);
     --app-accent: #ff6a4d;
     --app-map-bg: #14181c;
+    --app-bubble-mine: #3b211b;
+    --app-bubble-mine-line: rgb(255 106 77 / 0.16);
 
     --surface-shadow: 0 1px 2px rgb(0 0 0 / 0.35), 0 10px 24px -16px rgb(0 0 0 / 0.6);
     --surface-highlight: inset 0 1px 0 rgb(255 255 255 / 0.035);
@@ -142,6 +147,13 @@ input[type='time']::-webkit-date-and-time-value {
   backdrop-filter: blur(var(--glass-blur)) saturate(180%);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow), var(--glass-highlight);
+}
+
+/* The user's own chat message. */
+@utility bubble-mine {
+  background-color: var(--app-bubble-mine);
+  color: var(--app-fg);
+  border: 1px solid var(--app-bubble-mine-line);
 }
 
 /* Solid content card. Much cheaper than glass inside long scrolling lists. */

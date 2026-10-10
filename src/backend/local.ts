@@ -1,4 +1,4 @@
-import type { ChatMessage, ChatMeta, DayPlan, JoinRequest, Place, Presence, Ticket, Trip } from '@/data/types'
+import type { ChatMessage, ChatMeta, CommunityMessage, DayPlan, JoinRequest, Place, Presence, Ticket, Trip } from '@/data/types'
 import { cachedPages, cachePages, dropPages } from '@/lib/ticketCache'
 import { newId, newInviteCode, normalizeInviteCode } from '@/lib/ids'
 import { AppError, memberOf, type Backend, type Profile, type SessionUser } from './types'
@@ -21,6 +21,8 @@ interface LocalUser {
   profile?: Profile
   /** Version of the terms they accepted. */
   termsVersion?: number
+  /** When they agreed to the community rules. */
+  communityAt?: number
 }
 
 function read<T>(key: string, fallback: T): T {
@@ -117,6 +119,7 @@ export function createLocalBackend(): Backend {
                 profile: user.profile ?? null,
                 email: null,
                 termsVersion: user.termsVersion ?? null,
+                communityAt: user.communityAt ?? null,
               } satisfies SessionUser)
             : null,
         )
@@ -162,6 +165,48 @@ export function createLocalBackend(): Backend {
       throw new AppError('unknown', 'מייל לשחזור זמין רק כשהאפליקציה מחוברת לענן')
     },
 
+    watchCommunity(channel, callback) {
+      const notify = () => callback(read<CommunityMessage[]>(`community:${channel}`, []))
+      notify()
+      return subscribe(`community:${channel}`, notify)
+    },
+
+    async joinCommunity(user) {
+      const users = read<Record<string, LocalUser>>('users', {})
+      const entry = Object.entries(users).find(([, u]) => u.uid === user.uid)
+      if (!entry) throw new AppError('unknown')
+      users[entry[0]] = { ...entry[1], communityAt: Date.now() }
+      write('users', users)
+    },
+
+    async postCommunity(user, channel, text) {
+      const message: CommunityMessage = {
+        id: newId(),
+        channel,
+        authorId: user.uid,
+        authorName: user.profile?.firstName ?? user.username,
+        text,
+        createdAt: Date.now(),
+      }
+      write(`community:${channel}`, [...read<CommunityMessage[]>(`community:${channel}`, []), message].slice(-MESSAGE_LIMIT))
+    },
+
+    async deleteCommunityMessage(message) {
+      const key = `community:${message.channel}`
+      write(
+        key,
+        read<CommunityMessage[]>(key, []).filter((m) => m.id !== message.id),
+      )
+    },
+
+    async reportCommunityMessage() {
+      // On this device there's no one to report to.
+    },
+
+    async isCommunityModerator() {
+      return false
+    },
+
     async acceptTerms(user, version) {
       const users = read<Record<string, LocalUser>>('users', {})
       const entry = Object.entries(users).find(([, u]) => u.uid === user.uid)
@@ -193,6 +238,13 @@ export function createLocalBackend(): Backend {
             await this.leaveTrip({ ...trip, ownerId: heir }, user.uid)
           } else await this.deleteTrip(trip)
         }
+      }
+      for (const channel of ['general', 'tips']) {
+        const key = `community:${channel}`
+        write(
+          key,
+          read<CommunityMessage[]>(key, []).filter((m) => m.authorId !== user.uid),
+        )
       }
       const { [entry[0]]: _removed, ...rest } = read<Record<string, LocalUser>>('users', {})
       write('users', rest)

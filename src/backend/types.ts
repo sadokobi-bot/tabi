@@ -1,4 +1,16 @@
-import type { ChatMessage, ChatMeta, DayPlan, Gender, JoinRequest, Place, Presence, Ticket, Trip } from '@/data/types'
+import type {
+  ChatMessage,
+  ChatMeta,
+  CommunityChannel,
+  CommunityMessage,
+  DayPlan,
+  Gender,
+  JoinRequest,
+  Place,
+  Presence,
+  Ticket,
+  Trip,
+} from '@/data/types'
 
 export type Unsubscribe = () => void
 
@@ -19,6 +31,8 @@ export interface SessionUser {
   email?: string | null
   /** Version of the terms and privacy policy they accepted (null: none yet; undefined: loading). */
   termsVersion?: number | null
+  /** When they agreed to the community rules (null: not yet). */
+  communityAt?: number | null
 }
 
 /** How the user is called in the app: first and last name, or the username before a profile exists. */
@@ -56,6 +70,7 @@ export type ErrorCode =
   | 'no-recovery-email'
   | 'invalid-email'
   | 'email-in-use'
+  | 'too-fast'
   | 'unknown'
 
 export class AppError extends Error {
@@ -80,6 +95,7 @@ const MESSAGES: Record<ErrorCode, string> = {
   'no-recovery-email': 'כדי לאפס סיסמה, הקלידו את המייל לשחזור שהוספתם לחשבון',
   'invalid-email': 'כתובת המייל לא תקינה',
   'email-in-use': 'המייל הזה כבר משמש חשבון אחר',
+  'too-fast': 'רגע, אפשר לשלוח הודעה לקהילה פעם בכמה שניות',
   unknown: 'משהו השתבש. נסו שוב',
 }
 
@@ -190,6 +206,22 @@ export interface Backend {
   /** The ticket's page images (JPEG base64). */
   ticketPages(tripId: string, ticket: Ticket): Promise<string[]>
   deleteTicket(tripId: string, ticket: Ticket): Promise<void>
+
+  /* ── Community (all users) ── */
+  /** The room's latest messages, oldest first. */
+  watchCommunity(
+    channel: CommunityChannel,
+    callback: (messages: CommunityMessage[]) => void,
+    onError: (error: AppError) => void,
+  ): Unsubscribe
+  /** Agrees to the community rules (needed before posting). */
+  joinCommunity(user: SessionUser): Promise<void>
+  postCommunity(user: SessionUser, channel: CommunityChannel, text: string): Promise<void>
+  /** Their own message, or any message for a moderator. */
+  deleteCommunityMessage(message: CommunityMessage): Promise<void>
+  reportCommunityMessage(user: SessionUser, message: CommunityMessage, reason: string): Promise<void>
+  /** Moderators may remove any message. */
+  isCommunityModerator(uid: string): Promise<boolean>
 }
 
 /** One page per Firestore document, which holds at most 1 MiB. */

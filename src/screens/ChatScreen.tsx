@@ -1,11 +1,14 @@
-import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react'
+import clsx from 'clsx'
 import { firstName } from '@/backend'
 import { MessageCircle, Plus, Reply, SendHorizontal, WifiOff, X } from 'lucide-react'
 import { useTabActive } from '@/app/tabActive'
 import chatPattern from '@/assets/chat-pattern.svg?url'
 import { AttachSheet } from '@/components/chat/AttachSheet'
+import { CommunityChat } from '@/components/community/CommunityChat'
 import { PinnedMeet, TypingIndicator } from '@/components/chat/ChatStatus'
 import { MessageRow } from '@/components/chat/MessageRow'
+import { Avatar } from '@/components/ui/Avatar'
 import { CategoryIcon } from '@/components/ui/CategoryIcon'
 import { replyOf, sendChatMessage } from '@/data/chat'
 import type { ChatMessage } from '@/data/types'
@@ -33,12 +36,78 @@ function dayLabel(ms: number): string {
   return dayFormat.format(ms)
 }
 
+type Room = 'trip' | 'community'
+const ROOM_KEY = 'tabi:chatRoom'
+
+/** A faint pattern of Japanese doodles (torii, sakura, Fuji, onigiri, ramen…), like a chat wallpaper. */
+export function ChatWallpaper() {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0 -z-10 bg-fg opacity-[0.045] dark:opacity-[0.07]"
+      style={{
+        maskImage: `url("${chatPattern}")`,
+        WebkitMaskImage: `url("${chatPattern}")`,
+        maskSize: '260px 260px',
+        WebkitMaskSize: '260px 260px',
+      }}
+    />
+  )
+}
+
+/** The chat tab: the trip's own chat, or the community of everyone who uses Tabi. */
+export default function ChatScreen() {
+  const [room, setRoom] = useState<Room>(() => {
+    try {
+      return localStorage.getItem(ROOM_KEY) === 'community' ? 'community' : 'trip'
+    } catch {
+      return 'trip'
+    }
+  })
+  const choose = (next: Room) => {
+    setRoom(next)
+    try {
+      localStorage.setItem(ROOM_KEY, next)
+    } catch {
+      // Not remembered (private mode).
+    }
+  }
+  const switcher = (
+    <div>
+      <h1 className="sr-only">צ׳אט</h1>
+      <div role="tablist" aria-label="איזה צ׳אט" className="flex rounded-control bg-fg/6 p-1">
+        {(
+          [
+            ['trip', 'הטיול שלנו'],
+            ['community', 'קהילת Tabi'],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={room === id}
+            onClick={() => choose(id)}
+            className={clsx(
+              'h-9 flex-1 rounded-inner text-sm font-semibold transition',
+              room === id ? 'bg-card text-fg shadow-sm' : 'text-muted hover:text-fg',
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+  return room === 'trip' ? <TripChat switcher={switcher} /> : <CommunityChat switcher={switcher} wallpaper={<ChatWallpaper />} />
+}
+
 /**
  * Group chat of the trip's members: text, shared places, meeting points and polls, with reactions,
  * "read" and "typing". Messages written without a connection appear immediately (marked as waiting)
  * and are delivered automatically once the phone is back online.
  */
-export default function ChatScreen() {
+function TripChat({ switcher }: { switcher: ReactNode }) {
   const user = useCurrentUser()
   const trip = useTrip()
   const messages = useTripStore((state) => state.messages)
@@ -205,22 +274,24 @@ export default function ChatScreen() {
 
   return (
     <div className="relative isolate flex h-full flex-col">
-      {/* A faint pattern of Japanese doodles (torii, sakura, Fuji, onigiri, ramen…), like a chat wallpaper. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 bg-fg opacity-[0.045] dark:opacity-[0.07]"
-        style={{
-          maskImage: `url("${chatPattern}")`,
-          WebkitMaskImage: `url("${chatPattern}")`,
-          maskSize: '260px 260px',
-          WebkitMaskSize: '260px 260px',
-        }}
-      />
+      <ChatWallpaper />
       <header className="pt-screen mx-auto w-full max-w-md px-5 pb-3">
-        <h1 className="text-[1.6rem] leading-tight font-bold">צ׳אט הטיול</h1>
-        <p className="mt-0.5 truncate text-sm text-muted">
-          {others.length ? [firstName(user), ...others].join(' · ') : 'עדיין אין שותפים לטיול'}
-        </p>
+        {switcher}
+        <div className="mt-3 flex items-center gap-2.5">
+          <div aria-hidden className="flex shrink-0 [&>*+*]:-ms-2">
+            {[firstName(user), ...others].slice(0, 4).map((name, index) => (
+              <Avatar key={index} name={name} className="size-8 text-xs ring-2 ring-bg" />
+            ))}
+          </div>
+          <div className="min-w-0 leading-tight">
+            <p className="truncate text-sm font-semibold">
+              <bdi>{trip.name}</bdi>
+            </p>
+            <p className="truncate text-xs text-muted">
+              {others.length ? [firstName(user), ...others].join(', ') : 'עדיין אין שותפים לטיול'}
+            </p>
+          </div>
+        </div>
         {mode === 'cloud' && !online && (
           <p
             role="status"

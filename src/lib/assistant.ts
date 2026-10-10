@@ -116,11 +116,20 @@ Be accurate. When you are not sure of something, say "unknown" (or 0 / "") rathe
 - "englishName": the official English name. "confident": false when you are not sure about the place or its prices.
 Hebrew text in Hebrew letters only. Plain text, no markdown.`
 
+const ROUTE_SYSTEM = `You explain how to get between two places in Japan by public transport, for "Tabi", a Hebrew trip app for Israeli travellers.
+You get the two places (names and coordinates), the city, and the straight-line distance.
+- "steps": the usual best route, in order: walking to a station, each ride (the line's common English name as on signs, e.g. "JR Yamanote Line", "Tokyo Metro Ginza Line", "Hankyu Kyoto Line", "Kyoto City Bus 206"; its direction, i.e. the final stop or the next big station; about how many stops), where to change, the station to get off at, and the exit when it matters. Each step one short Hebrew sentence. "mode" per step.
+- Only lines and stations you are sure run there. When unsure of the exact line, name the kind of transport and the stations, set "sure" to false, and say to check the exact route in Google Maps.
+- "minutes": door to door. "fareYen": the usual one-way IC-card fare for an adult (0 when unknown).
+- "tip": one practical line for this trip (an IC card works here, a day pass that pays off, rush hours, a bus that crawls in traffic, the car nearest the exit).
+Write the Hebrew in the plural present, as instructions to the group ("הולכים", "עולים על", "יורדים ב", "יוצאים מיציאה"), in correct, simple Hebrew.
+Hebrew text in Hebrew letters; line and station names in English letters as on the signs. No other alphabets, no markdown.`
+
 const QUERY_SYSTEM = `You turn a search typed in a Hebrew trip app into what to search on Google Maps in Japan.
 The text is usually Hebrew: a place name written in Hebrew letters ("יוניברסל סטודיו", "מקדש הזהב"), a kind of place ("ראמן טוב"), or both ("סושי בשיבויה").
 Return "query": the English search, using a place's official English name when it names one ("Universal Studios Japan", "Kinkaku-ji", "sushi Shibuya"). Keep it short. No explanations.`
 
-type ModelKind = 'ask' | 'import' | 'plan' | 'translate' | 'rain' | 'entry' | 'outline' | 'days' | 'query'
+type ModelKind = 'ask' | 'import' | 'plan' | 'translate' | 'rain' | 'entry' | 'outline' | 'days' | 'query' | 'route'
 
 /** What a dish is, as far as a menu photo tells (for allergies, kosher and taste). */
 export const FOOD_TAGS = ['spicy', 'pork', 'beef', 'chicken', 'seafood', 'raw', 'vegetarian', 'alcohol', 'sweet'] as const
@@ -207,46 +216,63 @@ function getModels(kind: ModelKind) {
                   }),
                 },
               })
-            : kind === 'entry'
+            : kind === 'route'
               ? Schema.object({
                   properties: {
-                    entry: Schema.enumString({ enum: ['free', 'paid', 'partly', 'unknown'] }),
-                    bookAhead: Schema.enumString({ enum: ['required', 'recommended', 'no', 'unknown'] }),
-                    priceYen: Schema.number(),
-                    priceNote: Schema.string(),
-                    bookAheadNote: Schema.string(),
+                    steps: Schema.array({
+                      items: Schema.object({
+                        properties: {
+                          mode: Schema.enumString({ enum: [...ROUTE_MODES] }),
+                          text: Schema.string(),
+                        },
+                      }),
+                    }),
+                    minutes: Schema.integer(),
+                    fareYen: Schema.number(),
                     tip: Schema.string(),
-                    soldOnline: Schema.boolean(),
-                    englishName: Schema.string(),
-                    confident: Schema.boolean(),
+                    sure: Schema.boolean(),
                   },
                 })
-              : kind === 'translate'
+              : kind === 'entry'
                 ? Schema.object({
                     properties: {
-                      kind: Schema.enumString({ enum: ['menu', 'sign', 'product', 'other'] }),
-                      title: Schema.string(),
-                      summary: Schema.string(),
-                      items: Schema.array({
-                        items: Schema.object({
-                          properties: {
-                            original: Schema.string(),
-                            hebrew: Schema.string(),
-                            note: Schema.string(),
-                            price: Schema.string(),
-                            tags: Schema.array({ items: Schema.enumString({ enum: [...FOOD_TAGS] }) }),
-                          },
+                      entry: Schema.enumString({ enum: ['free', 'paid', 'partly', 'unknown'] }),
+                      bookAhead: Schema.enumString({ enum: ['required', 'recommended', 'no', 'unknown'] }),
+                      priceYen: Schema.number(),
+                      priceNote: Schema.string(),
+                      bookAheadNote: Schema.string(),
+                      tip: Schema.string(),
+                      soldOnline: Schema.boolean(),
+                      englishName: Schema.string(),
+                      confident: Schema.boolean(),
+                    },
+                  })
+                : kind === 'translate'
+                  ? Schema.object({
+                      properties: {
+                        kind: Schema.enumString({ enum: ['menu', 'sign', 'product', 'other'] }),
+                        title: Schema.string(),
+                        summary: Schema.string(),
+                        items: Schema.array({
+                          items: Schema.object({
+                            properties: {
+                              original: Schema.string(),
+                              hebrew: Schema.string(),
+                              note: Schema.string(),
+                              price: Schema.string(),
+                              tags: Schema.array({ items: Schema.enumString({ enum: [...FOOD_TAGS] }) }),
+                            },
+                          }),
                         }),
-                      }),
-                    },
-                  })
-                : Schema.object({
-                    properties: {
-                      reply: Schema.string(),
-                      places: Schema.array({ items: place }),
-                      ...(kind === 'ask' ? { googleQuery: Schema.string(), areaLat: Schema.number(), areaLng: Schema.number() } : {}),
-                    },
-                  })
+                      },
+                    })
+                  : Schema.object({
+                      properties: {
+                        reply: Schema.string(),
+                        places: Schema.array({ items: place }),
+                        ...(kind === 'ask' ? { googleQuery: Schema.string(), areaLat: Schema.number(), areaLng: Schema.number() } : {}),
+                      },
+                    })
       // Reading text off an image is transcription first: the fast models handle it in seconds.
       const list =
         kind === 'import' || kind === 'translate' || kind === 'query' ? IMPORT_MODELS : MODELS.map((model) => ({ model, fast: false }))
@@ -263,6 +289,7 @@ function getModels(kind: ModelKind) {
             outline: OUTLINE_SYSTEM,
             days: DAYS_SYSTEM,
             query: QUERY_SYSTEM,
+            route: ROUTE_SYSTEM,
           }[kind],
           generationConfig: {
             responseMimeType: 'application/json',
@@ -707,6 +734,64 @@ export interface RainPlanRequest {
   saved: { id: string; name: string; category: CategoryId }[]
   elsewhere: string[]
   hotel?: string
+}
+
+export const ROUTE_MODES = ['walk', 'train', 'subway', 'bus', 'shinkansen', 'tram', 'ferry'] as const
+export type RouteMode = (typeof ROUTE_MODES)[number]
+
+export interface RouteExplanation {
+  steps: { mode: RouteMode; text: string }[]
+  minutes: number
+  fareYen: number
+  tip: string
+  /** False when the AI isn't sure of the exact lines. */
+  sure: boolean
+}
+
+const routeCache = new Map<string, Promise<RouteExplanation>>()
+
+/** How to get from one stop to the next by train or bus, step by step (asked once per pair of places). */
+export function explainRouteWithAi(request: {
+  from: { name: string; location: LatLng }
+  to: { name: string; location: LatLng }
+  city?: string
+}): Promise<RouteExplanation> {
+  const at = ({ lat, lng }: LatLng) => `${lat.toFixed(5)},${lng.toFixed(5)}`
+  const key = `${at(request.from.location)}>${at(request.to.location)}`
+  let pending = routeCache.get(key)
+  if (!pending) {
+    pending = (async () => {
+      await spend('assistant')
+      const km = distanceMeters(request.from.location, request.to.location) / 1000
+      const result = await generate(
+        'route',
+        [
+          `From: ${request.from.name} (${at(request.from.location)})`,
+          `To: ${request.to.name} (${at(request.to.location)})`,
+          request.city ? `City: ${request.city}` : '',
+          `Straight-line distance: ${km.toFixed(1)} km`,
+        ]
+          .filter(Boolean)
+          .join('\n'),
+      )
+      const json = JSON.parse(result.response.text()) as Partial<RouteExplanation>
+      const steps = (json.steps ?? [])
+        .map((step) => ({ mode: (ROUTE_MODES as readonly string[]).includes(step.mode) ? step.mode : 'train', text: cleanText(step.text) }))
+        .filter((step) => step.text)
+        .slice(0, 8) as RouteExplanation['steps']
+      if (steps.length === 0) throw new Error('no route')
+      return {
+        steps,
+        minutes: Math.max(0, Math.round(json.minutes ?? 0)),
+        fareYen: Math.max(0, Math.round(json.fareYen ?? 0)),
+        tip: cleanText(json.tip),
+        sure: json.sure !== false,
+      }
+    })()
+    pending.catch(() => routeCache.delete(key))
+    routeCache.set(key, pending)
+  }
+  return pending
 }
 
 /** Indoor alternatives for the day's outdoor stops at rainy hours. */

@@ -22,6 +22,8 @@ export interface TripPreferences {
   cities: string[]
   mustSee: string
   interests: string[]
+  /** Attractions they want in the trip (ids from ATTRACTIONS). */
+  attractions: string[]
   food: string[]
   notes: string
   /** Seasonal highlights in their dates they want built in (ids from seasons.ts). */
@@ -74,7 +76,49 @@ function seasonText(trip: Trip, prefs: TripPreferences): string {
     .join('; ')
 }
 
-const wishesOf = (prefs: TripPreferences) => [prefs.interests.join(', '), prefs.food.join(', '), prefs.notes].filter(Boolean).join('. ')
+/** Attractions to tick in the questionnaire: what the AI is told, and what the map is searched for. */
+export const ATTRACTIONS = [
+  {
+    id: 'theme-parks',
+    label: 'פארקי שעשועים (דיסני, יוניברסל)',
+    en: 'theme parks: Tokyo Disneyland or DisneySea, Universal Studios Japan with Super Nintendo World, Fuji-Q Highland',
+    search: 'theme park',
+  },
+  { id: 'teamlab', label: 'teamLab ואמנות דיגיטלית', en: 'teamLab digital art museums (Planets, Borderless)', search: 'teamLab' },
+  {
+    id: 'aquariums',
+    label: 'אקווריומים וגני חיות',
+    en: 'aquariums and zoos (Osaka Kaiyukan, Sumida Aquarium, Ueno Zoo)',
+    search: 'aquarium zoo',
+  },
+  {
+    id: 'views',
+    label: 'תצפיות וגורדי שחקים',
+    en: 'observation decks at sunset (Shibuya Sky, Tokyo Skytree, Umeda Sky Building)',
+    search: 'observation deck',
+  },
+  {
+    id: 'characters',
+    label: 'ג׳יבלי, פוקימון ונינטנדו',
+    en: 'Ghibli Museum or Ghibli Park (tickets sell out a month ahead), Pokémon Center, Nintendo stores',
+    search: 'Pokemon Center Nintendo store',
+  },
+  {
+    id: 'experiences',
+    label: 'חוויות יפניות (קימונו, טקס תה, סומו)',
+    en: 'Japanese experiences: kimono rental, a tea ceremony, sumo (a tournament or a morning practice)',
+    search: 'tea ceremony kimono experience',
+  },
+  { id: 'arcades', label: 'ארקיידים וקרטינג', en: 'game arcades and street go-karting', search: 'game center arcade' },
+] as const
+
+const attractionsOf = (prefs: TripPreferences) => ATTRACTIONS.filter((a) => prefs.attractions.includes(a.id))
+
+/** Interests and attractions, as the AI gets them. */
+const interestsOf = (prefs: TripPreferences) =>
+  [...prefs.interests, ...attractionsOf(prefs).map((a) => `attractions they want: ${a.en}`)].join(', ')
+
+const wishesOf = (prefs: TripPreferences) => [interestsOf(prefs), prefs.food.join(', '), prefs.notes].filter(Boolean).join('. ')
 
 /** Sights of a whole city, more for a longer stay, shaped by their interests. */
 async function citySights(provider: PoiProvider, near: Poi['location'], prefs: TripPreferences, days: number) {
@@ -90,6 +134,7 @@ async function citySights(provider: PoiProvider, near: Poi['location'], prefs: T
     ...(/טבע|נוף/.test(interests) ? ['garden park scenic'] : []),
     ...(/אנימה|גיימינג/.test(interests) ? ['anime shops arcade'] : []),
     ...(prefs.travelers === 'family' ? ['family attractions for kids'] : []),
+    ...attractionsOf(prefs).map((a) => a.search),
   ]
   return searchOptions(provider, near, [...new Set(queries)], 's', Math.min(60, 25 + days * 5))
 }
@@ -155,7 +200,7 @@ export async function planTrip(
     travelers: TRAVELERS[prefs.travelers],
     pace: prefs.pace,
     budget: BUDGET[prefs.budget],
-    interests: prefs.interests.join(', '),
+    interests: interestsOf(prefs),
     cities: CITIES.map(({ id, en }) => ({ id, en })),
     wanted: prefs.cities.map((id) => getCity(id)?.en ?? id),
     mustSee: prefs.mustSee,

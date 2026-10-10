@@ -164,6 +164,22 @@ export interface Presence {
   at: number
 }
 
+/** The community's rooms: everyone who uses Tabi, not just one trip. */
+export type CommunityChannel = 'general' | 'tips'
+
+/** One message in a community room. */
+export interface CommunityMessage {
+  id: string
+  channel: CommunityChannel
+  authorId: string
+  /** The author's first name (only that is shown to strangers). */
+  authorName: string
+  text: string
+  createdAt: number
+  /** Not on the server yet. */
+  pending?: boolean
+}
+
 /** One message in the trip's group chat. */
 export interface ChatMessage {
   id: string

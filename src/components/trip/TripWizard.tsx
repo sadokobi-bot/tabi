@@ -12,7 +12,15 @@ import { CREATOR_DONE_MS, preloadCreatorFrames, TripCreatorCat } from './TripCre
 import { FAILURE_TEXT, failureOf, type AssistantFailure } from '@/lib/assistant'
 import { formatDay, tripDates } from '@/lib/dates'
 import { KOSHER_INFO, kosherNote } from '@/lib/mealOptions'
-import { kosherStatus, planTrip, saveTripPlan, type PlanProgress, type TripPlan, type TripPreferences } from '@/lib/tripPlanner'
+import {
+  ATTRACTIONS,
+  kosherStatus,
+  planTrip,
+  saveTripPlan,
+  type PlanProgress,
+  type TripPlan,
+  type TripPreferences,
+} from '@/lib/tripPlanner'
 import { usePoiProvider } from '@/maps/usePoiProvider'
 import { useTrip, useTripStore } from '@/store/trip'
 import { ui, useUi } from '@/store/ui'
@@ -38,6 +46,7 @@ const DEFAULTS: TripPreferences = {
   cities: [],
   mustSee: '',
   interests: [],
+  attractions: [],
   food: [],
   notes: '',
   season: [],
@@ -306,6 +315,13 @@ function Questions({
                   options={INTERESTS.map((i) => [i, i])}
                   selected={prefs.interests}
                   onToggle={(i) => set({ interests: toggle(prefs.interests, i) })}
+                />
+              </Question>
+              <Question title="אטרקציות שבא לכם?" hint="נשבץ אותן בימים המתאימים (פארק שעשועים לוקח יום שלם)">
+                <Chips
+                  options={ATTRACTIONS.map((a) => [a.id, a.label])}
+                  selected={prefs.attractions}
+                  onToggle={(id) => set({ attractions: toggle(prefs.attractions, id) })}
                 />
               </Question>
               <Question title="מגבלות באוכל?">
