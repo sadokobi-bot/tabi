@@ -4,7 +4,7 @@ import clsx from 'clsx'
 import { ExternalLink, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { create } from 'zustand'
-import { CONTACT_EMAIL, CONTACT_URL, PRIVACY, TERMS, TERMS_UPDATED, type LegalDoc } from '@/data/legal'
+import { CONTACT_EMAIL, PRIVACY, TERMS, TERMS_UPDATED, type LegalDoc } from '@/data/legal'
 
 const useLegal = create<{ doc: LegalDoc | null }>(() => ({ doc: null }))
 
@@ -85,12 +85,7 @@ export function LegalSheet() {
                   ))}
                 </section>
               ))}
-              <a
-                href={CONTACT_EMAIL ? `mailto:${CONTACT_EMAIL}` : CONTACT_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-8 inline-flex items-center gap-1.5 text-sm font-semibold text-accent"
-              >
+              <a href={`mailto:${CONTACT_EMAIL}`} className="mt-8 inline-flex items-center gap-1.5 text-sm font-semibold text-accent">
                 <ExternalLink aria-hidden className="size-4" />
                 יצירת קשר
               </a>

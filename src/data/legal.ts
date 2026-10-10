@@ -5,9 +5,8 @@
 export const TERMS_VERSION = 2
 export const TERMS_UPDATED = '10 באוקטובר 2026'
 
-/** Where people reach whoever runs the app. Empty: the project's page on GitHub is shown instead. */
-export const CONTACT_EMAIL = ''
-export const CONTACT_URL = 'https://github.com/sadokobi-bot/tabi/issues'
+/** Where people reach whoever runs the app. */
+export const CONTACT_EMAIL = 'app.tabij@gmail.com'
 
 export type LegalDoc = 'privacy' | 'terms'
 
@@ -16,7 +15,7 @@ export interface LegalSection {
   paragraphs: string[]
 }
 
-const contact = CONTACT_EMAIL ? `במייל ${CONTACT_EMAIL}` : 'דרך עמוד הפרויקט ב-GitHub (הקישור בתחתית העמוד)'
+const contact = `במייל ${CONTACT_EMAIL}`
 
 export const PRIVACY: LegalSection[] = [
   {
