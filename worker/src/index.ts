@@ -23,10 +23,24 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method === 'OPTIONS') return new Response(null, { headers: CORS })
     if (request.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: CORS })
+    // Browsers always send Origin on a cross-origin POST: this turns away other sites (not a determined script).
+    const origin = request.headers.get('Origin')
+    if (origin && origin !== 'https://tabijap.com') return new Response('Forbidden', { status: 403, headers: CORS })
 
     try {
       const body = (await request.json()) as EmailRequest
       if (!body.email || !body.type) return new Response('Missing email or type', { status: 400, headers: CORS })
+      if (!['resetPassword', 'verifyAndChangeEmail'].includes(body.type) || body.email.length > 254) {
+        return new Response('Bad request', { status: 400, headers: CORS })
+      }
+      // At most one mail per address and kind a minute, so this can't be used to flood someone's inbox.
+      const target = (body.type === 'verifyAndChangeEmail' ? body.newEmail : body.email) ?? ''
+      if (await throttled(`${body.type}:${target.trim().toLowerCase()}`)) {
+        return new Response(JSON.stringify({ ok: false, error: 'TOO_FAST' }), {
+          status: 429,
+          headers: { 'Content-Type': 'application/json', ...CORS },
+        })
+      }
 
       const accessToken = await getAccessToken(env.FIREBASE_SERVICE_ACCOUNT)
       let link: string
@@ -46,14 +60,28 @@ export default {
         headers: { 'Content-Type': 'application/json', ...CORS },
       })
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      return new Response(JSON.stringify({ ok: false, error: message }), {
-        status: 500,
+      console.error('[email worker]', error)
+      const message = error instanceof Error ? error.message : ''
+      // Only what the app acts on goes back; Firebase's own messages stay in the logs.
+      const safe = message === 'EMAIL_EXISTS' ? 'EMAIL_EXISTS' : 'FAILED'
+      return new Response(JSON.stringify({ ok: false, error: safe }), {
+        status: safe === 'EMAIL_EXISTS' ? 409 : 500,
         headers: { 'Content-Type': 'application/json', ...CORS },
       })
     }
   },
 }
+
+/** Per-data-centre cooldown kept in the Workers cache. True when this key was used in the last minute. */
+async function throttled(key: string): Promise<boolean> {
+  const cache = caches.default
+  const url = `https://throttle.invalid/${encodeURIComponent(key)}`
+  if (await cache.match(url)) return true
+  await cache.put(url, new Response('1', { headers: { 'Cache-Control': 'max-age=60' } }))
+  return false
+}
+
+const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
 
 async function getAccessToken(serviceAccountJson: string): Promise<string> {
   const sa = JSON.parse(serviceAccountJson.replace(/^﻿/, '').trim())
@@ -186,7 +214,7 @@ async function sendEmail(apiKey: string, to: string, name: string, type: string,
         <!-- Body -->
         <tr><td style="padding:32px 28px;text-align:right;direction:rtl">
           <p style="margin:0 0 4px;font-size:22px;font-weight:700;color:#1a1a1a">${heading}</p>
-          <p style="margin:16px 0 0;font-size:15px;line-height:1.7;color:#444">${name ? `שלום ${name},` : 'שלום,'}</p>
+          <p style="margin:16px 0 0;font-size:15px;line-height:1.7;color:#444">${name ? `שלום ${escapeHtml(name.slice(0, 60))},` : 'שלום,'}</p>
           <p style="margin:8px 0 0;font-size:15px;line-height:1.7;color:#444">${body}</p>
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:28px 0">
             <tr><td align="center">
