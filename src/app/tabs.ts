@@ -23,9 +23,7 @@ export const TABS: readonly TabConfig[] = [
 /** Index of the tab that owns `pathname`, or -1 for unknown routes. */
 export function findTabIndex(pathname: string): number {
   const path = pathname.replace(/\/+$/, '') || '/'
-  return TABS.findIndex((tab) =>
-    tab.path === '/' ? path === '/' : path === tab.path || path.startsWith(`${tab.path}/`),
-  )
+  return TABS.findIndex((tab) => (tab.path === '/' ? path === '/' : path === tab.path || path.startsWith(`${tab.path}/`)))
 }
 
 /** Fired when the user taps the tab that is already active (scroll to top, re-center the map…). */

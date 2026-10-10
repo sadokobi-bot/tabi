@@ -25,6 +25,4 @@ export const firebaseConfig = {
   messagingSenderId: clean(env.VITE_FIREBASE_MESSAGING_SENDER_ID) || undefined,
   appId: clean(env.VITE_FIREBASE_APP_ID),
 }
-export const hasFirebase = Boolean(
-  firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId && firebaseConfig.appId,
-)
+export const hasFirebase = Boolean(firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId && firebaseConfig.appId)

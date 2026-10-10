@@ -30,7 +30,8 @@ export default {
     try {
       const body = (await request.json()) as EmailRequest
       if (!body.email || !body.type) return new Response('Missing email or type', { status: 400, headers: CORS })
-      const looksLikeEmail = (value: unknown) => typeof value === 'string' && value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+      const looksLikeEmail = (value: unknown) =>
+        typeof value === 'string' && value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
       if (
         !['resetPassword', 'verifyAndChangeEmail'].includes(body.type) ||
         !looksLikeEmail(body.email) ||
@@ -90,7 +91,8 @@ async function throttled(key: string): Promise<boolean> {
   return false
 }
 
-const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
+const escapeHtml = (text: string) =>
+  text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
 
 async function getAccessToken(serviceAccountJson: string): Promise<string> {
   const sa = JSON.parse(serviceAccountJson.replace(/^﻿/, '').trim())

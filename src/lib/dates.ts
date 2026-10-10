@@ -22,8 +22,7 @@ export function isoDateInTz(date: Date, timeZone = TRIP_TZ): string {
 
 /** Minutes since midnight of `date` as seen in `timeZone`. */
 export function minutesInTz(date: Date, timeZone = TRIP_TZ): number {
-  const parts = new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
-    .formatToParts(date)
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(date)
   const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? 0)
   const minute = Number(parts.find((p) => p.type === 'minute')?.value ?? 0)
   return hour * 60 + minute

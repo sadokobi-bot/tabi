@@ -9,9 +9,12 @@ export function Toaster() {
 
   useEffect(() => {
     if (!toast) return
-    const timer = setTimeout(() => {
-      if (useUi.getState().toast?.id === toast.id) useUi.setState({ toast: null })
-    }, toast.tone === 'error' ? 5000 : 2600)
+    const timer = setTimeout(
+      () => {
+        if (useUi.getState().toast?.id === toast.id) useUi.setState({ toast: null })
+      },
+      toast.tone === 'error' ? 5000 : 2600,
+    )
     return () => clearTimeout(timer)
   }, [toast])
 

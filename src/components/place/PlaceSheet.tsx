@@ -42,7 +42,9 @@ function PlaceSheetBody({ selection }: { selection: Selection }) {
   }
 
   if (mode.name === 'edit' && saved) {
-    return <PlaceForm initial={saved} existing={saved} onCancel={() => setMode({ name: 'view' })} onSaved={() => setMode({ name: 'view' })} />
+    return (
+      <PlaceForm initial={saved} existing={saved} onCancel={() => setMode({ name: 'view' })} onSaved={() => setMode({ name: 'view' })} />
+    )
   }
 
   const subject: PlaceSubject =

@@ -12,10 +12,7 @@ export interface PlaceDraft {
   osmId?: string
 }
 
-export type Selection =
-  | { kind: 'place'; placeId: string }
-  | { kind: 'poi'; poi: Poi }
-  | { kind: 'draft'; draft: PlaceDraft }
+export type Selection = { kind: 'place'; placeId: string } | { kind: 'poi'; poi: Poi } | { kind: 'draft'; draft: PlaceDraft }
 
 /** Imperative camera request for whichever map engine is active. Zoom uses Google's scale. */
 export interface CameraCommand {

@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* ──────────────────────────────────────────────────────────────────────────
    Design tokens. Japanese-inspired palette:
@@ -85,7 +85,7 @@
 @theme {
   /* Inter has no Hebrew glyphs, so Latin text renders in Inter and Hebrew falls through to Heebo.
      Japanese place names fall back to the OS Japanese font. */
-  --font-sans: "Inter", "Heebo", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+  --font-sans: 'Inter', 'Heebo', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
 
   /* Corner radii: one gentle scale for the whole app. Nested shapes use the next step down. */
   --radius-card: 1.125rem;
@@ -379,7 +379,9 @@ input[type='time']::-webkit-date-and-time-value {
   border-radius: 9999px;
   background: var(--app-location);
   border: 3px solid #fff;
-  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.08), 0 2px 8px rgb(47 124 246 / 0.55);
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.08),
+    0 2px 8px rgb(47 124 246 / 0.55);
 }
 
 .user-dot::after {

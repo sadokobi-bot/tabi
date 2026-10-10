@@ -78,7 +78,14 @@ export function FlightsEditor({ flights }: { flights: Flight[] }) {
       <form onSubmit={save} className="space-y-3" noValidate>
         <div className="grid grid-cols-2 gap-3">
           <TextField label="שם" value={draft.label} onChange={(e) => set({ label: e.target.value })} maxLength={30} />
-          <TextField label="מספר טיסה" value={draft.flightNo} onChange={(e) => set({ flightNo: e.target.value })} dir="ltr" placeholder="LY91" maxLength={10} />
+          <TextField
+            label="מספר טיסה"
+            value={draft.flightNo}
+            onChange={(e) => set({ flightNo: e.target.value })}
+            dir="ltr"
+            placeholder="LY91"
+            maxLength={10}
+          />
           <TextField label="מוצא" value={draft.from} onChange={(e) => set({ from: e.target.value })} dir="ltr" maxLength={4} />
           <TextField label="יעד" value={draft.to} onChange={(e) => set({ to: e.target.value })} dir="ltr" maxLength={4} />
           <TextField label="תאריך המראה" type="date" value={draft.date} onChange={(e) => set({ date: e.target.value })} />
@@ -101,7 +108,11 @@ export function FlightsEditor({ flights }: { flights: Flight[] }) {
             </button>
           ))}
         </div>
-        {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+        {error && (
+          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+            {error}
+          </p>
+        )}
         <div className="flex gap-2">
           <Button type="submit" className="flex-1">
             שמירת הטיסה
@@ -123,7 +134,10 @@ export function FlightsEditor({ flights }: { flights: Flight[] }) {
           </span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold">
-              {flight.label} <span dir="ltr" className="font-normal text-muted">{flight.from} → {flight.to}</span>
+              {flight.label}{' '}
+              <span dir="ltr" className="font-normal text-muted">
+                {flight.from} → {flight.to}
+              </span>
             </p>
             <p className="text-xs text-muted">
               {flight.flightNo && `${flight.flightNo} · `}
@@ -137,15 +151,30 @@ export function FlightsEditor({ flights }: { flights: Flight[] }) {
               }).format(new Date(flight.departAt))}
             </p>
           </div>
-          <button type="button" aria-label="עריכת טיסה" onClick={() => setDraft(toDraft(flight))} className="tap-target relative grid size-9 place-items-center rounded-full text-muted hover:bg-fg/8">
+          <button
+            type="button"
+            aria-label="עריכת טיסה"
+            onClick={() => setDraft(toDraft(flight))}
+            className="tap-target relative grid size-9 place-items-center rounded-full text-muted hover:bg-fg/8"
+          >
             <Pencil aria-hidden className="size-4" />
           </button>
-          <button type="button" aria-label="מחיקת טיסה" onClick={() => remove(flight.id)} className="tap-target relative grid size-9 place-items-center rounded-full text-muted hover:bg-red-500/10 hover:text-red-600">
+          <button
+            type="button"
+            aria-label="מחיקת טיסה"
+            onClick={() => remove(flight.id)}
+            className="tap-target relative grid size-9 place-items-center rounded-full text-muted hover:bg-red-500/10 hover:text-red-600"
+          >
             <Trash2 aria-hidden className="size-4" />
           </button>
         </div>
       ))}
-      <Button variant="secondary" className="w-full" icon={<Plus aria-hidden className="size-4" />} onClick={() => setDraft(emptyDraft(flights.length))}>
+      <Button
+        variant="secondary"
+        className="w-full"
+        icon={<Plus aria-hidden className="size-4" />}
+        onClick={() => setDraft(emptyDraft(flights.length))}
+      >
         הוספת טיסה
       </Button>
     </div>

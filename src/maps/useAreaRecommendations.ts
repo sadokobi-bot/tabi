@@ -13,11 +13,7 @@ export interface AreaState {
  * Fetches recommended places for the visible map bounds whenever the viewport settles
  * (debounced, cancelling stale requests). Tiny pans reuse the same coarse bounds key.
  */
-export function useAreaRecommendations(
-  provider: PoiProvider | null,
-  viewport: Viewport | null,
-  categories: CategoryId[],
-): AreaState {
+export function useAreaRecommendations(provider: PoiProvider | null, viewport: Viewport | null, categories: CategoryId[]): AreaState {
   const [state, setState] = useState<AreaState>({ status: 'idle', pois: [] })
   const categoriesKey = categories.join(',')
   const areaKey = viewport ? boundsKey(viewport.bounds) : null
