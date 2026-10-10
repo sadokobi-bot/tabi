@@ -11,7 +11,8 @@ import { CITIES, getCity, POPULAR_CITY_IDS, SPECIAL_TRANSIT_CITIES } from '@/dat
 import { seasonFor, type SeasonEvent } from '@/lib/seasons'
 import { CREATOR_DONE_MS, preloadCreatorFrames, TripCreatorCat } from './TripCreatorCat'
 import { FAILURE_TEXT, failureOf, type AssistantFailure } from '@/lib/assistant'
-import { formatDay, tripDates } from '@/lib/dates'
+import { addDays, formatDay, tripDates } from '@/lib/dates'
+import { agodaUrl, bookingComUrl } from '@/lib/deeplinks'
 import { KOSHER_INFO, kosherNote } from '@/lib/mealOptions'
 import {
   ATTRACTIONS,
@@ -636,6 +637,22 @@ function Preview({
                     {hotel.poi.rating ? ` · ★ ${hotel.poi.rating.toFixed(1)}` : ''}
                   </span>
                 </span>
+                {(
+                  [
+                    ['Booking', bookingComUrl],
+                    ['Agoda', agodaUrl],
+                  ] as const
+                ).map(([label, link]) => (
+                  <a
+                    key={label}
+                    href={link(hotel.poi.name, { checkIn: hotel.dates[0]!, checkOut: addDays(hotel.dates.at(-1)!, 1) })}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 rounded-full bg-accent/12 px-2.5 py-1 text-xs font-semibold text-accent"
+                  >
+                    {label}
+                  </a>
+                ))}
                 <button
                   type="button"
                   onClick={() => onDropHotel(hotel)}
@@ -647,7 +664,10 @@ function Preview({
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-xs text-muted">נשמרים כמלון הלינה בלו״ז. אפשר להחליף אחר כך, ובמפה יש עוד מלונות.</p>
+          <p className="mt-2 text-xs leading-relaxed text-muted">
+            המלונות נבחרו לפי דירוג באזור, בלי בדיקת מחיר וזמינות. בלחיצה על Booking או Agoda רואים מחיר וזמינות בתאריכים שלכם. נשמרים כמלון
+            הלינה בלו״ז, ואפשר להחליף אחר כך.
+          </p>
         </section>
       )}
 

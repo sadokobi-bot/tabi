@@ -1,4 +1,4 @@
-import type { LatLng } from '@/data/types'
+﻿import type { LatLng } from '@/data/types'
 
 export type TravelMode = 'transit' | 'walking' | 'driving'
 
