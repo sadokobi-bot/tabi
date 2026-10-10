@@ -316,6 +316,12 @@ export function NeedsSheet({ open, onClose, provider, origin: here, fromGps, ini
                 })}
               </ul>
             )}
+            {need === 'hotel' && status === 'ok' && pois.length > 0 && (
+              <p className="mt-3 text-xs leading-relaxed text-muted">
+                המלונות מוצגים לפי דירוג Google וקרבה, בלי בדיקת מחיר וזמינות. אין לנו קשר רשמי למלונות או לאתרי ההזמנות, וזו לא המלצה. בדקו
+                את הפרטים לפני ההזמנה.
+              </p>
+            )}
           </>
         )}
       </div>
