@@ -9,7 +9,6 @@ import {
   createUserWithEmailAndPassword,
   deleteUser,
   reauthenticateWithCredential,
-  sendPasswordResetEmail,
   verifyBeforeUpdateEmail,
   getAuth,
   onAuthStateChanged,
@@ -116,6 +115,20 @@ function toAppError(error: unknown): AppError {
     unavailable: 'network',
   }
   return new AppError(map[code] ?? 'unknown')
+}
+
+const EMAIL_WORKER = 'https://tabi-email.sadokobi.workers.dev'
+
+async function sendStyledEmail(type: 'verifyEmail' | 'resetPassword', email: string, displayName?: string) {
+  try {
+    await fetch(EMAIL_WORKER, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, email, displayName }),
+    })
+  } catch {
+    // The Worker email is best-effort; Firebase's own email is the fallback.
+  }
 }
 
 export function createFirebaseBackend(): Backend {
@@ -246,14 +259,11 @@ export function createFirebaseBackend(): Backend {
     async sendPasswordReset(usernameOrEmail) {
       const typed = usernameOrEmail.trim()
       try {
-        // The link goes to the recovery e-mail, so that's what they type.
         if (!typed.includes('@')) throw new AppError('no-recovery-email')
-        auth.languageCode = 'he'
-        await sendPasswordResetEmail(auth, typed, { url: 'https://tabijap.com', handleCodeInApp: false })
+        await sendStyledEmail('resetPassword', typed, auth.currentUser?.displayName ?? undefined)
       } catch (error) {
         const code = (error as { code?: string } | null)?.code
         if (code === 'auth/invalid-email') throw new AppError('invalid-email')
-        // Same answer whether or not the e-mail has an account (nobody learns who signed up).
         if (code === 'auth/user-not-found') return
         throw toAppError(error)
       }

@@ -1,0 +1,7 @@
+name = "tabi-email"
+main = "src/index.ts"
+compatibility_date = "2024-09-01"
+
+[vars]
+APP_URL = "https://tabijap.com"
+FIREBASE_PROJECT_ID = "japanapp-8d6a2"

@@ -1,0 +1,12 @@
+{
+  "hosting": {
+    "public": "hosting",
+    "ignore": ["firebase.json", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "/email-action",
+        "destination": "/auth-redirect.html"
+      }
+    ]
+  }
+}
