@@ -123,6 +123,13 @@ export function AuthScreen() {
             await backend.setRecoveryEmail(user, email, password)
             ui.toast(`שלחנו קישור אימות ל-${email.trim()}. אחרי האישור, נכנסים עם המייל`)
           } catch (error: unknown) {
+            if (error instanceof AppError && error.code === 'email-in-use') {
+              // Undo the just-created account so the error stays on the signup form.
+              await backend.deleteAccount(user, password, []).catch(() => backend.signOut())
+              setStep(2)
+              setFieldErrors({ email: 'המייל הזה כבר משמש חשבון אחר' })
+              return
+            }
             ui.toast(`המייל לשחזור לא נוסף: ${errorMessage(error)}. אפשר להוסיף אותו בפרופיל`, 'error')
           }
         }
