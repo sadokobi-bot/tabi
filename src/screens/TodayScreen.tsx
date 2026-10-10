@@ -225,24 +225,23 @@ export default function TodayScreen() {
         <BookingsCard places={places} today={timeline.today} />
       </motion.div>
 
-      <motion.section variants={RISE} className="mt-7">
-        <h2 className="mb-4 flex items-baseline justify-between">
+      <motion.section variants={RISE} className="surface mt-7 rounded-card p-4">
+        <h2 className="mb-4 flex items-center justify-between gap-3">
           <span className="text-lg font-bold tracking-tight">{phase === 'during' ? 'הלו״ז של היום' : `יום ${dayNumber}`}</span>
-          <span className="text-sm text-muted">{formatDay(focusDate, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+          {items.length > 1 && (
+            <button
+              type="button"
+              onClick={() => {
+                ui.showRoute(focusDate)
+                navigate('/map')
+              }}
+              className="inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-3.5 py-2 text-sm font-semibold text-accent transition active:scale-95"
+            >
+              <Route aria-hidden className="size-4" />
+              המסלול במפה
+            </button>
+          )}
         </h2>
-        {items.length > 1 && (
-          <button
-            type="button"
-            onClick={() => {
-              ui.showRoute(focusDate)
-              navigate('/map')
-            }}
-            className="-mt-1 mb-4 inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-3.5 py-2 text-sm font-semibold text-accent transition active:scale-95"
-          >
-            <Route aria-hidden className="size-4" />
-            המסלול של היום במפה
-          </button>
-        )}
         <DayTimeline
           date={focusDate}
           items={items}
