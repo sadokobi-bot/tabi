@@ -56,11 +56,9 @@ export function TransitGuideRow() {
     <button
       type="button"
       onClick={openTransitGuide}
-      className="surface flex w-full items-center gap-3 rounded-card p-4 text-start transition active:scale-[0.98]"
+      className="flex w-full items-center gap-3 rounded-card border border-line px-4 py-3 text-start transition hover:bg-fg/[0.03] active:scale-[0.98]"
     >
-      <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent/12 text-accent">
-        <TrainFront aria-hidden className="size-5" />
-      </span>
+      <TrainFront aria-hidden className="size-5 shrink-0 text-accent" />
       <span className="min-w-0 flex-1">
         <span className="block font-semibold">איך מתניידים ביפן</span>
         <span className="block truncate text-sm text-muted">כרטיס Suica, רכבות, שינקנסן ונימוסים</span>

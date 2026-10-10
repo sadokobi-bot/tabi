@@ -1,11 +1,10 @@
 import { useMemo, useState } from 'react'
 import { firstName } from '@/backend'
 import { JoinRequests } from '@/components/profile/JoinRequests'
-import { Languages, Route } from 'lucide-react'
+import { JapaneseYen, Languages, Route } from 'lucide-react'
 import { motion, type Variants } from 'motion/react'
 import { useNavigate } from 'react-router'
 import { BookingsCard } from '@/components/today/BookingsCard'
-import { BriefingCard } from '@/components/today/BriefingCard'
 import { CurrencyCard } from '@/components/today/CurrencyCard'
 import { DayTimeline } from '@/components/today/DayTimeline'
 import { FlightCountdown } from '@/components/today/FlightCountdown'
@@ -15,6 +14,7 @@ import { LuggageRow } from '@/components/today/LuggageRow'
 import { LuggageSheet } from '@/components/place/LuggageSheet'
 import { moveOn, type HotelMove } from '@/data/luggage'
 import { TodayHero } from '@/components/today/TodayHero'
+import { useDayBrief } from '@/components/today/dayBrief'
 import { TransitGuideRow } from '@/components/today/TransitSheets'
 import { TranslateSheet } from '@/components/today/TranslateSheet'
 import { PlanDaySheet } from '@/components/trip/PlanDaySheet'
@@ -51,6 +51,15 @@ export default function TodayScreen() {
   const [translating, setTranslating] = useState(false)
   const [luggage, setLuggage] = useState<HotelMove | null>(null)
   const [rainPlanning, setRainPlanning] = useState(false)
+  const [currencyHidden, setCurrencyHidden] = useState(readCurrencyHidden)
+  const showCurrency = (show: boolean) => {
+    setCurrencyHidden(!show)
+    try {
+      localStorage.setItem(CURRENCY_HIDDEN_KEY, show ? '0' : '1')
+    } catch {
+      // Not remembered (private mode).
+    }
+  }
 
   const timeline = tripTimeline(trip, now)
   const { phase, focusDate, dayNumber } = timeline
@@ -82,6 +91,13 @@ export default function TodayScreen() {
   const firstPlace = items[0] ? placesById[items[0].placeId] : undefined
   const weatherLocation = city?.location ?? firstPlace?.location ?? DEFAULT_CITY.location
   const placeName = city?.name ?? (firstPlace ? 'היעד של היום' : DEFAULT_CITY.name)
+  const brief = useDayBrief({
+    date: focusDate,
+    items: phase === 'after' ? [] : items,
+    placesById,
+    location: weatherLocation,
+    start: lastNightId ? placesById[lastNightId] : undefined,
+  })
 
   return (
     <motion.div variants={STAGGER} initial="hidden" animate="shown" className="pt-screen mx-auto w-full max-w-md px-5">
@@ -93,6 +109,16 @@ export default function TodayScreen() {
           <p className="mt-1 text-sm text-muted">{formatDay(timeline.today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {currencyHidden && (
+            <button
+              type="button"
+              onClick={() => showCurrency(true)}
+              aria-label="הצגת ממיר המטבע"
+              className="glass grid size-11 place-items-center rounded-full text-accent transition active:scale-90"
+            >
+              <JapaneseYen aria-hidden className="size-5" />
+            </button>
+          )}
           {/* Photo translation runs on Gemini through Firebase, so it needs cloud mode. */}
           {hasFirebase && (
             <button
@@ -138,19 +164,15 @@ export default function TodayScreen() {
           location={weatherLocation}
           cityId={city?.id ?? (firstPlace ? nearestCity(firstPlace.location)?.id : DEFAULT_CITY.id)}
           stops={items.flatMap((item) => placesById[item.placeId]?.name ?? [])}
+          brief={brief}
+          onRainPlan={hasFirebase && items.length > 0 ? () => setRainPlanning(true) : undefined}
         />
       </motion.div>
 
-      {phase !== 'after' && (
-        <motion.div variants={RISE} className="mt-3 empty:hidden">
-          <BriefingCard
-            date={focusDate}
-            items={items}
-            placesById={placesById}
-            location={weatherLocation}
-            start={lastNightId ? placesById[lastNightId] : undefined}
-            onRainPlan={hasFirebase ? () => setRainPlanning(true) : undefined}
-          />
+      {/* The converter stays right under the card (unless put away; the ¥ button in the header brings it back). */}
+      {!currencyHidden && (
+        <motion.div variants={RISE} className="mt-3">
+          <CurrencyCard onHide={() => showCurrency(false)} />
         </motion.div>
       )}
 
@@ -203,14 +225,6 @@ export default function TodayScreen() {
         <BookingsCard places={places} today={timeline.today} />
       </motion.div>
 
-      <motion.div variants={RISE} className="mt-3">
-        <CurrencyCard />
-      </motion.div>
-
-      <motion.div variants={RISE} className="mt-3">
-        <TransitGuideRow />
-      </motion.div>
-
       <motion.section variants={RISE} className="mt-7">
         <h2 className="mb-4 flex items-baseline justify-between">
           <span className="text-lg font-bold tracking-tight">{phase === 'during' ? 'הלו״ז של היום' : `יום ${dayNumber}`}</span>
@@ -238,6 +252,10 @@ export default function TodayScreen() {
           onPlan={hasFirebase ? () => setPlanning(true) : undefined}
         />
       </motion.section>
+
+      <motion.div variants={RISE} className="mt-6">
+        <TransitGuideRow />
+      </motion.div>
       <PlanDaySheet date={planning ? focusDate : null} onClose={() => setPlanning(false)} />
       <RainPlanSheet date={rainPlanning ? focusDate : null} onClose={() => setRainPlanning(false)} />
     </motion.div>
@@ -245,6 +263,15 @@ export default function TodayScreen() {
 }
 
 /** Cards rise in one after another when the screen first opens. */
+const CURRENCY_HIDDEN_KEY = 'tabi:currencyHidden'
+function readCurrencyHidden() {
+  try {
+    return localStorage.getItem(CURRENCY_HIDDEN_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 const STAGGER: Variants = { hidden: {}, shown: { transition: { staggerChildren: 0.05 } } }
 const RISE: Variants = {
   hidden: { opacity: 0, y: 12 },

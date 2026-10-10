@@ -8,6 +8,8 @@ import { openRoute } from './TransitSheets'
 
 /** Closer than this the two stops are the same spot (e.g. lunch inside the museum). */
 const SAME_SPOT_M = 60
+/** A walk this short isn't worth a line on the timeline (unless the time is too tight for it). */
+const SHORT_WALK_MIN = 6
 
 const hm = (minutes: number) => {
   const wrapped = (minutes + 24 * 60) % (24 * 60)
@@ -34,6 +36,7 @@ export function TravelLeg({ from, to }: TravelLegProps) {
   const arriveBy = parseHm(to.item.time)
   const departAt = parseHm(from.item.time)
   const tooTight = arriveBy != null && departAt != null && arriveBy - departAt < leg.minutes
+  if (leg.mode === 'walk' && leg.minutes < SHORT_WALK_MIN && !tooTight) return null
   const Icon = leg.mode === 'walk' ? Footprints : TrainFront
   const how = leg.mode === 'walk' ? 'הליכה' : leg.mode === 'intercity' ? 'ברכבת מהירה' : 'ברכבת'
   const href = directionsUrl(to.place.location, {
@@ -50,10 +53,10 @@ export function TravelLeg({ from, to }: TravelLegProps) {
     <>
       {tooTight ? <TriangleAlert aria-hidden className="size-3.5 shrink-0" /> : <Icon aria-hidden className="size-3.5 shrink-0" />}
       <span className="truncate">
-        ≈ {durationLabel(leg.minutes)} {how}
+        {durationLabel(leg.minutes)} {how}
         {tooTight
           ? ` · רק ${durationLabel(arriveBy - departAt)} בין הפעילויות`
-          : arriveBy != null && ` · לצאת עד ${hm(arriveBy - leg.minutes)}`}
+          : arriveBy != null && ` · לצאת ב-${hm(arriveBy - leg.minutes)}`}
       </span>
       <ChevronLeft aria-hidden className="size-3.5 shrink-0 opacity-60" />
     </>

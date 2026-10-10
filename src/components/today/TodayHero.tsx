@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import clsx from 'clsx'
-import { Clock3, Droplets, MapPin } from 'lucide-react'
+import { ChevronLeft, Clock3, Droplets, MapPin, Thermometer, Ticket, Umbrella } from 'lucide-react'
 import type { LatLng, Trip } from '@/data/types'
 import { photoFor, photoUrl } from '@/data/photos'
 import { TRIP_TZ, minutesInTz, type TripTimeline } from '@/lib/dates'
 import { describeWeather, fetchWeather, type Weather } from '@/lib/weather'
+import type { DayAlert, DayBrief } from './dayBrief'
 
 interface TodayHeroProps {
   trip: Trip
@@ -16,7 +17,13 @@ interface TodayHeroProps {
   cityId?: string
   /** Names of today's stops: a landmark among them gets its own photo. */
   stops: string[]
+  /** The day in a line, and what's worth a warning. */
+  brief: DayBrief
+  /** The rain alert opens the rainy-day plan. */
+  onRainPlan?: () => void
 }
+
+const ALERT_ICON: Record<DayAlert['kind'], typeof Umbrella> = { rain: Umbrella, ticket: Ticket, heat: Thermometer, cold: Thermometer }
 
 /** Under the photo while it loads (or offline): the colours of the sky over Japan right now. */
 function skyFor(japanMinutes: number) {
@@ -55,7 +62,7 @@ function IsraelFlag() {
  * The day at a glance, on a photo of where we are: the day of the trip, the city, the weather and
  * the time in Japan next to the time at home. The photo's own place shows in its corner.
  */
-export function TodayHero({ trip, timeline, now, placeName, location, cityId, stops }: TodayHeroProps) {
+export function TodayHero({ trip, timeline, now, placeName, location, cityId, stops, brief, onRainPlan }: TodayHeroProps) {
   const weather = useWeather(location)
   const japanMinutes = minutesInTz(now)
   const night = japanMinutes < 6 * 60 || japanMinutes >= 18 * 60
@@ -135,13 +142,39 @@ export function TodayHero({ trip, timeline, now, placeName, location, cityId, st
             {homeClock.format(now)}
           </span>
         </p>
+        {brief.summary && <p className="mt-1.5 max-w-[56%] truncate text-xs text-white/85">{brief.summary}</p>}
       </div>
 
-      <p className="absolute end-3 bottom-3 inline-flex max-w-[45%] items-center gap-1 rounded-full bg-black/35 px-2 py-1 text-[11px] font-medium backdrop-blur-sm">
+      {brief.alerts[0] && <AlertChip alert={brief.alerts[0]} onOpen={brief.alerts[0].kind === 'rain' ? onRainPlan : undefined} />}
+
+      <p className="absolute end-3 bottom-3 inline-flex max-w-[40%] items-center gap-1 rounded-full bg-black/35 px-2 py-1 text-[11px] font-medium backdrop-blur-sm">
         <MapPin aria-hidden className="size-3 shrink-0" />
         <span className="truncate">{photo.place}</span>
       </p>
     </section>
+  )
+}
+
+/** The day's most important warning, in the photo's top corner. Rain opens the rainy-day plan. */
+function AlertChip({ alert, onOpen }: { alert: DayAlert; onOpen?: () => void }) {
+  const Icon = ALERT_ICON[alert.kind]
+  const className =
+    'absolute end-3 top-3 inline-flex max-w-[48%] items-center gap-1 rounded-full bg-amber-300/95 px-2.5 py-1 text-[11px] font-semibold text-amber-950 shadow-sm text-shadow-none'
+  const body = (
+    <>
+      <Icon aria-hidden className="size-3.5 shrink-0" />
+      <span className="truncate">{alert.short}</span>
+      {onOpen && <ChevronLeft aria-hidden className="-me-0.5 size-3.5 shrink-0" />}
+    </>
+  )
+  return onOpen ? (
+    <button type="button" onClick={onOpen} aria-label={`${alert.text}. לתוכנית ליום גשום`} className={className}>
+      {body}
+    </button>
+  ) : (
+    <p role="note" aria-label={alert.text} className={className}>
+      {body}
+    </p>
   )
 }
 

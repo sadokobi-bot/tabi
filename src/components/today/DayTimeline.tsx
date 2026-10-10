@@ -1,6 +1,6 @@
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import clsx from 'clsx'
-import { CircleCheck, MapPinPlus, Moon, Sparkles, Sun, Sunrise, Clock4 } from 'lucide-react'
+import { ChevronDown, CircleCheck, CircleCheckBig, MapPinPlus, Moon, Sparkles, Sun, Sunrise, Clock4 } from 'lucide-react'
 import { useNavigate } from 'react-router'
 import { ClosedNote } from '@/components/place/ClosedNote'
 import { CategoryIcon } from '@/components/ui/CategoryIcon'
@@ -29,9 +29,19 @@ const SECTIONS = [
   { id: 'anytime', label: 'בלי שעה', icon: Clock4, test: (m: number | null) => m == null },
 ] as const
 
-/** Vertical timeline of the day, grouped into morning / afternoon / evening. */
+/** An activity counts as behind us an hour after it started. */
+const isPast = (item: ItineraryItem, nowMinutes: number | null) => {
+  const minutes = parseHm(item.time)
+  return nowMinutes != null && minutes != null && minutes + 60 < nowMinutes
+}
+
+/**
+ * Vertical timeline of the day, grouped into morning / afternoon / evening. Activities already
+ * behind us fold into one line, so the day opens on what's now and next.
+ */
 export function DayTimeline({ date, items, placesById, nowMinutes, nextItemId, onPlan }: DayTimelineProps) {
   const navigate = useNavigate()
+  const [showPast, setShowPast] = useState(false)
 
   if (items.length === 0) {
     return (
@@ -62,11 +72,26 @@ export function DayTimeline({ date, items, placesById, nowMinutes, nextItemId, o
   const nowBeforeId = upcoming?.id ?? null
   const nowAfterId = !upcoming && timed.length ? timed[timed.length - 1]!.id : null
   const nowLine = nowMinutes != null && <NowLine minutes={nowMinutes} />
+  const done = items.filter((item) => item.id !== nextItemId && isPast(item, nowMinutes))
+  const folded = !showPast && done.length >= 2 ? new Set(done.map((item) => item.id)) : null
 
   return (
     <div className="space-y-6">
+      {done.length >= 2 && (
+        <button
+          type="button"
+          onClick={() => setShowPast((value) => !value)}
+          aria-expanded={showPast}
+          className="flex w-full items-center gap-2 rounded-control bg-fg/5 px-3.5 py-2.5 text-sm text-muted transition hover:bg-fg/8"
+        >
+          <CircleCheckBig aria-hidden className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <span className="flex-1 text-start">{done.length} פעילויות כבר מאחוריכם</span>
+          <span className="font-semibold text-fg">{showPast ? 'הסתרה' : 'הצגה'}</span>
+          <ChevronDown aria-hidden className={clsx('size-4 transition-transform', showPast && 'rotate-180')} />
+        </button>
+      )}
       {SECTIONS.map((section) => {
-        const sectionItems = items.filter((item) => section.test(parseHm(item.time)))
+        const sectionItems = items.filter((item) => section.test(parseHm(item.time)) && !folded?.has(item.id))
         if (sectionItems.length === 0) return null
         const SectionIcon = section.icon
         return (
@@ -79,8 +104,7 @@ export function DayTimeline({ date, items, placesById, nowMinutes, nextItemId, o
               {sectionItems.map((item) => {
                 const place = placesById[item.placeId]
                 if (!place) return null
-                const minutes = parseHm(item.time)
-                const past = nowMinutes != null && minutes != null && minutes + 60 < nowMinutes
+                const past = isPast(item, nowMinutes)
                 const isNext = item.id === nextItemId
                 // The ride from the previous stop of the day (which may sit in the section before).
                 const previous = items[items.indexOf(item) - 1]
@@ -116,9 +140,6 @@ export function DayTimeline({ date, items, placesById, nowMinutes, nextItemId, o
                               <CircleCheck aria-label="היינו פה" className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                             )}
                           </span>
-                          {(item.note || place.notes) && (
-                            <span className="block truncate text-xs text-muted">{item.note || place.notes}</span>
-                          )}
                           <ClosedNote
                             place={place}
                             date={date}

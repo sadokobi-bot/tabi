@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeftRight } from 'lucide-react'
+import { ArrowLeftRight, X } from 'lucide-react'
 import { FX_REFRESH_MS, fetchRate, readCachedRate, type FxRate } from '@/lib/currency'
 import { haptic } from '@/lib/haptics'
 
@@ -57,8 +57,8 @@ function useFxRate() {
   return { rate, failed }
 }
 
-/** Yen ↔ shekel converter with a live exchange rate. */
-export function CurrencyCard() {
+/** Yen ↔ shekel converter with a live exchange rate. It can be put away (and brought back from the header). */
+export function CurrencyCard({ onHide }: { onHide?: () => void }) {
   const { rate, failed } = useFxRate()
   const [direction, setDirection] = useState<Direction>('jpy-to-ils')
   const [amount, setAmount] = useState('1000')
@@ -117,15 +117,27 @@ export function CurrencyCard() {
         </p>
       </div>
 
-      <p className="mt-1.5 px-1.5 text-[11px] text-muted">
-        {rate ? (
-          <>
-            שער חי <span dir="ltr">₪1 = ¥{numberFormat(2).format(rate.jpyPerIls)}</span> · עודכן {rateDate}
-          </>
-        ) : failed ? (
-          'אין חיבור לשער כרגע'
-        ) : (
-          'טוענים שער…'
+      <p className="mt-1.5 flex items-center gap-2 px-1.5 text-[11px] text-muted">
+        <span className="min-w-0 flex-1">
+          {rate ? (
+            <>
+              שער חי <span dir="ltr">₪1 = ¥{numberFormat(2).format(rate.jpyPerIls)}</span> · עודכן {rateDate}
+            </>
+          ) : failed ? (
+            'אין חיבור לשער כרגע'
+          ) : (
+            'טוענים שער…'
+          )}
+        </span>
+        {onHide && (
+          <button
+            type="button"
+            onClick={onHide}
+            className="tap-target relative -my-1 inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 font-medium hover:text-fg"
+          >
+            <X aria-hidden className="size-3" />
+            הסתרה
+          </button>
         )}
       </p>
     </div>
