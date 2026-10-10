@@ -321,19 +321,21 @@ function getModels(kind: ModelKind) {
 type Prompt = string | (string | { inlineData: { data: string; mimeType: string } })[]
 
 /** Why a request failed, in terms the UI can explain. */
-export type AssistantFailure = 'disabled' | 'quota' | 'limit' | 'busy' | 'other'
+export type AssistantFailure = 'disabled' | 'quota' | 'limit' | 'tripLimit' | 'busy' | 'other'
 
 export const FAILURE_TEXT: Record<AssistantFailure, string> = {
   disabled: 'העוזר עוד לא הופעל. בעל הטיול צריך להפעיל את Firebase AI Logic.',
   quota:
     'העוזר הגיע למכסה החינמית של Gemini. נסו שוב בעוד דקה. אם זה חוזר, המכסה היומית נגמרה, והיא מתחדשת כל יום ב-10:00 בבוקר (שעון ישראל).',
   limit: 'הגעתם למגבלת השימוש היומית בכלי הזה, כדי שהשירות יישאר זמין לכולם. היא מתחדשת כל יום בחצות (שעון יפן).',
+  tripLimit:
+    'בגרסת הבטא אפשר לבנות טיול שלם עם AI פעם אחת בלבד, כדי שהשירות יישאר זמין לכולם. אפשר להמשיך לתכנן ידנית, או לבקש מהעוזר לתכנן יום בודד.',
   busy: 'העוזר עמוס כרגע. נסו שוב בעוד דקה.',
   other: 'העוזר לא זמין כרגע. נסו שוב בעוד רגע.',
 }
 
 export function failureOf(error: unknown): AssistantFailure {
-  if (error instanceof QuotaError) return 'limit'
+  if (error instanceof QuotaError) return error.bucket === 'trip' ? 'tripLimit' : 'limit'
   const text = `${(error as { code?: string } | null)?.code ?? ''} ${(error as Error | null)?.message ?? ''}`
   if (text.includes('api-not-enabled')) return 'disabled'
   if (/429|quota|RESOURCE_EXHAUSTED/i.test(text)) return 'quota'

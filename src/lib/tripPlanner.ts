@@ -186,6 +186,7 @@ export async function planTrip(
   provider: PoiProvider | null,
   onProgress: (p: PlanProgress) => void,
 ): Promise<TripPlan> {
+  // Beta: once per person. Counted up front so blocked attempts never reach the AI.
   await spend('trip')
   const dates = tripDates(trip)
   const { plan, places, placesById } = useTripStore.getState()

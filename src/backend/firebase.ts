@@ -57,7 +57,7 @@ import type {
   Trip,
 } from '@/data/types'
 import { newInviteCode, normalizeInviteCode } from '@/lib/ids'
-import { AppError, displayName, memberOf, type Backend, type ErrorCode, type Profile, type SessionUser } from './types'
+import { AppError, displayName, MAX_OWNED_TRIPS, memberOf, type Backend, type ErrorCode, type Profile, type SessionUser } from './types'
 import { checkUsername, emailToUsername, isUsernameEmail, usernameToEmail } from './username'
 
 /**
@@ -413,6 +413,13 @@ export function createFirebaseBackend(): Backend {
     },
 
     async createTrip(user, input) {
+      try {
+        const mine = await getDocs(query(collection(db, 'trips'), where('memberIds', 'array-contains', user.uid)))
+        if (mine.docs.filter((d) => d.data().ownerId === user.uid).length >= MAX_OWNED_TRIPS) throw new AppError('trip-limit')
+      } catch (error) {
+        if (error instanceof AppError && error.code === 'trip-limit') throw error
+        // Can't check (offline): carry on; the cap is a beta courtesy, not security.
+      }
       const ref = doc(collection(db, 'trips'))
       const inviteCode = newInviteCode()
       const trip: Omit<Trip, 'id'> = {

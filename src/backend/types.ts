@@ -70,6 +70,7 @@ export type ErrorCode =
   | 'no-recovery-email'
   | 'invalid-email'
   | 'email-in-use'
+  | 'trip-limit'
   | 'too-fast'
   | 'link-expired'
   | 'link-invalid'
@@ -97,6 +98,7 @@ const MESSAGES: Record<ErrorCode, string> = {
   'no-recovery-email': 'כדי לאפס סיסמה, הקלידו את המייל לשחזור שהוספתם לחשבון',
   'invalid-email': 'כתובת המייל לא תקינה',
   'email-in-use': 'המייל הזה כבר משמש חשבון אחר',
+  'trip-limit': 'בגרסת הבטא אפשר ליצור עד 2 טיולים. אפשר למחוק טיול קיים כדי ליצור חדש',
   'too-fast': 'רגע, אפשר לשלוח הודעה לקהילה פעם בכמה שניות',
   'link-expired': 'הקישור הזה כבר פג תוקף. אפשר לבקש קישור חדש',
   'link-invalid': 'הקישור הזה כבר שומש או שאינו תקין. אפשר לבקש קישור חדש',
@@ -108,6 +110,9 @@ export function errorMessage(error: unknown): string {
   if (error instanceof AppError) return error.message !== error.code ? error.message : MESSAGES[error.code]
   return MESSAGES.unknown
 }
+
+/** Beta: trips one person can own at a time. */
+export const MAX_OWNED_TRIPS = 2
 
 export interface NewTripInput {
   name: string

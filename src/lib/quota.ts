@@ -19,6 +19,9 @@ export const DAILY_LIMITS = {
   search: 40,
 } as const
 
+/** Beta: whole-trip AI plans per person, in total (the rules cap the counter at 3; this is the stricter limit). */
+export const TRIP_PLANS_PER_USER = 1
+
 export type QuotaBucket = keyof typeof DAILY_LIMITS
 
 export class QuotaError extends Error {
@@ -38,7 +41,10 @@ export async function spend(bucket: QuotaBucket): Promise<void> {
   if (!uid) return
   let allowed = true
   try {
-    allowed = await getBackend().spendUsage(uid, isoDateInTz(new Date()), bucket, DAILY_LIMITS[bucket])
+    // Beta: building a whole trip with AI is once per person ever (one fixed "day"), not once a day.
+    const day = bucket === 'trip' ? 'lifetime' : isoDateInTz(new Date())
+    const limit = bucket === 'trip' ? TRIP_PLANS_PER_USER : DAILY_LIMITS[bucket]
+    allowed = await getBackend().spendUsage(uid, day, bucket, limit)
   } catch (error) {
     console.warn('[quota] not counted', error)
   }

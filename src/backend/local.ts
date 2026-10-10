@@ -1,7 +1,7 @@
 import type { ChatMessage, ChatMeta, CommunityMessage, DayPlan, JoinRequest, Place, Presence, Ticket, Trip } from '@/data/types'
 import { cachedPages, cachePages, dropPages } from '@/lib/ticketCache'
 import { newId, newInviteCode, normalizeInviteCode } from '@/lib/ids'
-import { AppError, memberOf, type Backend, type Profile, type SessionUser } from './types'
+import { AppError, MAX_OWNED_TRIPS, memberOf, type Backend, type Profile, type SessionUser } from './types'
 import { checkUsername } from './username'
 
 /**
@@ -278,6 +278,7 @@ export function createLocalBackend(): Backend {
     },
 
     async createTrip(user, input) {
+      if (Object.values(readTrips()).filter((t) => t.ownerId === user.uid).length >= MAX_OWNED_TRIPS) throw new AppError('trip-limit')
       const id = newId()
       const inviteCode = newInviteCode()
       const trip: Trip = {
