@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Tabi · הטיול שלכם ליפן, במקום אחד</title>
+    <meta
+      name="description"
+      content="Tabi היא אפליקציה בעברית לתכנון וניהול טיול ליפן: לו״ז יומי, מפה חיה, ניווט בלחיצה, מזג אוויר, תרגום וצ׳אט משותף עם החברים לטיול. בטא חינמית."
+    />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f6f4f1" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b0c0f" media="(prefers-color-scheme: dark)" />
+    <link rel="canonical" href="https://tabijap.com/welcome/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Tabi · הטיול שלכם ליפן, במקום אחד" />
+    <meta property="og:description" content="לו״ז, מפה, ניווט, תרגום וצ׳אט עם החברים לטיול. בעברית, בטא חינמית." />
+    <meta property="og:url" content="https://tabijap.com/welcome/" />
+    <meta property="og:image" content="https://tabijap.com/welcome/map.webp" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap" />
+    <style>
+      :root {
+        --bg: #f6f4f1;
+        --fg: #15171b;
+        --muted: #6b6f76;
+        --card: #ffffff;
+        --line: rgb(21 23 27 / 0.1);
+        --accent: #cc4329;
+        --accent-fg: #ffffff;
+        --tint: rgb(204 67 41 / 0.09);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0b0c0f;
+          --fg: #f3f3f4;
+          --muted: #9ba0a8;
+          --card: #15171c;
+          --line: rgb(255 255 255 / 0.1);
+          --accent: #ff6a4d;
+          --accent-fg: #15171b;
+          --tint: rgb(255 106 77 / 0.12);
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: 'Heebo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+      }
+      a {
+        color: inherit;
+      }
+      .wrap {
+        width: 100%;
+        max-width: 1040px;
+        margin-inline: auto;
+        padding-inline: 20px;
+      }
+      header.top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-block: 16px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 800;
+        font-size: 1.25rem;
+        text-decoration: none;
+      }
+      .brand img {
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 48px;
+        padding: 0 24px;
+        border-radius: 999px;
+        background: var(--accent);
+        color: var(--accent-fg);
+        font-weight: 700;
+        font-size: 1rem;
+        text-decoration: none;
+        transition: transform 0.15s;
+      }
+      .btn:active {
+        transform: scale(0.97);
+      }
+      .btn.ghost {
+        background: transparent;
+        color: var(--fg);
+        border: 1px solid var(--line);
+      }
+      .btn.small {
+        min-height: 40px;
+        padding: 0 18px;
+        font-size: 0.9rem;
+      }
+      .hero {
+        display: grid;
+        gap: 32px;
+        align-items: center;
+        padding-block: 28px 56px;
+      }
+      .pill {
+        display: inline-block;
+        padding: 4px 14px;
+        border-radius: 999px;
+        background: var(--tint);
+        color: var(--accent);
+        font-weight: 700;
+        font-size: 0.85rem;
+      }
+      h1 {
+        margin: 14px 0 12px;
+        font-size: clamp(2rem, 7vw, 3.25rem);
+        line-height: 1.15;
+        font-weight: 800;
+      }
+      h1 span {
+        color: var(--accent);
+      }
+      .lead {
+        margin: 0 0 24px;
+        font-size: 1.1rem;
+        color: var(--muted);
+        max-width: 34em;
+      }
+      .cta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .note {
+        margin-top: 14px;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+      .phones {
+        position: relative;
+        display: flex;
+        justify-content: center;
+        gap: 14px;
+      }
+      .phone {
+        width: 44%;
+        max-width: 230px;
+        border-radius: 26px;
+        border: 6px solid var(--card);
+        box-shadow: 0 24px 50px -22px rgb(0 0 0 / 0.5);
+        background: var(--card);
+      }
+      .phone:nth-child(2) {
+        margin-top: 36px;
+      }
+      section {
+        padding-block: 44px;
+      }
+      h2 {
+        margin: 0 0 8px;
+        font-size: clamp(1.5rem, 5vw, 2.1rem);
+        font-weight: 800;
+        line-height: 1.2;
+      }
+      .sub {
+        margin: 0 0 28px;
+        color: var(--muted);
+        max-width: 38em;
+      }
+      .grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: 1fr;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 20px;
+      }
+      .card h3 {
+        margin: 0 0 6px;
+        font-size: 1.1rem;
+      }
+      .card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+      .icon {
+        font-size: 1.6rem;
+        line-height: 1;
+        margin-bottom: 10px;
+      }
+      .showcase {
+        display: grid;
+        gap: 18px;
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .showcase figure {
+        margin: 0;
+        text-align: center;
+      }
+      .showcase img {
+        width: 100%;
+        border-radius: 22px;
+        border: 1px solid var(--line);
+        box-shadow: 0 18px 40px -26px rgb(0 0 0 / 0.5);
+      }
+      .showcase figcaption {
+        margin-top: 10px;
+        font-weight: 700;
+        font-size: 0.95rem;
+      }
+      .steps {
+        display: grid;
+        gap: 14px;
+        counter-reset: s;
+        padding: 0;
+        margin: 0;
+        list-style: none;
+      }
+      .steps li {
+        counter-increment: s;
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+      }
+      .steps li::before {
+        content: counter(s);
+        flex: none;
+        width: 34px;
+        height: 34px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--accent);
+        color: var(--accent-fg);
+        font-weight: 800;
+      }
+      .steps b {
+        display: block;
+      }
+      .steps span {
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+      .final {
+        text-align: center;
+        background: var(--tint);
+        border-radius: 28px;
+        padding: 36px 20px;
+      }
+      .final img {
+        width: 120px;
+        margin: 0 auto 8px;
+      }
+      .final p {
+        color: var(--muted);
+        max-width: 32em;
+        margin: 0 auto 22px;
+      }
+      .final .cta {
+        justify-content: center;
+      }
+      details {
+        border-bottom: 1px solid var(--line);
+        padding-block: 14px;
+      }
+      summary {
+        cursor: pointer;
+        font-weight: 700;
+      }
+      details p {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+      footer {
+        padding-block: 28px 40px;
+        color: var(--muted);
+        font-size: 0.85rem;
+        text-align: center;
+      }
+      footer a {
+        color: var(--accent);
+      }
+      @media (min-width: 760px) {
+        .hero {
+          grid-template-columns: 1.1fr 1fr;
+          padding-block: 40px 72px;
+        }
+        .grid {
+          grid-template-columns: repeat(3, 1fr);
+        }
+        .showcase {
+          grid-template-columns: repeat(4, 1fr);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+        .btn {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="top">
+        <a class="brand" href="/welcome/">
+          <img src="/pwa-64x64.png" alt="" width="34" height="34" />
+          Tabi
+        </a>
+        <a class="btn small" href="/">כניסה לאפליקציה</a>
+      </header>
+
+      <main>
+        <div class="hero">
+          <div>
+            <span class="pill">בטא חינמית</span>
+            <h1>הטיול שלכם ליפן, <span>במקום אחד</span></h1>
+            <p class="lead">
+              לו״ז יומי, מפה חיה, ניווט בלחיצה, מזג אוויר, תרגום וצ׳אט עם החברים לטיול. הכול בעברית, בלי לקפוץ בין עשר אפליקציות
+              ובלי גיליון אקסל.
+            </p>
+            <div class="cta">
+              <a class="btn" href="/">פתחו את האפליקציה</a>
+              <a class="btn ghost" href="#features">מה יש בפנים</a>
+            </div>
+            <p class="note">עובדת בדפדפן ואפשר להוסיף למסך הבית, בלי הורדה מחנות האפליקציות.</p>
+          </div>
+          <div class="phones" aria-hidden="true">
+            <img class="phone" src="today.webp" alt="" width="560" height="1212" />
+            <img class="phone" src="trip.webp" alt="" width="560" height="1212" />
+          </div>
+        </div>
+
+        <section id="features">
+          <h2>כל מה שצריך בטיול, בכיס</h2>
+          <p class="sub">נבנתה בשביל מי שמתכנן טיול ארוך ליפן ורוצה שיהיה סדר, גם כשכבר עומדים באמצע שיבויה.</p>
+          <div class="grid">
+            <div class="card">
+              <div class="icon">🗓️</div>
+              <h3>לו״ז לכל יום</h3>
+              <p>בונים את הימים לפי ערים, מוסיפים מקומות ושעות, וגוררים כדי לסדר מחדש. מסך "היום" מראה מה הדבר הבא.</p>
+            </div>
+            <div class="card">
+              <div class="icon">🗺️</div>
+              <h3>מפה חיה</h3>
+              <p>מסעדות, אטרקציות, בתי מלון וצרכים יומיומיים סביבכם, עם חיפוש ושמירת מקומות לטיול.</p>
+            </div>
+            <div class="card">
+              <div class="icon">🧭</div>
+              <h3>ניווט בלחיצה</h3>
+              <p>כפתור "קח אותי לשם" פותח את הניווט באפליקציית המפות שלכם, כולל שם וכתובת ביפנית להראות למונית.</p>
+            </div>
+            <div class="card">
+              <div class="icon">👥</div>
+              <h3>טיול משותף</h3>
+              <p>מזמינים חברים לאותו טיול, מתכננים יחד, מצביעים בסקר ומתאמים נקודות מפגש בצ׳אט.</p>
+            </div>
+            <div class="card">
+              <div class="icon">🌦️</div>
+              <h3>מזג אוויר ותוכנית לגשם</h3>
+              <p>תחזית לכל עיר ביום שלכם, ואם יורד גשם אפשר לקבל הצעות לחלופות מקורות.</p>
+            </div>
+            <div class="card">
+              <div class="icon">🈂️</div>
+              <h3>תרגום, שער ועוזר</h3>
+              <p>תרגום מהיר ליפנית וממנה, המרת ין לשקל ועוזר חכם לשאלות. התשובות של ה-AI עלולות להיות לא מדויקות, כדאי לוודא.</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>איך זה נראה</h2>
+          <p class="sub">צילומי מסך אמיתיים מהאפליקציה.</p>
+          <div class="showcase">
+            <figure>
+              <img src="today.webp" alt="מסך היום: מזג אוויר, הדבר הבא בלו״ז והמרת מטבע" loading="lazy" width="560" height="1212" />
+              <figcaption>היום</figcaption>
+            </figure>
+            <figure>
+              <img src="trip.webp" alt="מסך הטיול: ימים וערים" loading="lazy" width="560" height="1212" />
+              <figcaption>הטיול</figcaption>
+            </figure>
+            <figure>
+              <img src="map.webp" alt="המפה עם מקומות מומלצים" loading="lazy" width="560" height="1212" />
+              <figcaption>המפה</figcaption>
+            </figure>
+            <figure>
+              <img src="chat.webp" alt="צ׳אט הטיול המשותף" loading="lazy" width="560" height="1212" />
+              <figcaption>צ׳אט</figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section>
+          <h2>מתחילים בשלוש דקות</h2>
+          <ol class="steps">
+            <li>
+              <div><b>נרשמים</b><span>עם מייל וסיסמה, בלי כרטיס אשראי.</span></div>
+            </li>
+            <li>
+              <div><b>יוצרים טיול</b><span>תאריך יציאה, כמה ימים, ואילו ערים. אפשר גם לקבל הצעת מסלול ולשנות אותה.</span></div>
+            </li>
+            <li>
+              <div><b>מזמינים את החברים</b><span>ומתכננים ביחד, כל אחד מהטלפון שלו.</span></div>
+            </li>
+          </ol>
+        </section>
+
+        <section>
+          <h2>שאלות נפוצות</h2>
+          <details>
+            <summary>כמה זה עולה?</summary>
+            <p>בתקופת הבטא האפליקציה חינמית. אם בעתיד יתווספו תשלומים על חלק מהיכולות, נעדכן מראש.</p>
+          </details>
+          <details>
+            <summary>צריך להוריד מחנות האפליקציות?</summary>
+            <p>לא. פותחים את האתר בדפדפן, ובאייפון או באנדרואיד אפשר "להוסיף למסך הבית" והיא תיראה ותעבוד כמו אפליקציה.</p>
+          </details>
+          <details>
+            <summary>האם זה קשור לגוגל, Booking או Agoda?</summary>
+            <p>
+              לא. אין לנו קשר רשמי איתם. מקומות ומלונות שמוצגים באפליקציה הם לא המלצה, ומחירים וזמינות צריך לבדוק באתר המתאים.
+            </p>
+          </details>
+          <details>
+            <summary>מה קורה עם המידע שלי?</summary>
+            <p>המדיניות מפורטת באפליקציה, בתפריט הפרופיל, תחת "מדיניות פרטיות" ו"תנאי שימוש". אנחנו לא מוכרים מידע אישי.</p>
+          </details>
+          <details>
+            <summary>מצאתי באג או יש לי רעיון</summary>
+            <p>נשמח לשמוע: <a href="mailto:app.tabij@gmail.com">app.tabij@gmail.com</a>. זו בטא, ומשוב עוזר לנו מאוד.</p>
+          </details>
+        </section>
+
+        <section>
+          <div class="final">
+            <img src="mascot.webp" alt="" width="120" height="120" />
+            <h2>מתכננים טיול ליפן?</h2>
+            <p>נשמח שתנסו ותגידו לנו מה חסר. כל משוב בבטא משפיע על מה שנבנה הלאה.</p>
+            <div class="cta">
+              <a class="btn" href="/">פתחו את האפליקציה</a>
+              <a class="btn ghost" href="mailto:app.tabij@gmail.com">כתבו לנו</a>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        Tabi · בטא · <a href="mailto:app.tabij@gmail.com">app.tabij@gmail.com</a>
+      </footer>
+    </div>
+  </body>
+</html>
