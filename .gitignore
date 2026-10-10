@@ -3,6 +3,8 @@ dist
 dev-dist
 *.local
 .env
+*-adminsdk-*.json
+service-account*.json
 .DS_Store
 *.log
 test-results

@@ -46,7 +46,7 @@ export default {
 }
 
 async function getAccessToken(serviceAccountJson: string): Promise<string> {
-  const sa = JSON.parse(serviceAccountJson)
+  const sa = JSON.parse(serviceAccountJson.replace(/^﻿/, '').trim())
   const now = Math.floor(Date.now() / 1000)
   const header = btoa(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
   const payload = btoa(
