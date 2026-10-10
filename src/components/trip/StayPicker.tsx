@@ -33,6 +33,8 @@ export function StayPicker({ date, explicit, inherited, places }: StayPickerProp
         aria-label="איפה ישנים בלילה הזה"
         className={clsx(
           // appearance-none: Safari otherwise draws its own grey box and arrow.
+          // The open list is drawn by the browser: give its options the app's own colours (they were light text on a light list).
+          '[&>option]:bg-bg [&>option]:text-fg',
           'h-9 max-w-[15rem] appearance-none truncate rounded-full border-0 ps-8 pe-7 text-xs font-semibold outline-none focus:ring-2 focus:ring-accent/40',
           current ? 'bg-fg/8 text-fg' : 'bg-transparent text-muted',
         )}
