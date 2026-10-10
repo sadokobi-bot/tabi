@@ -561,6 +561,28 @@
         font-size: 0.97rem;
       }
 
+      .card p.fine {
+        margin-top: 10px;
+        font-size: 0.74rem;
+        line-height: 1.5;
+        opacity: 0.8;
+      }
+      .more {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin: 28px auto 0;
+        max-width: 38em;
+        text-align: center;
+        color: #c9ccd2;
+        font-weight: 500;
+      }
+      .more .ico {
+        color: var(--accent);
+        font-size: 1.3rem;
+      }
+
       /* ── Spotlight (phones) ─────────────── */
       .spot {
         display: grid;
@@ -1145,7 +1167,8 @@
             <div class="card ai wide reveal">
               <div class="badge"><svg class="ico"><use href="#i-spark" /></svg></div>
               <h3>תכנון, תרגום ועוזר חכם</h3>
-              <p>הצעת מסלול לכל הטיול, תרגום מהיר ליפנית וממנה ועוזר לשאלות. התשובות של ה-AI עלולות להיות לא מדויקות, כדאי לוודא.</p>
+              <p>הצעת מסלול לכל הטיול, תרגום מהיר ליפנית וממנה ועוזר לשאלות<sup>*</sup>.</p>
+              <p class="fine">* התשובות של ה-AI עלולות להיות לא מדויקות, כדאי לוודא.</p>
             </div>
             <div class="card wide reveal" style="--d: 0.08s">
               <div class="badge"><svg class="ico"><use href="#i-yen" /></svg></div>
@@ -1153,6 +1176,10 @@
               <p>המרת ין לשקל בשער חי, והצעות מלונות לפי אזור ותקציב עם קישור להשוואת מחירים.</p>
             </div>
           </div>
+          <p class="more reveal">
+            <svg class="ico"><use href="#i-spark" /></svg>
+            וזה רק חלק קטן ממה שהאפליקציה מציעה. יש בה עוד המון פיצ׳רים שעוזרים לאורך הטיול.
+          </p>
         </div>
       </section>
 
