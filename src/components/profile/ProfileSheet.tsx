@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+﻿import { useState, type FormEvent, type ReactNode } from 'react'
 import clsx from 'clsx'
 import { Sparkles, Check, Cloud, Copy, HardDrive, Lock, LogOut, Map as MapIcon, Pencil, Plus, Share2, X } from 'lucide-react'
 import { displayName, errorMessage, firstName } from '@/backend'
@@ -281,7 +281,7 @@ function ProfileBody({ onClose }: { onClose: () => void }) {
             </p>
           </div>
         ) : (
-          <form onSubmit={saveTrip} className="space-y-3" noValidate>
+          <form onSubmit={saveTrip} className="surface space-y-3 rounded-card p-4" noValidate>
             <TextField label="שם הטיול" value={name} onChange={(event) => setName(event.target.value)} maxLength={40} />
             <div className="grid grid-cols-[1fr_6rem] gap-3">
               <TextField label="יום ראשון ביפן" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { TriangleAlert, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
@@ -25,18 +25,17 @@ export function DeleteTrip({ trip, onDeleted }: { trip: Trip; onDeleted: () => v
 
   if (!open)
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-control py-2.5 text-sm font-medium text-red-600 hover:bg-red-500/8 dark:text-red-400"
-      >
-        <Trash2 aria-hidden className="size-4" />
-        מחיקת הטיול
-      </button>
+      <div className="mt-4 rounded-card border border-red-500/30 p-4">
+        <p className="text-xs font-bold tracking-wide text-red-600 dark:text-red-400">אזור מסוכן</p>
+        <p className="mt-1 text-sm text-muted">מחיקת הטיול מוחקת אותו לכל השותפים ואי אפשר לשחזר.</p>
+        <Button variant="danger" className="mt-3 w-full" icon={<Trash2 aria-hidden className="size-4" />} onClick={() => setOpen(true)}>
+          מחיקת הטיול
+        </Button>
+      </div>
     )
 
   return (
-    <div role="alertdialog" aria-label="מחיקת הטיול" className="mt-3 rounded-card border border-red-500/40 bg-red-500/[0.07] p-4">
+    <div role="alertdialog" aria-label="מחיקת הטיול" className="mt-4 rounded-card border border-red-500/40 bg-red-500/[0.07] p-4">
       <p className="flex items-center gap-2 font-semibold text-red-700 dark:text-red-400">
         <TriangleAlert aria-hidden className="size-5 shrink-0" />
         למחוק את הטיול לצמיתות?
