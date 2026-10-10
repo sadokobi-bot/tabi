@@ -117,13 +117,14 @@ export function AuthScreen() {
           { firstName: profile.firstName.trim(), lastName: profile.lastName.trim(), gender: profile.gender! },
           TERMS_VERSION,
         )
-        // The account exists either way; a recovery e-mail that didn't go through can be added in the profile.
         if (email.trim()) {
           const user = useSession.getState().user ?? { uid: '', username }
-          backend
-            .setRecoveryEmail(user, email, password)
-            .then(() => ui.toast(`שלחנו קישור אימות ל-${email.trim()}. אחרי האישור, נכנסים עם המייל`))
-            .catch((error: unknown) => ui.toast(`המייל לשחזור לא נוסף: ${errorMessage(error)}. אפשר להוסיף אותו בפרופיל`, 'error'))
+          try {
+            await backend.setRecoveryEmail(user, email, password)
+            ui.toast(`שלחנו קישור אימות ל-${email.trim()}. אחרי האישור, נכנסים עם המייל`)
+          } catch (error: unknown) {
+            ui.toast(`המייל לשחזור לא נוסף: ${errorMessage(error)}. אפשר להוסיף אותו בפרופיל`, 'error')
+          }
         }
       }
     } catch (error) {
