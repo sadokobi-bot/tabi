@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import { Ban, CheckCheck, Clock3, Copy, Reply, Trash2 } from 'lucide-react'
+import { motion, useMotionValue, useTransform } from 'motion/react'
 import { Avatar } from '@/components/ui/Avatar'
 import { deleteMessage, REACTIONS, reactTo } from '@/data/chat'
 import type { ChatMessage, Trip } from '@/data/types'
@@ -10,6 +11,8 @@ import { MeetCard, PlaceCard, PollCard } from './ChatCards'
 
 const timeFormat = new Intl.DateTimeFormat('he-IL', { hour: '2-digit', minute: '2-digit' })
 const LONG_PRESS_MS = 420
+/** How far (px) a swipe to the right has to go to reply to the message. */
+const SWIPE_REPLY_PX = 56
 
 interface MessageRowProps {
   message: ChatMessage
@@ -38,6 +41,8 @@ export function MessageRow(props: MessageRowProps) {
   const mine = message.authorId === uid
   const card = !message.deleted && message.kind && message.kind !== 'text'
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const swipeX = useMotionValue(0)
+  const swipeIcon = useTransform(swipeX, [0, SWIPE_REPLY_PX], [0, 1])
   const emojiBar = useRef<HTMLDivElement>(null)
   const actionsBar = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -84,10 +89,29 @@ export function MessageRow(props: MessageRowProps) {
   }
 
   return (
-    <div
+    <motion.div
       id={`message-${message.id}`}
-      className={clsx('flex scroll-my-24 items-end gap-2', mine ? 'justify-end' : 'justify-start', sameAuthor ? 'mt-1' : 'mt-3')}
+      style={{ x: swipeX }}
+      drag={message.deleted ? false : 'x'}
+      dragDirectionLock
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={{ left: 0, right: 0.5 }}
+      dragSnapToOrigin
+      onDragEnd={(_, info) => {
+        if (info.offset.x >= SWIPE_REPLY_PX) {
+          haptic()
+          onReply()
+        }
+      }}
+      className={clsx('relative flex scroll-my-24 items-end gap-2', mine ? 'justify-end' : 'justify-start', sameAuthor ? 'mt-1' : 'mt-3')}
     >
+      <motion.span
+        aria-hidden
+        style={{ opacity: swipeIcon, scale: swipeIcon }}
+        className="absolute -left-10 bottom-1 grid size-8 place-items-center rounded-full bg-fg/10 text-muted"
+      >
+        <Reply className="size-4" />
+      </motion.span>
       {!mine && <span className="w-7 shrink-0">{!sameAuthor && <Avatar name={message.authorName} className="size-7 text-xs" />}</span>}
       <div className={clsx('relative flex min-w-0 flex-col', card ? 'w-[82%]' : 'max-w-[78%]', mine ? 'items-end' : 'items-start')}>
         {reacting && (
@@ -288,6 +312,6 @@ export function MessageRow(props: MessageRowProps) {
           </p>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }
