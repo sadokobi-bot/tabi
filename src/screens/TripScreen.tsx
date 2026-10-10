@@ -59,13 +59,13 @@ export default function TripScreen() {
               onClick={() => setView(value)}
               className={clsx(
                 'relative h-9 rounded-inner text-sm font-semibold transition-colors',
-                view === value ? 'text-fg' : 'text-muted',
+                view === value ? 'text-white' : 'text-muted',
               )}
             >
               {view === value && (
                 <motion.span
                   layoutId="trip-view"
-                  className="absolute inset-0 rounded-inner bg-card shadow-sm"
+                  className="absolute inset-0 rounded-inner bg-accent shadow-sm"
                   transition={{ type: 'spring', stiffness: 500, damping: 40 }}
                 />
               )}
