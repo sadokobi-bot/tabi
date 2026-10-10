@@ -171,6 +171,7 @@ function Room({ channel }: { channel: CommunityChannel }) {
   const [moderator, setModerator] = useState(false)
   const [hidden, setHidden] = useState<string[]>(() => readHidden(user.uid))
   const [selected, setSelected] = useState<CommunityMessage | null>(null)
+  const [managingHidden, setManagingHidden] = useState(false)
   const [text, setText] = useState('')
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -259,6 +260,14 @@ function Room({ channel }: { channel: CommunityChannel }) {
     ui.toast(`ההודעות של ${message.authorName} מוסתרות אצלכם`)
   }
 
+  const unhideAuthor = (authorId: string) => {
+    const next = hidden.filter((id) => id !== authorId)
+    setHidden(next)
+    writeHidden(user.uid, next)
+    if (next.length === 0) setManagingHidden(false)
+  }
+  const hiddenNames = new Map(messages.map((message) => [message.authorId, message.authorName]))
+
   return (
     <>
       <div
@@ -270,6 +279,16 @@ function Room({ channel }: { channel: CommunityChannel }) {
         className="no-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
       >
         <div className="mx-auto flex min-h-full w-full max-w-md flex-col justify-end px-4 pt-6 pb-3">
+          {hidden.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setManagingHidden(true)}
+              className="surface mb-3 flex w-full items-center justify-between gap-2 rounded-control px-3 py-2 text-xs text-muted"
+            >
+              <span>מוסתרות הודעות של {hidden.length === 1 ? 'משתמש אחד' : `${hidden.length} משתמשים`}</span>
+              <span className="font-semibold text-accent">ניהול</span>
+            </button>
+          )}
           {error && (
             <p role="alert" className="mb-3 rounded-control bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300">
               {error}
@@ -355,6 +374,27 @@ function Room({ channel }: { channel: CommunityChannel }) {
           </button>
         </div>
       </form>
+
+      <BottomSheet open={managingHidden} onClose={() => setManagingHidden(false)} label="משתמשים מוסתרים">
+        <div className="px-5 pb-4">
+          <h2 className="text-lg font-bold">משתמשים מוסתרים</h2>
+          <p className="mt-1 text-sm text-muted">ההודעות שלהם לא מוצגות לכם. ההסתרה היא רק אצלכם.</p>
+          <ul className="mt-4 space-y-2">
+            {hidden.map((authorId) => (
+              <li key={authorId} className="surface flex items-center gap-3 rounded-control px-3.5 py-3">
+                <span className="min-w-0 flex-1 truncate text-sm font-semibold">{hiddenNames.get(authorId) ?? 'משתמש מוסתר'}</span>
+                <button
+                  type="button"
+                  onClick={() => unhideAuthor(authorId)}
+                  className="rounded-full bg-accent/12 px-3 py-1.5 text-xs font-semibold text-accent"
+                >
+                  ביטול הסתרה
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </BottomSheet>
 
       <BottomSheet open={!!selected} onClose={() => setSelected(null)} label="פעולות על ההודעה">
         {selected && (
