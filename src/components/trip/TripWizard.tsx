@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { Button } from '@/components/ui/Button'
 import { CategoryIcon } from '@/components/ui/CategoryIcon'
 import { TextAreaField } from '@/components/ui/TextField'
-import { CITIES, getCity } from '@/data/cities'
+import { CITIES, getCity, POPULAR_CITY_IDS, SPECIAL_TRANSIT_CITIES } from '@/data/cities'
 import { seasonFor, type SeasonEvent } from '@/lib/seasons'
 import { CREATOR_DONE_MS, preloadCreatorFrames, TripCreatorCat } from './TripCreatorCat'
 import { FAILURE_TEXT, failureOf, type AssistantFailure } from '@/lib/assistant'
@@ -71,7 +71,10 @@ function Wizard() {
   const hasPlan = useTripStore((state) => Object.values(state.plan).some((items) => items.length > 0))
   const [prefs, setPrefs] = useState<TripPreferences>(() => ({
     ...DEFAULTS,
-    cities: [...new Set(Object.values(trip.dayCities).filter(Boolean) as string[])],
+    cities: (() => {
+      const existing = [...new Set(Object.values(trip.dayCities).filter(Boolean) as string[])]
+      return existing.length > 0 ? existing : [...POPULAR_CITY_IDS]
+    })(),
     // What's on during the trip is built in unless they say otherwise.
     season: seasonFor(trip.startDate, trip.days)
       .filter((event) => event.kind === 'highlight')
@@ -227,7 +230,21 @@ function Questions({
   season: SeasonEvent[]
   onNext: () => void
 }) {
+  const [validationError, setValidationError] = useState<string | null>(null)
   const toggle = (list: string[], value: string) => (list.includes(value) ? list.filter((v) => v !== value) : [...list, value])
+  const transitWarnings = prefs.cities.filter((id) => id in SPECIAL_TRANSIT_CITIES)
+  const handleNext = () => {
+    if (page === 1 && prefs.cities.length === 0) {
+      setValidationError('בחרו לפחות עיר אחת')
+      return
+    }
+    if (page === 2 && prefs.interests.length === 0) {
+      setValidationError('בחרו לפחות תחום עניין אחד')
+      return
+    }
+    setValidationError(null)
+    onNext()
+  }
   return (
     <div>
       <div className="mt-1 flex gap-1.5" aria-label={`שלב ${page + 1} מתוך 3`}>
@@ -291,12 +308,20 @@ function Questions({
           )}
           {page === 1 && (
             <>
-              <Question title="לאילו ערים?" hint="לא בטוחים? אל תבחרו, ואנחנו נבנה מסלול בשבילכם">
+              <Question title="לאילו ערים?" hint="בחרו לפחות עיר אחת. הערים הפופולריות מסומנות">
                 <Chips
                   options={CITIES.map((city) => [city.id, city.name])}
                   selected={prefs.cities}
-                  onToggle={(id) => set({ cities: toggle(prefs.cities, id) })}
+                  onToggle={(id) => {
+                    set({ cities: toggle(prefs.cities, id) })
+                    setValidationError(null)
+                  }}
                 />
+                {transitWarnings.map((id) => (
+                  <p key={id} className="mt-2.5 rounded-control bg-amber-400/12 px-3.5 py-2.5 text-xs leading-relaxed">
+                    ✈️ {SPECIAL_TRANSIT_CITIES[id]}
+                  </p>
+                ))}
               </Question>
               <TextAreaField
                 label="מקומות שאתם חייבים לבקר בהם (לא חובה)"
@@ -311,11 +336,14 @@ function Questions({
           )}
           {page === 2 && (
             <>
-              <Question title="מה אתם אוהבים?">
+              <Question title="מה אתם אוהבים?" hint="בחרו לפחות אחד">
                 <Chips
                   options={INTERESTS.map((i) => [i, i])}
                   selected={prefs.interests}
-                  onToggle={(i) => set({ interests: toggle(prefs.interests, i) })}
+                  onToggle={(i) => {
+                    set({ interests: toggle(prefs.interests, i) })
+                    setValidationError(null)
+                  }}
                 />
               </Question>
               <Question title="אטרקציות שבא לכם?" hint="נשבץ אותן בימים המתאימים (פארק שעשועים לוקח יום שלם)">
@@ -344,11 +372,14 @@ function Questions({
               />
             </>
           )}
+          {validationError && (
+            <p className="rounded-control bg-red-500/12 px-3.5 py-2.5 text-center text-sm text-red-400">{validationError}</p>
+          )}
           <Button
             size="lg"
             className="w-full"
             icon={page === 2 ? <Sparkles aria-hidden className="size-4.5" /> : undefined}
-            onClick={onNext}
+            onClick={handleNext}
           >
             {page === 2 ? 'בנו לנו את הטיול' : 'הבא'}
           </Button>

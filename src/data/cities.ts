@@ -34,6 +34,13 @@ export const CITIES: City[] = [
 const BY_ID = new Map(CITIES.map((city) => [city.id, city]))
 
 export const DEFAULT_CITY: City = CITIES[0]!
+export const POPULAR_CITY_IDS = ['tokyo', 'kyoto', 'osaka']
+export const SPECIAL_TRANSIT_CITIES: Record<string, string> = {
+  okinawa:
+    'אוקינאווה דורשת טיסת פנים (כשעתיים מטוקיו/אוסקה). כדאי להקדיש יום למעבר. כרטיסים ב-Peach, Jetstar או ANA — מומלץ להזמין מראש.',
+  sapporo:
+    'סאפורו בהוקאידו — אפשר להגיע בשינקנסן (כ-8 שעות מטוקיו) או בטיסת פנים (שעה וחצי). טיסה מומלצת לחיסכון בזמן.',
+}
 
 export function getCity(id: string | undefined | null): City | undefined {
   return id ? BY_ID.get(id) : undefined
