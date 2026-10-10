@@ -11,7 +11,7 @@ import { MeetCard, PlaceCard, PollCard } from './ChatCards'
 
 const timeFormat = new Intl.DateTimeFormat('he-IL', { hour: '2-digit', minute: '2-digit' })
 const LONG_PRESS_MS = 420
-/** How far (px) a swipe to the right has to go to reply to the message. */
+/** How far (px) a swipe to the left has to go to reply to the message. */
 const SWIPE_REPLY_PX = 56
 
 interface MessageRowProps {
@@ -42,7 +42,7 @@ export function MessageRow(props: MessageRowProps) {
   const card = !message.deleted && message.kind && message.kind !== 'text'
   const [confirmDelete, setConfirmDelete] = useState(false)
   const swipeX = useMotionValue(0)
-  const swipeIcon = useTransform(swipeX, [0, SWIPE_REPLY_PX], [0, 1])
+  const swipeIcon = useTransform(swipeX, [0, -SWIPE_REPLY_PX], [0, 1])
   const emojiBar = useRef<HTMLDivElement>(null)
   const actionsBar = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -95,10 +95,10 @@ export function MessageRow(props: MessageRowProps) {
       drag={message.deleted ? false : 'x'}
       dragDirectionLock
       dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={{ left: 0, right: 0.5 }}
+      dragElastic={{ left: 0.5, right: 0 }}
       dragSnapToOrigin
       onDragEnd={(_, info) => {
-        if (info.offset.x >= SWIPE_REPLY_PX) {
+        if (info.offset.x <= -SWIPE_REPLY_PX) {
           haptic()
           onReply()
         }
@@ -108,7 +108,7 @@ export function MessageRow(props: MessageRowProps) {
       <motion.span
         aria-hidden
         style={{ opacity: swipeIcon, scale: swipeIcon }}
-        className="absolute -left-10 bottom-1 grid size-8 place-items-center rounded-full bg-fg/10 text-muted"
+        className="absolute -right-10 bottom-1 grid size-8 place-items-center rounded-full bg-fg/10 text-muted"
       >
         <Reply className="size-4" />
       </motion.span>
