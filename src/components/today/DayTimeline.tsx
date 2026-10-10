@@ -36,7 +36,7 @@ const isPast = (item: ItineraryItem, nowMinutes: number | null) => {
 }
 
 /**
- * Vertical timeline of the day, grouped into morning / afternoon / evening. Activities already
+ * Vertical timeline of the day, grouped into morning / afternoon / evening, each activity with its note. Activities already
  * behind us fold into one line, so the day opens on what's now and next.
  */
 export function DayTimeline({ date, items, placesById, nowMinutes, nextItemId, onPlan }: DayTimelineProps) {
@@ -140,6 +140,9 @@ export function DayTimeline({ date, items, placesById, nowMinutes, nextItemId, o
                               <CircleCheck aria-label="היינו פה" className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                             )}
                           </span>
+                          {(item.note || place.notes) && (
+                            <span className="block truncate text-xs text-muted">{item.note || place.notes}</span>
+                          )}
                           <ClosedNote
                             place={place}
                             date={date}
