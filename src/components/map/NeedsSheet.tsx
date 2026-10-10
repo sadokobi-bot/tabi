@@ -115,14 +115,14 @@ export function NeedsSheet({ open, onClose, provider, origin: here, fromGps, ini
   const config = need ? NEED_BY_ID[need] : null
 
   return (
-    <BottomSheet open={open} onClose={onClose} label="צריך עכשיו">
+    <BottomSheet open={open} onClose={onClose} label={need === 'hotel' ? 'מלונות' : 'צריך עכשיו'}>
       <div className="px-5 pb-4">
         {!config ? (
           <>
             <h2 className="text-xl font-bold tracking-tight">צריך עכשיו</h2>
             <p className="mt-1 text-sm text-muted">{fromGps ? 'הכי קרוב אליכם' : 'הכי קרוב למרכז המפה'}, בלחיצה אחת</p>
             <div className="mt-4 grid grid-cols-3 gap-2.5">
-              {NEEDS.map((item) => (
+              {NEEDS.filter((item) => item.id !== 'hotel').map((item) => (
                 <button
                   key={item.id}
                   type="button"
@@ -146,6 +146,7 @@ export function NeedsSheet({ open, onClose, provider, origin: here, fromGps, ini
                 type="button"
                 aria-label="חזרה לכל האפשרויות"
                 onClick={() => {
+                  if (need === 'hotel') return onClose()
                   setNeed(null)
                   setStatus('idle')
                   onResult(null)

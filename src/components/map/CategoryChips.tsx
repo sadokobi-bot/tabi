@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react'
+﻿import type { ReactNode } from 'react'
 import clsx from 'clsx'
-import { Bookmark, LifeBuoy } from 'lucide-react'
+import { BedDouble, Bookmark, LifeBuoy } from 'lucide-react'
 import { motion } from 'motion/react'
 import { CATEGORIES, RECOMMENDABLE } from '@/data/categories'
 import type { CategoryId } from '@/data/types'
@@ -14,17 +14,22 @@ interface CategoryChipsProps {
   onToggle: (category: CategoryId) => void
   /** Opens "I need … now" (toilets, ATMs…). */
   onNeeds: () => void
+  /** Opens the recommended hotels for a city. */
+  onHotels: () => void
 }
 
 /**
  * Floating, horizontally scrolling filter chips.
  * "Saved" toggles our own pins; each category toggles Google/OSM recommendations in the visible area.
  */
-export function CategoryChips({ showSaved, savedCount, onToggleSaved, active, onToggle, onNeeds }: CategoryChipsProps) {
+export function CategoryChips({ showSaved, savedCount, onToggleSaved, active, onToggle, onNeeds, onHotels }: CategoryChipsProps) {
   return (
     <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 py-1">
       <Chip pressed={false} color="var(--app-accent)" onClick={onNeeds} icon={LifeBuoy} tour="needs-chip">
         צריך עכשיו
+      </Chip>
+      <Chip pressed={false} color="#7c3aed" onClick={onHotels} icon={BedDouble} tour="hotels-chip">
+        מלונות
       </Chip>
       <Chip pressed={showSaved} color="var(--app-accent)" onClick={onToggleSaved} icon={Bookmark} tour="saved-chip">
         שמורים · {savedCount}

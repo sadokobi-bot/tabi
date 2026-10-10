@@ -302,6 +302,10 @@ export default function MapScreen() {
                   setReopenNeed(null)
                   setNeedsOpen(true)
                 }}
+                onHotels={() => {
+                  setReopenNeed('hotel')
+                  setNeedsOpen(true)
+                }}
                 showSaved={showSaved}
                 savedCount={places.length}
                 onToggleSaved={() => setShowSaved((value) => !value)}
