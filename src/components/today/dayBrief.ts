@@ -12,7 +12,7 @@ const OUTDOOR = new Set<Place['category']>(['nature', 'amusement'])
 const hourLabel = (hour: number) => `${String(hour).padStart(2, '0')}:00`
 
 export interface DayAlert {
-  kind: 'rain' | 'ticket' | 'heat' | 'cold'
+  kind: 'rain' | 'ticket' | 'tickets' | 'heat' | 'cold'
   /** For the chip on the Today card. */
   short: string
   /** The whole story (the chip's accessible name). */
@@ -98,6 +98,15 @@ export function useDayBrief({
       kind: 'ticket',
       short: 'כרטיס שעוד לא הוזמן',
       text: `${unbooked.place.name} צריך כרטיס מראש, ועוד לא סומן שהוזמן`,
+    })
+  }
+  // Tickets already in the app for today's stops: the chip leads to them.
+  const held = stops.filter(({ place }) => tickets.some((ticket) => ticket.placeId === place.id))
+  if (held.length > 0) {
+    alerts.push({
+      kind: 'tickets',
+      short: 'לצפייה בכרטיסי הכניסה',
+      text: held.length > 1 ? 'יש כרטיסי כניסה להיום' : `יש כרטיס כניסה ל${held[0]!.place.name}`,
     })
   }
   if (forecast && forecast.max >= 30) alerts.push({ kind: 'heat', short: 'חם: שתו הרבה מים', text: 'יום חם: שתו הרבה מים' })

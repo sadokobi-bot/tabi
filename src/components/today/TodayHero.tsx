@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import clsx from 'clsx'
-import { ChevronLeft, Clock3, Droplets, MapPin, Thermometer, Ticket, Umbrella } from 'lucide-react'
+import { ChevronLeft, Clock3, Droplets, MapPin, QrCode, Thermometer, Ticket, Umbrella } from 'lucide-react'
 import type { LatLng, Trip } from '@/data/types'
 import { photoFor, photoUrl } from '@/data/photos'
 import { TRIP_TZ, minutesInTz, type TripTimeline } from '@/lib/dates'
 import { describeWeather, fetchWeather, type Weather } from '@/lib/weather'
 import type { DayAlert, DayBrief } from './dayBrief'
+import { TICKETS_TODAY_ID } from './TicketsTodayCard'
 
 interface TodayHeroProps {
   trip: Trip
@@ -23,7 +24,13 @@ interface TodayHeroProps {
   onRainPlan?: () => void
 }
 
-const ALERT_ICON: Record<DayAlert['kind'], typeof Umbrella> = { rain: Umbrella, ticket: Ticket, heat: Thermometer, cold: Thermometer }
+const ALERT_ICON: Record<DayAlert['kind'], typeof Umbrella> = {
+  rain: Umbrella,
+  ticket: Ticket,
+  tickets: QrCode,
+  heat: Thermometer,
+  cold: Thermometer,
+}
 
 /** Under the photo while it loads (or offline): the colours of the sky over Japan right now. */
 function skyFor(japanMinutes: number) {
@@ -145,7 +152,12 @@ export function TodayHero({ trip, timeline, now, placeName, location, cityId, st
         {brief.summary && <p className="mt-1.5 max-w-[56%] truncate text-xs text-white/85">{brief.summary}</p>}
       </div>
 
-      {brief.alerts[0] && <AlertChip alert={brief.alerts[0]} onOpen={brief.alerts[0].kind === 'rain' ? onRainPlan : undefined} />}
+      {brief.alerts[0] && (
+        <AlertChip
+          alert={brief.alerts[0]}
+          onOpen={brief.alerts[0].kind === 'rain' ? onRainPlan : brief.alerts[0].kind === 'tickets' ? showTickets : undefined}
+        />
+      )}
 
       <p className="absolute end-3 bottom-3 inline-flex max-w-[40%] items-center gap-1 rounded-full bg-black/35 px-2 py-1 text-[11px] font-medium backdrop-blur-sm">
         <MapPin aria-hidden className="size-3 shrink-0" />
@@ -153,6 +165,11 @@ export function TodayHero({ trip, timeline, now, placeName, location, cityId, st
       </p>
     </section>
   )
+}
+
+/** Scrolls down to the day's entry tickets. */
+function showTickets() {
+  document.getElementById(TICKETS_TODAY_ID)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 }
 
 /** The day's most important warning, in the photo's top corner. Rain opens the rainy-day plan. */
@@ -168,7 +185,12 @@ function AlertChip({ alert, onOpen }: { alert: DayAlert; onOpen?: () => void }) 
     </>
   )
   return onOpen ? (
-    <button type="button" onClick={onOpen} aria-label={`${alert.text}. לתוכנית ליום גשום`} className={className}>
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={alert.kind === 'rain' ? `${alert.text}. לתוכנית ליום גשום` : alert.text}
+      className={className}
+    >
       {body}
     </button>
   ) : (
